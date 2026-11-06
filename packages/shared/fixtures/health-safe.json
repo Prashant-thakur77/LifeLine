@@ -1,0 +1,25 @@
+{
+  "status": "ok",
+  "snapshot": {
+    "hlAddress": "0x1111111111111111111111111111111111111111",
+    "accountValue": 81.6,
+    "maintenanceMarginUsed": 34,
+    "health": 2.4,
+    "positions": [
+      { "coin": "ETH", "size": 0.5, "entryPx": 3400.0, "liquidationPx": 2890.5 },
+      { "coin": "BTC", "size": -0.001, "entryPx": 96000.0, "liquidationPx": null }
+    ],
+    "at": "2026-11-08T15:00:00.000Z"
+  },
+  "policy": {
+    "user": "alice.near",
+    "hlAddress": "0x1111111111111111111111111111111111111111",
+    "warn": 1.8,
+    "trigger": 1.5,
+    "target": 2.0,
+    "maxPerRescue": "25000000",
+    "maxPerDay": "50000000",
+    "cooldownSec": 120,
+    "paused": false
+  }
+}

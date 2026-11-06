@@ -1,0 +1,22 @@
+{
+  "status": "ok",
+  "snapshot": {
+    "hlAddress": "0x1111111111111111111111111111111111111111",
+    "accountValue": 15.0,
+    "maintenanceMarginUsed": 0,
+    "health": null,
+    "positions": [],
+    "at": "2026-11-08T15:00:00.000Z"
+  },
+  "policy": {
+    "user": "alice.near",
+    "hlAddress": "0x1111111111111111111111111111111111111111",
+    "warn": 1.8,
+    "trigger": 1.5,
+    "target": 2.0,
+    "maxPerRescue": "25000000",
+    "maxPerDay": "50000000",
+    "cooldownSec": 120,
+    "paused": false
+  }
+}

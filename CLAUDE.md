@@ -1,0 +1,142 @@
+# Lifeline
+
+Automatic margin top-up for Hyperliquid traders, funded from any chain through NEAR Intents. The full plan is the shared doc "Lifeline — Build Plan & Work Split", which is not in git. A human pastes the Do and Done-when lines for each task.
+
+Submit by **14 Nov, 20:00 IST**. Hard deadline: 14 Nov, 23:59 UTC. Tracks: `defi`, `security`, `open`.
+
+## Rules
+
+1. Read https://nearhackathon.com/HACKATHON.md and the Locked decisions below before writing code.
+2. Use https://docs.near.org/llms.txt and https://docs.near-intents.org/llms.txt to find docs. Look up every contract ID, endpoint and SDK version. Never guess.
+3. Only edit folders owned by the current teammate (table below). Never change `packages/shared` without asking. If you don't know which teammate you are working for, ask.
+4. Never commit secrets. Keys live in `.env`; keep `.env.example` current.
+5. Never send a mainnet transaction, spend funds, deploy to mainnet, change the repo's visibility or push to `main` without asking the human first.
+6. Every new function gets a test. Run `pnpm test` before saying a task is done.
+7. Keep the README's run commands correct whenever a command changes.
+
+## How to work
+
+- Plan first, then one micro-task at a time (one file or one function), never a whole task in one go.
+- After each micro-task, run the tests or the live script and show the real output.
+- Commit when the check passes. The human ticks the task in the Status tracker when its Done-when is met.
+- Work on your own branch: `a/<task>` or `b/<task>`, e.g. `a/A4-vault`. Merge to `main` through a pull request once CI passes. Pull `main` at the start of every session.
+
+## Who owns what
+
+A never edits B's folders and B never edits A's. To ask the other side for something, write it in the Status tracker or tell your human to message them.
+
+| Folder | Owner | What lives there |
+| --- | --- | --- |
+| `packages/shared` | B creates, both approve changes | Types and constants both sides import |
+| `spike/` | A | Day-1 throwaway scripts. Kept as evidence, never imported |
+| `contracts/vault` | A | The NEAR vault contract (Rust) and its tests |
+| `packages/intents` | A | 1Click client: tokens, quote, deposit, status polling |
+| `apps/web` | A | Dashboard |
+| `packages/hyperliquid` | B | Reads positions and margin from Hyperliquid's info API |
+| `packages/policy` | B | The Leash policy engine: a pure function, no network calls |
+| `apps/keeper` | B | Watch loop, rescue orchestration, audit log, REST API |
+| `apps/bot` | B | Telegram bot |
+| `research/backtest` | B | Backtest scripts and `RESULTS.md` |
+| `scripts/` | B | `demo:sim`, the attack demo, seeding |
+| `README.md`, `docs/` | A writes, B adds sections | The judge-facing story |
+
+## Locked decisions
+
+Settled. Don't reopen them unless the day-1 spike proves one wrong.
+
+**Stack**
+
+| Piece | Choice |
+| --- | --- |
+| Language | TypeScript, strict mode, Node 22 LTS, pnpm workspaces |
+| Vault contract | Rust, `near-sdk` 5.x, built with `cargo-near`, tested with `near-workspaces` sandbox |
+| Dashboard | Next.js (App Router) + Tailwind. Wallet via HOT's `near-connect`; NEAR Wallet Selector if it fails |
+| Chain calls from TypeScript | `near-api-js` or `near-kit` (whichever the NEAR agent skill recommends) |
+| Tests | `vitest` for TypeScript, `cargo test` + `near-workspaces` for the contract |
+| Keeper storage | SQLite (`better-sqlite3`), one file |
+| Telegram | `grammY` |
+| AI explanations | NEAR AI Cloud, OpenAI-compatible API at `https://cloud-api.near.ai/v1` |
+| Hosting | Dashboard on Vercel. Keeper and bot as one service on Railway with a persistent volume |
+| Licence | MIT |
+
+**Accounts**
+
+- The team mainnet account receives the prize and owns the sub-accounts.
+- Vault contract at `vault.<team>.near`.
+- Keeper at `keeper.<team>.near`. Its only key is a function-call key that can call `rescue` on the vault and nothing else. It can't withdraw, transfer or change policy.
+- Testnet mirrors of all three, `.testnet`, for contract development.
+
+**Health formula**
+
+- `health = accountValue / maintenanceMarginUsed`, both read from Hyperliquid's `clearinghouseState`. Hyperliquid liquidates as health approaches 1.0.
+- Rescue size: `needed = target × maintenanceMarginUsed − accountValue`. We send `needed + 0.2 USDC (1Click fee) + 1%`, cut down to the policy caps and the reserve balance.
+
+**Default policy** (values are in `packages/shared/src/constants.ts`)
+
+| Setting | Default | Allowed range |
+| --- | --- | --- |
+| Warn (Telegram alert only) | 1.8 | 1.3 to 3.0 |
+| Trigger (rescue fires) | 1.5 | 1.2 to 2.5, must be below warn |
+| Target (health after rescue) | 2.0 | above trigger, up to 4.0 |
+| Max per rescue | 25 USDC | user sets |
+| Max per 24 h | 50 USDC | user sets |
+| Cooldown between rescues | 120 s | 30 to 3,600 s |
+| Keeper poll interval | 5 s | fixed |
+| Max quote slippage | 1% | fixed |
+| Max quote age at execution | 60 s | fixed |
+
+**Reserve assets in the first version:** native USDC on NEAR and wNEAR. A user funds the reserve from any chain via 1Click into their own NEAR account, then deposits into the vault.
+
+## Shared interfaces
+
+Both sides build against these at the same time. Neither side changes them without telling the other. If you want to change one, stop and ask.
+
+- Types: `packages/shared/src/types.ts`, as agreed in the plan.
+- REST response shapes: `packages/shared/src/api.ts`.
+- Fake data for every endpoint: `packages/shared/fixtures`. Import from `@lifeline/shared/fixtures`, or read the JSON.
+
+**Vault contract methods** (A builds these; B's keeper calls `rescue`)
+
+| Method | Who can call | What it does |
+| --- | --- | --- |
+| `ft_on_transfer` (via `ft_transfer_call`) | Any user | Credits the deposited token to the sender's reserve. Rejects tokens not on the allowlist |
+| `set_policy(policy)` | The user | Saves their policy, with range checks. Includes `hl_address` and the keeper allowed to act |
+| `pause()` / `unpause()` | The user | Stops or restarts rescues for that user immediately |
+| `withdraw(token, amount)` | The user | Returns reserve funds to the user's own NEAR account, any time |
+| `rescue(user, token, amount, deposit_address, recipient, quote_id)` | The keeper account only | Checks `recipient == policy.hl_address`, not paused, amount ≤ per-rescue cap, 24 h total ≤ daily cap, cooldown passed, enough reserve. Then sends the tokens to `deposit_address` and emits an event |
+| `get_policy(user)`, `get_reserve(user)`, `get_rescues(user, from, limit)` | Anyone (view) | Read state for the dashboard and auditors |
+
+The contract emits NEP-297 events (`EVENT_JSON:`) named `deposit`, `policy_set`, `paused`, `withdraw` and `rescue`. The `rescue` event carries `user`, `amount`, `recipient`, `quote_id` and `deposit_address`.
+
+**Keeper REST API** (B builds it; A's dashboard calls it)
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /api/health/:user` | The latest `HealthSnapshot` plus the user's policy |
+| `GET /api/audit?user=&limit=` | `AuditRecord[]`, newest first |
+| `GET /api/ledger?limit=` | Every user's `AuditRecord[]`, for the public ledger page |
+| `GET /api/stats` | Total rescues, total USD rescued, blocked count, p50 and p95 latency |
+| `POST /api/telegram/link` | A one-time code the user sends to the bot to link their chat |
+| `GET /api/attestation` | The latest NEAR AI Cloud attestation check result |
+
+## Facts checked against live APIs
+
+Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
+
+- `maintenanceMarginUsed` is the top-level `crossMaintenanceMarginUsed` in `clearinghouseState`, and `accountValue` is `marginSummary.accountValue`.
+- The 1Click destination for margin is `1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054` (8 decimals), which credits the perps balance. The similar `1cs_v1:hypercore:erc20:…` USDC lands on HyperEVM and doesn't add margin.
+- A NEAR USDC → Hyperliquid USDC quote is 1 USDC or more below the minimum: 1 USDC was rejected with "Amount is too low for the destination chain", 3 USDC worked.
+- Those quotes lose a flat `quote.withdrawFee` of about 0.3153 USDC, not the 0.2 in the rescue-size formula above. That formula's correction is still open between the teammates.
+- `refundTo` must be an existing NEAR account, or the quote fails with a 400.
+- The quote response has no `quoteId` field. Its top-level keys are `quote`, `quoteRequest`, `signature`, `timestamp` and `correlationId`.
+
+## Commands
+
+```sh
+pnpm install
+pnpm test                        # all TypeScript tests, then the vault's cargo tests
+pnpm typecheck
+pnpm --filter <package> test     # one package, e.g. pnpm --filter policy test
+```
+
+Packages are TypeScript source with no build step. `apps/web` needs `transpilePackages: ["@lifeline/shared"]` in its Next config. `.gitkeep` files in `apps/web`, `contracts/vault`, `docs` and `spike` only hold the empty folders; delete them when real files arrive.

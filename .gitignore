@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules/
+dist/
+.next/
+out/
+coverage/
+target/
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets: real keys only ever live in .env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Keeper data
+data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# The plan is a shared team doc, not part of the repo
+*.pdf
+
+# Installed per machine with `npx skills add near/agent-skills`
+.agents/
+.claude/skills/
+skills-lock.json
+
+# Local tooling
+.DS_Store
+.vscode/
+.idea/
+*.log
+.superpowers/

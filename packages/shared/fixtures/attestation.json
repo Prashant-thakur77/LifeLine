@@ -1,0 +1,11 @@
+{
+  "status": "verified",
+  "checkedAt": "2026-11-08T12:00:00.000Z",
+  "model": "fake-model-id",
+  "checks": [
+    { "name": "fresh nonce echoed in the report", "passed": true },
+    { "name": "TEE quote is valid", "passed": true },
+    { "name": "GPU attestation is valid", "passed": true },
+    { "name": "signing key is bound to the report", "passed": true }
+  ]
+}

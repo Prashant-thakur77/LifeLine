@@ -1,0 +1,169 @@
+[
+  {
+    "id": "audit-005",
+    "user": "alice.near",
+    "kind": "RESCUE_BLOCKED",
+    "request": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "user": "alice.near",
+      "token": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "18056800",
+      "usdNeeded": 17.68,
+      "quoteId": "fake-quote-33333333",
+      "depositAddress": "fake0000000000000000000000000000000000000000000000000000deposit2",
+      "recipient": "0x9999999999999999999999999999999999999999",
+      "quoteAt": "2026-11-08T14:59:00.000Z",
+      "snapshot": {
+        "hlAddress": "0x1111111111111111111111111111111111111111",
+        "accountValue": 49.98,
+        "maintenanceMarginUsed": 34,
+        "health": 1.47,
+        "positions": [
+          {
+            "coin": "ETH",
+            "size": 0.5,
+            "entryPx": 3400.0,
+            "liquidationPx": 3120.5
+          }
+        ],
+        "at": "2026-11-08T14:58:50.000Z"
+      }
+    },
+    "decision": {
+      "verdict": "block",
+      "reasons": [
+        "RECIPIENT_MISMATCH"
+      ]
+    },
+    "healthBefore": 1.47,
+    "explanation": "A rescue tried to send 18.06 USDC to an address that is not your registered Hyperliquid address. Lifeline refused it and no funds moved.",
+    "at": "2026-11-08T14:59:01.000Z"
+  },
+  {
+    "id": "audit-004",
+    "user": "alice.near",
+    "kind": "RESCUE_DONE",
+    "request": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "user": "alice.near",
+      "token": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "18056800",
+      "usdNeeded": 17.68,
+      "quoteId": "fake-quote-11111111",
+      "depositAddress": "fake0000000000000000000000000000000000000000000000000000deposit1",
+      "recipient": "0x1111111111111111111111111111111111111111",
+      "quoteAt": "2026-11-08T14:41:20.000Z",
+      "snapshot": {
+        "hlAddress": "0x1111111111111111111111111111111111111111",
+        "accountValue": 50.32,
+        "maintenanceMarginUsed": 34,
+        "health": 1.48,
+        "positions": [
+          {
+            "coin": "ETH",
+            "size": 0.5,
+            "entryPx": 3400.0,
+            "liquidationPx": 3120.5
+          }
+        ],
+        "at": "2026-11-08T14:41:10.000Z"
+      }
+    },
+    "decision": {
+      "verdict": "allow",
+      "reasons": []
+    },
+    "nearTx": "FakeNearTx1111111111111111111111111111111111",
+    "oneClickStatus": "SUCCESS",
+    "healthBefore": 1.48,
+    "healthAfter": 2.0,
+    "latencyMs": 42000,
+    "explanation": "ETH fell 6% in 20 minutes and your health dropped to 1.48, so Lifeline moved 18.06 USDC to restore it to 2.0. The money came from your reserve and arrived 42 seconds later.",
+    "at": "2026-11-08T14:41:52.000Z"
+  },
+  {
+    "id": "audit-003",
+    "user": "alice.near",
+    "kind": "RESCUE_ALLOWED",
+    "request": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "user": "alice.near",
+      "token": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "18056800",
+      "usdNeeded": 17.68,
+      "quoteId": "fake-quote-11111111",
+      "depositAddress": "fake0000000000000000000000000000000000000000000000000000deposit1",
+      "recipient": "0x1111111111111111111111111111111111111111",
+      "quoteAt": "2026-11-08T14:41:20.000Z",
+      "snapshot": {
+        "hlAddress": "0x1111111111111111111111111111111111111111",
+        "accountValue": 50.32,
+        "maintenanceMarginUsed": 34,
+        "health": 1.48,
+        "positions": [
+          {
+            "coin": "ETH",
+            "size": 0.5,
+            "entryPx": 3400.0,
+            "liquidationPx": 3120.5
+          }
+        ],
+        "at": "2026-11-08T14:41:10.000Z"
+      }
+    },
+    "decision": {
+      "verdict": "allow",
+      "reasons": []
+    },
+    "healthBefore": 1.48,
+    "at": "2026-11-08T14:41:21.000Z"
+  },
+  {
+    "id": "audit-002",
+    "user": "alice.near",
+    "kind": "WARN",
+    "healthBefore": 1.62,
+    "at": "2026-11-08T14:30:00.000Z"
+  },
+  {
+    "id": "audit-001",
+    "user": "bob.near",
+    "kind": "RESCUE_FAILED",
+    "request": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "user": "bob.near",
+      "token": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "9000000",
+      "usdNeeded": 8.5,
+      "quoteId": "fake-quote-22222222",
+      "depositAddress": "fake0000000000000000000000000000000000000000000000000000deposit3",
+      "recipient": "0x2222222222222222222222222222222222222222",
+      "quoteAt": "2026-11-08T13:20:20.000Z",
+      "snapshot": {
+        "hlAddress": "0x2222222222222222222222222222222222222222",
+        "accountValue": 45.0,
+        "maintenanceMarginUsed": 30,
+        "health": 1.5,
+        "positions": [
+          {
+            "coin": "ETH",
+            "size": 0.5,
+            "entryPx": 3400.0,
+            "liquidationPx": 3120.5
+          }
+        ],
+        "at": "2026-11-08T13:20:10.000Z"
+      }
+    },
+    "decision": {
+      "verdict": "allow",
+      "reasons": []
+    },
+    "nearTx": "FakeNearTx2222222222222222222222222222222222",
+    "oneClickStatus": "REFUNDED",
+    "healthBefore": 1.5,
+    "healthAfter": 1.5,
+    "explanation": "1Click could not complete the 9.00 USDC transfer and refunded it, so your Hyperliquid margin did not change. Your health is still 1.5, so add margin or wait for the next attempt.",
+    "at": "2026-11-08T13:24:00.000Z"
+  }
+]

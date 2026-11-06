@@ -1,0 +1,7 @@
+{
+  "totalRescues": 12,
+  "totalUsdRescued": 184.6,
+  "blockedCount": 3,
+  "latencyP50Ms": 41000,
+  "latencyP95Ms": 66000
+}
