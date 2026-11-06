@@ -123,7 +123,10 @@ The contract emits NEP-297 events (`EVENT_JSON:`) named `deposit`, `policy_set`,
 
 Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
 
-- `maintenanceMarginUsed` is the top-level `crossMaintenanceMarginUsed` in `clearinghouseState`, and `accountValue` is `marginSummary.accountValue`.
+- `maintenanceMarginUsed` is the top-level `crossMaintenanceMarginUsed` and `accountValue` is `crossMarginSummary.accountValue`, both in `clearinghouseState`. Don't use `marginSummary.accountValue`: it also counts isolated margin, which can't save a cross position.
+- Health covers cross margin only. An isolated position isn't protected by a top-up, and an account with only isolated positions reads 0 maintenance margin. `packages/hyperliquid` reports that as unknown, never safe.
+- On 5 sampled single-position cross accounts, the formula matched Hyperliquid's `liquidationPx` exactly on 2. On the other 3 Hyperliquid's price was further away, so health reads low and a rescue fires early, not late. The 2 of those 3 I looked up were `unifiedAccount`s holding spot USDC.
+- Hyperliquid keeps only about the most recent 5,000 candles per interval: 1h reaches back to April 2026, 4h to July 2024, and 1d to July 2023.
 - The 1Click destination for margin is `1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054` (8 decimals), which credits the perps balance. The similar `1cs_v1:hypercore:erc20:…` USDC lands on HyperEVM and doesn't add margin.
 - A NEAR USDC → Hyperliquid USDC quote is 1 USDC or more below the minimum: 1 USDC was rejected with "Amount is too low for the destination chain", 3 USDC worked.
 - Those quotes lose a flat `quote.withdrawFee` of about 0.3153 USDC, not the 0.2 in the rescue-size formula above. That formula's correction is still open between the teammates.
@@ -137,6 +140,7 @@ pnpm install
 pnpm test                        # all TypeScript tests, then the vault's cargo tests
 pnpm typecheck
 pnpm --filter <package> test     # one package, e.g. pnpm --filter policy test
+pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 ```
 
 Packages are TypeScript source with no build step. `apps/web` needs `transpilePackages: ["@lifeline/shared"]` in its Next config. `.gitkeep` files in `apps/web`, `contracts/vault`, `docs` and `spike` only hold the empty folders; delete them when real files arrive.
