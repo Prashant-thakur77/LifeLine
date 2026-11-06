@@ -148,6 +148,8 @@ pnpm --filter keeper live        # the real keeper: reads .env, and mainnet also
                                  # 1Click has no testnet, so on testnet live stops at the quote
 pnpm --filter keeper attest      # one real NEAR AI Cloud attestation check, through NVIDIA and Intel
 pnpm backtest                    # regenerates research/backtest/RESULTS.md and its charts from the saved candles
+pnpm demo:sim                    # the whole rescue story from the live ETH price: no wallet, keys or funds
+pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved mainnet refusal re-checked on chain
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 ```
 

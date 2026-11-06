@@ -12,7 +12,9 @@
   "scripts": {
     "test": "vitest run && node scripts/test-contracts.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
-    "backtest": "pnpm --filter @lifeline/backtest backtest"
+    "backtest": "pnpm --filter @lifeline/backtest backtest",
+    "demo:sim": "pnpm --filter @lifeline/scripts demo:sim",
+    "demo:attack": "pnpm --filter @lifeline/scripts demo:attack"
   },
   "devDependencies": {
     "@types/node": "catalog:",
