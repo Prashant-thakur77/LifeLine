@@ -64,10 +64,16 @@ function setup() {
     sleep: async (ms) => {
       sleeps.push(ms);
     },
+    sendTimeoutMs: 20,
   });
   const sent: Sent[] = [];
   const failures: unknown[] = [];
-  life.bot.api.config.use(async (_previous, method, payload) => {
+  let hangNext = false;
+  life.bot.api.config.use(async (_previous, method, payload, signal) => {
+    if (hangNext) {
+      hangNext = false;
+      await new Promise((_resolve, reject) => signal?.addEventListener("abort", () => reject(new Error("aborted"))));
+    }
     const failure = failures.shift();
     if (failure) throw failure;
     sent.push({ method, payload: payload as Sent["payload"] });
@@ -89,7 +95,10 @@ function setup() {
     });
   };
   const reply = () => sent.at(-1)?.payload.text ?? "";
-  return { life, fake, sent, say, reply, logs, sleeps, failures };
+  const hang = () => {
+    hangNext = true;
+  };
+  return { life, fake, sent, say, reply, logs, sleeps, failures, hang };
 }
 
 const telegramError = (code: number, retryAfter?: number) =>
@@ -154,13 +163,17 @@ describe("/status", () => {
 
   it("shows every linked account", async () => {
     await t.say("GOODCODE");
-    t.fake.health.set("alice.near", {
+    t.fake.links.get(CHAT)?.add("bob.near");
+    const reading = (user: string, health: number): HealthResponse => ({
       status: "ok",
-      snapshot: { hlAddress: "0x1", accountValue: 50, maintenanceMarginUsed: 30, health: 1.67, positions: [], at: "" },
-      policy: { user: "alice.near", hlAddress: "0x1", warn: 1.8, trigger: 1.5, target: 2, maxPerRescue: "1", maxPerDay: "1", cooldownSec: 120, paused: false },
+      snapshot: { hlAddress: "0x1", accountValue: 50, maintenanceMarginUsed: 30, health, positions: [], at: "" },
+      policy: { user, hlAddress: "0x1", warn: 1.8, trigger: 1.5, target: 2, maxPerRescue: "1", maxPerDay: "1", cooldownSec: 120, paused: false },
     });
+    t.fake.health.set("alice.near", reading("alice.near", 1.67));
+    t.fake.health.set("bob.near", reading("bob.near", 2.5));
     await t.say("/status");
     expect(t.reply()).toContain("1.67");
+    expect(t.reply()).toContain("2.50");
   });
 });
 
@@ -241,10 +254,43 @@ describe("notify", () => {
     expect(t.sent).toHaveLength(before + 1);
   });
 
-  it("gives up after a few tries and logs it, without throwing", async () => {
-    t.failures.push(new Error("down"), new Error("down"), new Error("down"), new Error("down"));
+  it("keeps trying through a Telegram outage of a minute or more, because this may be a rescue alert", async () => {
+    const before = t.sent.length;
+    t.failures.push(...Array.from({ length: 8 }, () => new Error("down")));
+    await t.life.notify(record());
+    expect(t.sent).toHaveLength(before + 1);
+    expect(t.sleeps.reduce((sum, ms) => sum + ms, 0)).toBeGreaterThan(60_000);
+  });
+
+  it("gives up eventually and logs it, without throwing", async () => {
+    t.failures.push(...Array.from({ length: 9 }, () => new Error("down")));
     await expect(t.life.notify(record())).resolves.toBeUndefined();
     expect(t.logs.join("\n")).toMatch(/couldn't send/i);
+  });
+
+  it("doesn't retry a message Telegram says is bad", async () => {
+    t.failures.push(telegramError(400));
+    await t.life.notify(record());
+    expect(t.sleeps).toEqual([]);
+    expect(t.logs.join("\n")).toMatch(/refused/i);
+  });
+
+  it("gives up on a hung send and retries, so one can't hold up the chat's queue", async () => {
+    const before = t.sent.length;
+    t.hang();
+    await t.life.notify(record());
+    expect(t.sent).toHaveLength(before + 1);
+  });
+
+  it("keeps a chat's queue working if unlinking a blocked chat throws", async () => {
+    const before = t.sent.length;
+    t.fake.store.unlinkChat = () => {
+      throw new Error("store broke");
+    };
+    t.failures.push(telegramError(403));
+    await t.life.notify(record());
+    await t.life.notify(record());
+    expect(t.sent).toHaveLength(before + 1);
   });
 
   it("drops a chat that blocked the bot, and doesn't retry", async () => {
@@ -263,10 +309,43 @@ describe("notify", () => {
 
   it("doesn't leak the token into its logs", async () => {
     const leaky = () => new Error("request to https://api.telegram.org/bot1:fake/sendMessage failed");
-    t.failures.push(leaky(), leaky(), leaky(), leaky());
+    t.failures.push(...Array.from({ length: 9 }, leaky));
     await t.life.notify(record());
     expect(t.logs.join("\n")).toMatch(/couldn't send/i);
     expect(t.logs.join("\n")).not.toContain("1:fake");
+  });
+});
+
+describe("polling", () => {
+  it("starts again after Telegram stops it, like when the same token runs elsewhere", async () => {
+    let starts = 0;
+    t.life.bot.start = (async () => {
+      starts += 1;
+      if (starts === 1) throw telegramError(409);
+      t.life.stopPolling();
+    }) as typeof t.life.bot.start;
+    await t.life.poll();
+    expect(starts).toBe(2);
+    expect(t.logs.join("\n")).toMatch(/polling stopped/i);
+    expect(t.sleeps.length).toBe(1);
+  });
+
+  it("stays stopped once told to stop", async () => {
+    let starts = 0;
+    t.life.bot.start = (async () => {
+      starts += 1;
+    }) as typeof t.life.bot.start;
+    t.life.stopPolling();
+    await t.life.poll();
+    expect(starts).toBe(0);
+  });
+});
+
+describe("a code that's already been used", () => {
+  it("points you at /status, in case your first try worked but the reply was lost", async () => {
+    await t.say("GOODCODE");
+    await t.say("GOODCODE");
+    expect(t.reply()).toContain("/status");
   });
 });
 

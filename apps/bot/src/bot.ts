@@ -3,8 +3,11 @@ import { Bot, GrammyError, type Context } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
 import { formatRecord, formatStatus, type Network } from "./messages";
 
-const MAX_ATTEMPTS = 4;
-const BACKOFF_MS = 500; // 0.5, 1 and 2 s: all inside the plan's 10 s limit
+const MAX_ATTEMPTS = 9;
+const BACKOFF_MS = 500; // doubling, so the first tries stay inside the plan's 10 s limit
+const MAX_BACKOFF_MS = 30_000; // about a minute and a half in all, because this may be a rescue alert
+const SEND_TIMEOUT_MS = 3_000; // grammY's own default is 500 s, which would hold up the whole chat
+const POLL_RESTART_MS = 30_000;
 const MAX_MESSAGE_LENGTH = 4000; // Telegram's limit is 4,096
 const CODE = /^[A-Z2-9]{8}$/;
 
@@ -25,6 +28,7 @@ export type BotOptions = {
   now: () => Date;
   log: (line: string) => void;
   sleep?: (ms: number) => Promise<void>;
+  sendTimeoutMs?: number;
   /** Set in tests, so the bot doesn't call Telegram to find out who it is. */
   botInfo?: UserFromGetMe;
 };
@@ -38,10 +42,11 @@ const HELP = [
 ].join("\n");
 
 export function createLifelineBot(options: BotOptions) {
-  const { token, store, dashboardUrl, network, now, log, botInfo } = options;
+  const { token, store, dashboardUrl, network, now, log, botInfo, sendTimeoutMs = SEND_TIMEOUT_MS } = options;
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const bot = new Bot(token, botInfo ? { botInfo } : {});
   const queues = new Map<number, Promise<void>>();
+  let stopped = false;
 
   /** A token is in every Bot API URL, so nothing that might quote one reaches the logs. */
   const safeMessage = (error: unknown) =>
@@ -51,7 +56,7 @@ export function createLifelineBot(options: BotOptions) {
     const user = store.consumeTelegramCode(raw.trim().toUpperCase(), ctx.chat?.id ?? 0, now());
     await ctx.reply(
       user === null
-        ? `That code has expired or isn't valid. Get a new one from ${dashboardUrl}`
+        ? `That code has expired or isn't valid. /status shows what this chat is linked to, or get a new code from ${dashboardUrl}`
         : `Linked to ${user}. You'll get a message here for every warning and rescue.\n\n/status shows your health.`,
     );
   };
@@ -88,12 +93,17 @@ export function createLifelineBot(options: BotOptions) {
   const deliver = async (chatId: number, text: string): Promise<void> => {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       try {
-        await bot.api.sendMessage(chatId, text.slice(0, MAX_MESSAGE_LENGTH));
+        const signal = AbortSignal.timeout(sendTimeoutMs) as Parameters<typeof bot.api.sendMessage>[3];
+        await bot.api.sendMessage(chatId, text.slice(0, MAX_MESSAGE_LENGTH), undefined, signal);
         return;
       } catch (error) {
         if (error instanceof GrammyError && error.error_code === 403) {
-          log(`telegram chat ${chatId} blocked the bot, so it's been unlinked`);
-          store.unlinkChat(chatId);
+          try {
+            store.unlinkChat(chatId);
+            log(`telegram chat ${chatId} blocked the bot, so it's been unlinked`);
+          } catch {
+            log(`telegram chat ${chatId} blocked the bot, and couldn't be unlinked`);
+          }
           return;
         }
         if (error instanceof GrammyError && error.error_code === 400) {
@@ -105,7 +115,7 @@ export function createLifelineBot(options: BotOptions) {
           return;
         }
         const retryAfter = error instanceof GrammyError ? error.parameters.retry_after : undefined;
-        await sleep(retryAfter === undefined ? BACKOFF_MS * 2 ** (attempt - 1) : retryAfter * 1000);
+        await sleep(retryAfter === undefined ? Math.min(BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS) : retryAfter * 1000);
       }
     }
   };
@@ -129,10 +139,21 @@ export function createLifelineBot(options: BotOptions) {
       }
     },
 
-    start(): void {
-      bot.start({ drop_pending_updates: true }).catch((error: unknown) => log(`telegram bot stopped: ${safeMessage(error)}`));
+    /** Runs until stopPolling. Telegram can stop polling, like a 409 when the token runs elsewhere, so this restarts it. */
+    async poll(): Promise<void> {
+      while (!stopped) {
+        try {
+          await bot.start({ drop_pending_updates: true });
+        } catch (error) {
+          log(`telegram polling stopped, restarting soon: ${safeMessage(error)}`);
+          if (!stopped) await sleep(POLL_RESTART_MS);
+        }
+      }
     },
 
-    stop: () => bot.stop(),
+    stopPolling(): void {
+      stopped = true;
+      void bot.stop();
+    },
   };
 }

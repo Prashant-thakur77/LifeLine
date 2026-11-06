@@ -108,6 +108,18 @@ describe("the record pipeline", () => {
     await expect(pipeline.settled()).resolves.toBeUndefined();
   });
 
+  it("explains records a crash left unexplained, without messaging anyone twice", async () => {
+    const { store, notified, pipeline } = setup();
+    store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+    store.append(record({ id: "b", kind: "WARN" }));
+    store.append(record({ id: "c", kind: "RESCUE_FAILED" }));
+    store.setExplanation("c", "Already explained.");
+    pipeline.backfill();
+    await pipeline.settled();
+    expect(store.audit(USER, 3).map((r) => r.explanation)).toEqual(["Already explained.", undefined, "Plain words."]);
+    expect(notified).toEqual([]);
+  });
+
   it("leaves the audit log itself untouched, because it's append-only", async () => {
     const { store, pipeline } = setup();
     const r = record({ id: "a", kind: "RESCUE_FAILED", explanation: "The keeper's own note." });
