@@ -1,4 +1,4 @@
-import { ASSETS, type AuditRecord } from "@lifeline/shared";
+import { ASSETS, type AttestationResponse, type AuditRecord } from "@lifeline/shared";
 
 const health = (value: number | undefined) => (value === undefined ? "?" : value.toFixed(2));
 
@@ -24,4 +24,12 @@ export function describeRecord(record: AuditRecord): string {
     default:
       return head;
   }
+}
+
+/** A few lines for the terminal. */
+export function describeAttestation(result: AttestationResponse): string {
+  const checks = result.checks.map(
+    ({ name, passed, detail }) => `  ${passed ? "pass" : "FAIL"}  ${name}${detail ? ` (${detail})` : ""}`,
+  );
+  return [`Attestation: ${result.status}${result.model ? ` for ${result.model}` : ""}`, ...checks].join("\n");
 }

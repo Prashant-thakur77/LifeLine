@@ -38,6 +38,9 @@ describe("readLiveConfig", () => {
       dashboardUrl: "http://localhost:3000",
       botUsername: null,
       botToken: null,
+      nearAiUrl: "https://cloud-api.near.ai/v1",
+      nearAiModel: "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      nearAiKey: null,
     });
   });
 
@@ -88,6 +91,11 @@ describe("readLiveConfig", () => {
 
   it("doesn't print the bot's token in that error", () => {
     expect(() => readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token" })).not.toThrow(/secret-token/);
+  });
+
+  it("reads the NEAR AI settings", () => {
+    const config = readLiveConfig({ ...env, NEAR_AI_BASE_URL: "https://near-ai.test/v1", NEAR_AI_MODEL: "some/model", NEAR_AI_API_KEY: "key" });
+    expect(config).toMatchObject({ nearAiUrl: "https://near-ai.test/v1", nearAiModel: "some/model", nearAiKey: "key" });
   });
 
   it("treats blank optional settings as unset", () => {

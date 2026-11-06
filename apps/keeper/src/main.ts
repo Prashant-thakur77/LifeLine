@@ -6,11 +6,14 @@ import { dirname } from "node:path";
 import { createLifelineBot } from "@lifeline/bot";
 import { getHealth } from "@lifeline/hyperliquid";
 import { createApi, NOT_AVAILABLE_ATTESTATION } from "./api";
-import { parseMode, readLiveConfig, type LiveConfig } from "./config";
+import { AttestationMonitor, checkAttestation } from "./attestation";
+import { DEFAULT_NEAR_AI_MODEL, DEFAULT_NEAR_AI_URL, parseMode, readLiveConfig, type LiveConfig } from "./config";
+import { createExplainer } from "./explain";
 import { describeRecord } from "./format";
 import { Keeper } from "./keeper";
 import { connectNear, createNearVault } from "./near";
 import { createOneClick } from "./oneclick";
+import { createRecordPipeline } from "./pipeline";
 import { runSim, SIM_USER } from "./sim";
 import { Store } from "./store";
 
@@ -35,6 +38,22 @@ async function runSimCli(): Promise<number> {
   const port = await listen(api, 0);
   console.log(`API: http://127.0.0.1:${port}/api/stats\n`);
 
+  // A key is optional here: with none, explanations come from the template.
+  const explainer = createExplainer({
+    baseUrl: process.env.NEAR_AI_BASE_URL?.trim() || DEFAULT_NEAR_AI_URL,
+    apiKey: process.env.NEAR_AI_API_KEY?.trim() || null,
+    model: process.env.NEAR_AI_MODEL?.trim() || DEFAULT_NEAR_AI_MODEL,
+    log: (line) => console.log(`  (${line})`),
+  });
+  const pipeline = createRecordPipeline({
+    store,
+    explain: (record) => explainer.explain(record),
+    notify: async ({ explanation }) => {
+      if (explanation) console.log(`    ${explanation}`);
+    },
+    log: (line) => console.log(`  (${line})`),
+  });
+
   const result = await runSim({
     store,
     quotes: createOneClick({
@@ -45,8 +64,12 @@ async function runSimCli(): Promise<number> {
     sleep,
     log: () => {},
     onTick: (price, health) => console.log(`ETH ${price.toFixed(0)}  health ${health.toFixed(2)}`),
-    onRecord: (record) => console.log(`  ${describeRecord(record)}`),
+    onRecord: (record) => {
+      console.log(`  ${describeRecord(record)}`);
+      pipeline.handle(record);
+    },
   });
+  await pipeline.settled();
 
   const stats = await (await fetch(`http://127.0.0.1:${port}/api/stats`)).json();
   const done = store.ledger(100).filter((record) => record.kind === "RESCUE_DONE");
@@ -70,6 +93,17 @@ async function runLive(config: LiveConfig): Promise<void> {
     config.botToken === null
       ? null
       : createLifelineBot({ token: config.botToken, store, dashboardUrl: config.dashboardUrl, network: config.network, now, log });
+  const explainer = createExplainer({ baseUrl: config.nearAiUrl, apiKey: config.nearAiKey, model: config.nearAiModel, log });
+  const pipeline = createRecordPipeline({
+    store,
+    explain: (record) => explainer.explain(record),
+    notify: async (record) => telegram?.notify(record),
+    log,
+  });
+  const attestation = new AttestationMonitor(
+    () => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now }),
+    { sleep },
+  );
   const keeper = new Keeper({
     store,
     vault: createNearVault(connectNear(config)),
@@ -87,19 +121,20 @@ async function runLive(config: LiveConfig): Promise<void> {
     log,
     onRecord: (record) => {
       log(`${record.user}: ${describeRecord(record)}`);
-      void telegram?.notify(record);
+      pipeline.handle(record);
     },
   });
   const api = createApi({
     store,
     now,
     botUsername: config.botUsername,
-    attestation: () => NOT_AVAILABLE_ATTESTATION,
+    attestation: () => attestation.latest(),
     corsOrigin: config.corsOrigin,
   });
 
   const shutdown = () => {
     keeper.stop();
+    attestation.stop();
     void telegram?.stop();
     api.close();
     store.close();
@@ -111,6 +146,7 @@ async function runLive(config: LiveConfig): Promise<void> {
   const port = await listen(api, config.port);
   console.log(`Lifeline keeper, live on ${config.network}, watching ${config.users.join(", ")}. API on port ${port}.`);
   telegram?.start();
+  void attestation.run();
   keeper.recover();
   await keeper.run();
 }

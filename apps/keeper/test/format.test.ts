@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeRecord } from "../src/format";
+import { describeAttestation, describeRecord } from "../src/format";
 import { record, rescueRequest } from "./helpers";
 
 describe("describeRecord", () => {
@@ -31,5 +31,29 @@ describe("describeRecord", () => {
 
   it("copes with a record that has none of the optional fields", () => {
     expect(describeRecord(record({ id: "a", kind: "RESCUE_DONE" }))).toBe("RESCUE_DONE     health ?");
+  });
+});
+
+describe("describeAttestation", () => {
+  it("shows the status, the model and each check", () => {
+    const text = describeAttestation({
+      status: "verified",
+      checkedAt: "2026-11-06T09:00:00.000Z",
+      model: "some/model",
+      checks: [
+        { name: "TEE quote is valid", passed: true, detail: "Intel status: UpToDate" },
+        { name: "GPU attestation is valid", passed: false },
+      ],
+    });
+    expect(text).toContain("verified");
+    expect(text).toContain("some/model");
+    expect(text).toContain("pass  TEE quote is valid (Intel status: UpToDate)");
+    expect(text).toContain("FAIL  GPU attestation is valid");
+  });
+
+  it("copes with no checks and no model", () => {
+    const text = describeAttestation({ status: "not available", checkedAt: null, model: null, checks: [] });
+    expect(text).toContain("not available");
+    expect(text).not.toMatch(/undefined|null/);
   });
 });

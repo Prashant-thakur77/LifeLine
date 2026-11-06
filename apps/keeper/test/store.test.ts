@@ -67,6 +67,36 @@ describe("the audit log", () => {
   });
 });
 
+describe("explanations", () => {
+  it("show up on every read of a record", () => {
+    store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+    store.setExplanation("a", "Plain words.");
+    expect(store.audit(USER, 1)[0]?.explanation).toBe("Plain words.");
+    expect(store.ledger(1)[0]?.explanation).toBe("Plain words.");
+    expect(store.latest(USER, "RESCUE_DONE")?.explanation).toBe("Plain words.");
+  });
+
+  it("leave the record itself alone, because the log is append-only", () => {
+    store.append(record({ id: "a", kind: "RESCUE_FAILED", explanation: "The keeper's own note." }));
+    store.setExplanation("a", "Plain words.");
+    expect(store.latestRaw(USER, "RESCUE_FAILED")?.explanation).toBe("The keeper's own note.");
+    expect(store.audit(USER, 1)[0]?.explanation).toBe("Plain words.");
+  });
+
+  it("can be replaced", () => {
+    store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+    store.setExplanation("a", "First.");
+    store.setExplanation("a", "Second.");
+    expect(store.audit(USER, 1)[0]?.explanation).toBe("Second.");
+  });
+
+  it("leave a record without one exactly as it was", () => {
+    const written = record({ id: "a", kind: "WARN" });
+    store.append(written);
+    expect(store.audit(USER, 1)).toEqual([written]);
+  });
+});
+
 describe("unfinished rescues", () => {
   const allowed = (id: string, requestId: string) =>
     record({ id, kind: "RESCUE_ALLOWED", request: rescueRequest({ id: requestId }) });

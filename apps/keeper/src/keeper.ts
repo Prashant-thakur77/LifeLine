@@ -228,7 +228,8 @@ export class Keeper {
 
   /** A rescue that failed before any money moved. It gets retried, so it isn't repeated in the log. */
   private recordEarlyFailure(user: string, healthBefore: number, explanation: string): void {
-    const last = this.deps.store.latest(user, "RESCUE_FAILED");
+    // The raw record, because the AI may have reworded the one everyone else reads.
+    const last = this.deps.store.latestRaw(user, "RESCUE_FAILED");
     if (this.isRecent(last) && last.request === undefined && last.explanation === explanation) return;
     this.write(user, { kind: "RESCUE_FAILED", healthBefore, explanation });
   }

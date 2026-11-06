@@ -1,5 +1,9 @@
 export type Mode = "sim" | "live";
 
+export const DEFAULT_NEAR_AI_URL = "https://cloud-api.near.ai/v1";
+/** A private model, so it runs in a TEE and can be attested. Picked from /v1/models on 2026-11-06. */
+export const DEFAULT_NEAR_AI_MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017";
+
 export type LiveConfig = {
   network: "testnet" | "mainnet";
   rpcUrl: string;
@@ -15,6 +19,9 @@ export type LiveConfig = {
   dashboardUrl: string;
   botUsername: string | null;
   botToken: string | null;
+  nearAiUrl: string;
+  nearAiModel: string;
+  nearAiKey: string | null;
 };
 
 type Env = Record<string, string | undefined>;
@@ -79,5 +86,8 @@ export function readLiveConfig(env: Env): LiveConfig {
     dashboardUrl: optional(env.DASHBOARD_URL) ?? "http://localhost:3000",
     botUsername,
     botToken,
+    nearAiUrl: optional(env.NEAR_AI_BASE_URL) ?? DEFAULT_NEAR_AI_URL,
+    nearAiModel: optional(env.NEAR_AI_MODEL) ?? DEFAULT_NEAR_AI_MODEL,
+    nearAiKey: optional(env.NEAR_AI_API_KEY) ?? null,
   };
 }
