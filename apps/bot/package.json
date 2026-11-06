@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@lifeline/shared": "workspace:*"
+    "@lifeline/shared": "workspace:*",
+    "grammy": "1.46.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
