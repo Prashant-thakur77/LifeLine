@@ -8,13 +8,15 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "live": "tsx src/live.ts"
   },
   "dependencies": {
     "@lifeline/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
