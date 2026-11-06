@@ -114,11 +114,6 @@ describe("readLiveConfig", () => {
     expect(config).toMatchObject({ nearAiUrl: "https://near-ai.test/v1", nearAiModel: "some/model", nearAiKey: "key" });
   });
 
-  it("reads the NEAR AI settings", () => {
-    const config = readLiveConfig({ ...env, NEAR_AI_BASE_URL: "https://near-ai.test/v1", NEAR_AI_MODEL: "some/model", NEAR_AI_API_KEY: "key" });
-    expect(config).toMatchObject({ nearAiUrl: "https://near-ai.test/v1", nearAiModel: "some/model", nearAiKey: "key" });
-  });
-
   it("treats blank optional settings as unset", () => {
     const config = readLiveConfig({ ...env, ONECLICK_JWT: "", TELEGRAM_BOT_USERNAME: " ", DASHBOARD_URL: "" });
     expect(config.oneClickJwt).toBeUndefined();
