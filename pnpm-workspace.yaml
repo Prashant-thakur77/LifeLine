@@ -8,3 +8,8 @@ catalog:
   tsx: ^4.23.15
   typescript: ^7.0.2
   vitest: ^5.1.0
+
+# pnpm stops the install until each dependency's build script has a decision.
+# esbuild's only speeds up its first run; the binary is an optional dependency.
+allowBuilds:
+  esbuild: false
