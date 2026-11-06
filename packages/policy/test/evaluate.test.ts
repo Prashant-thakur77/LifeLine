@@ -1,6 +1,6 @@
 import { ASSETS, POLICY_DEFAULTS, REASON_CODES, type HealthSnapshot, type Policy } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
-import { evaluate, GUARD_CODES, type PolicyRequest, type RescueHistory } from "../src/index";
+import { evaluate, GUARD_CODES, spentInLast24h, type PolicyRequest, type RescueHistory } from "../src/index";
 
 const NOW = new Date("2026-11-08T15:00:00.000Z");
 const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
@@ -44,6 +44,7 @@ const request: PolicyRequest = {
   snapshot,
   destinationAsset: ASSETS.HYPERLIQUID_USDC.assetId,
   minAmountOutUsd: 17.7,
+  refundTo: "alice.near",
 };
 
 const history: RescueHistory = { rescues: [], reserve: "20000000" };
@@ -93,6 +94,34 @@ describe("RECIPIENT_MISMATCH", () => {
         snapshot: { hlAddress: hl },
       }),
     ).toEqual(allowed);
+  });
+});
+
+describe("REFUND_MISMATCH", () => {
+  it("blocks a quote whose refund goes to anyone but the user", () => {
+    expect(run({ request: { refundTo: "keeper.near" } })).toEqual(blocked("REFUND_MISMATCH"));
+  });
+
+  it("blocks an empty refund account", () => {
+    expect(run({ request: { refundTo: "" } })).toEqual(blocked("REFUND_MISMATCH"));
+  });
+});
+
+describe("spentInLast24h", () => {
+  it("adds up rescues from the last 24 hours", () => {
+    const rescues = [
+      { amount: "5000000", at: ago(HOUR) },
+      { amount: "7000000", at: ago(23 * HOUR) },
+    ];
+    expect(spentInLast24h(rescues, NOW)).toBe(12000000n);
+  });
+
+  it("drops a rescue exactly 24 hours old, matching OVER_DAILY", () => {
+    expect(spentInLast24h([{ amount: "5000000", at: ago(24 * HOUR) }], NOW)).toBe(0n);
+  });
+
+  it("counts an unreadable amount as nothing, because evaluate blocks it anyway", () => {
+    expect(spentInLast24h([{ amount: "x", at: ago(HOUR) }], NOW)).toBe(0n);
   });
 });
 

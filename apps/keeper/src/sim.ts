@@ -1,0 +1,148 @@
+import { randomUUID } from "node:crypto";
+import { ASSETS, POLICY_DEFAULTS, type AuditRecord, type Policy } from "@lifeline/shared";
+import { Keeper } from "./keeper";
+import type { Intents, ReadHealth, RescueArgs, RescueRecord, SwapStatus, Vault } from "./ports";
+import type { Store } from "./store";
+
+/** A real mainnet account: 1Click refuses a quote whose refundTo doesn't exist. */
+export const SIM_USER = "demo.near";
+const SIM_HL_ADDRESS = "0x1111111111111111111111111111111111111111";
+
+const ETH_SIZE = 0.1;
+const ENTRY_PRICE = 3000;
+const START_MARGIN_USD = 30; // 10× on 300 USD of ETH
+const MAINTENANCE_RATE = 0.025;
+const START_RESERVE = "100000000"; // 100 USDC
+const LAST_SEEN_FEE_USD = 0.3153; // replaced as soon as a quote reports the fee
+
+/** ETH price at each tick: through warn at 2820 and the trigger at 2800, then flat. */
+export const PRICE_DROP = [3000, 2960, 2920, 2880, 2840, 2820, 2800, 2800, 2800, 2800, 2800, 2800];
+
+const SETTLEMENT: SwapStatus[] = ["KNOWN_DEPOSIT_TX", "PROCESSING", "SUCCESS"];
+
+export type SimWorld = {
+  hlAddress: string;
+  setPrice(price: number): void;
+  readHealth: ReadHealth;
+  vault: Vault;
+  intents: Intents;
+  sent: RescueArgs[];
+  reserve(): string;
+};
+
+/**
+ * A pretend account, vault and settlement, so the real keeper can run with no
+ * wallet, keys or funds. Only the quotes are real, and they're always dry.
+ */
+export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now: () => Date }): SimWorld {
+  const { quotes, now } = options;
+  let price = ENTRY_PRICE;
+  let margin = START_MARGIN_USD;
+  let reserve = BigInt(START_RESERVE);
+  let feeUsd = LAST_SEEN_FEE_USD;
+  const sent: RescueArgs[] = [];
+  const rescues: RescueRecord[] = [];
+  const deposits = new Map<string, { amount: string; step: number }>();
+
+  const policy: Policy = { user: SIM_USER, hlAddress: SIM_HL_ADDRESS, ...POLICY_DEFAULTS, paused: false };
+
+  return {
+    hlAddress: SIM_HL_ADDRESS,
+    sent,
+    reserve: () => reserve.toString(),
+    setPrice(next) {
+      price = next;
+    },
+
+    readHealth: async () => {
+      const accountValue = margin + ETH_SIZE * (price - ENTRY_PRICE);
+      const maintenanceMarginUsed = ETH_SIZE * price * MAINTENANCE_RATE;
+      const liquidationPx = (ETH_SIZE * ENTRY_PRICE - margin) / (ETH_SIZE * (1 - MAINTENANCE_RATE));
+      return {
+        status: "ok",
+        isolatedCoins: [],
+        snapshot: {
+          hlAddress: SIM_HL_ADDRESS,
+          accountValue,
+          maintenanceMarginUsed,
+          health: accountValue / maintenanceMarginUsed,
+          positions: [{ coin: "ETH", size: ETH_SIZE, entryPx: ENTRY_PRICE, liquidationPx }],
+          at: now().toISOString(),
+        },
+      };
+    },
+
+    vault: {
+      getPolicy: async (user) => (user === SIM_USER ? policy : null),
+      getReserve: async () => reserve.toString(),
+      getRescues: async () => rescues,
+      async rescue(args) {
+        reserve -= BigInt(args.amount);
+        sent.push(args);
+        rescues.push({ amount: args.amount, at: now().toISOString(), quoteId: args.quoteId });
+        deposits.set(args.depositAddress, { amount: args.amount, step: 0 });
+        return { txHash: `sim-tx-${sent.length}` };
+      },
+    },
+
+    intents: {
+      async getQuote(params) {
+        const quote = await quotes.getQuote({ ...params, dry: true });
+        feeUsd = Number(quote.withdrawFee) / 10 ** ASSETS.HYPERLIQUID_USDC.decimals;
+        return quote;
+      },
+      async getStatus(depositAddress) {
+        const deposit = deposits.get(depositAddress);
+        if (deposit === undefined) return "PENDING_DEPOSIT";
+        const status = SETTLEMENT[deposit.step] ?? "SUCCESS";
+        if (deposit.step === SETTLEMENT.length - 1) {
+          margin += Number(deposit.amount) / 10 ** ASSETS.NEAR_USDC.decimals - feeUsd;
+        }
+        deposit.step += 1;
+        return status;
+      },
+      submitDeposit: async () => {},
+    },
+  };
+}
+
+export type SimResult = { sent: RescueArgs[]; reserveBefore: string; reserveAfter: string };
+
+/** Runs the real keeper through the scripted price drop. */
+export async function runSim(options: {
+  store: Store;
+  quotes: Pick<Intents, "getQuote">;
+  now: () => Date;
+  sleep: (ms: number) => Promise<void>;
+  log: (line: string) => void;
+  tickMs?: number;
+  onRecord?: (record: AuditRecord) => void;
+  onTick?: (price: number, health: number) => void;
+}): Promise<SimResult> {
+  const { store, quotes, now, sleep, log, tickMs = 1000, onRecord, onTick } = options;
+  const world = createSimWorld({ quotes, now });
+  const keeper = new Keeper({
+    store,
+    vault: world.vault,
+    intents: world.intents,
+    readHealth: world.readHealth,
+    users: () => [SIM_USER],
+    now,
+    sleep,
+    newId: randomUUID,
+    dryQuotes: true,
+    log,
+    ...(onRecord ? { onRecord } : {}),
+  });
+
+  const reserveBefore = world.reserve();
+  for (const price of PRICE_DROP) {
+    world.setPrice(price);
+    await keeper.tick();
+    const read = await world.readHealth(world.hlAddress);
+    if (read.status === "ok") onTick?.(price, read.snapshot.health);
+    await sleep(tickMs);
+  }
+  await keeper.settled();
+  return { sent: world.sent, reserveBefore, reserveAfter: world.reserve() };
+}
