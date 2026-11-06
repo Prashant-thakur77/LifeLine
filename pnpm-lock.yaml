@@ -288,6 +288,9 @@ importers:
 
   research/backtest:
     dependencies:
+      '@lifeline/hyperliquid':
+        specifier: workspace:*
+        version: link:../../packages/hyperliquid
       '@lifeline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -295,6 +298,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.5
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.15
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

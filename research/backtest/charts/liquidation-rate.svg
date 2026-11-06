@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 324" width="720" height="324" role="img" aria-label="Liquidation rate by leverage. Percent of positions liquidated within 7 days, real 4h candles, 2024-07-26 to 2026-11-06">
+<style>
+  svg { --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --rule: #c9c8c2; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --rule: #4a4a46; --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
+  }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink-2); font-size: 12px; }
+  .title { fill: var(--ink); font-size: 16px; font-weight: 600; }
+  .group { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .value { fill: var(--ink); }
+</style>
+<rect width="720" height="324" fill="var(--surface)"/>
+<text class="title" x="64" y="26">Liquidation rate by leverage</text>
+<text x="64" y="46">Percent of positions liquidated within 7 days, real 4h candles, 2024-07-26 to 2026-11-06</text>
+<rect x="64" y="60" width="10" height="10" rx="2" fill="var(--s1)"/><text x="79" y="69">No protection</text>
+<rect x="182.8" y="60" width="10" height="10" rx="2" fill="var(--s2)"/><text x="197.8" y="69">Lifeline, 35 s latency</text>
+<rect x="361" y="60" width="10" height="10" rx="2" fill="var(--s3)"/><text x="376" y="69">Lifeline, 120 s latency</text>
+<line x1="64" x2="64" y1="88" y2="308" stroke="var(--rule)"/>
+<text class="group" x="52" y="125" text-anchor="end">5×</text>
+<path d="M64 92h50.48q4 0 4 4v10q0 4 -4 4h-50.48z" fill="var(--s1)" data-width="54.4776"><title>5×, No protection: 6.3%</title></path>
+<text class="value" x="124.48" y="105">6.3%</text>
+<path d="M64 112h13.43q4 0 4 4v10q0 4 -4 4h-13.43z" fill="var(--s2)" data-width="17.4328"><title>5×, Lifeline, 35 s latency: 2.0%</title></path>
+<text class="value" x="87.43" y="125">2.0%</text>
+<path d="M64 132h13.43q4 0 4 4v10q0 4 -4 4h-13.43z" fill="var(--s3)" data-width="17.4328"><title>5×, Lifeline, 120 s latency: 2.0%</title></path>
+<text class="value" x="87.43" y="145">2.0%</text>
+<text class="group" x="52" y="201" text-anchor="end">10×</text>
+<path d="M64 168h259.96q4 0 4 4v10q0 4 -4 4h-259.96z" fill="var(--s1)" data-width="263.9622"><title>10×, No protection: 30.3%</title></path>
+<text class="value" x="333.96" y="181">30.3%</text>
+<path d="M64 188h121.95q4 0 4 4v10q0 4 -4 4h-121.95z" fill="var(--s2)" data-width="125.9522"><title>10×, Lifeline, 35 s latency: 14.4%</title></path>
+<text class="value" x="195.95" y="201">14.4%</text>
+<path d="M64 208h121.95q4 0 4 4v10q0 4 -4 4h-121.95z" fill="var(--s3)" data-width="125.9522"><title>10×, Lifeline, 120 s latency: 14.4%</title></path>
+<text class="value" x="195.95" y="221">14.4%</text>
+<text class="group" x="52" y="277" text-anchor="end">20×</text>
+<path d="M64 244h572.45q4 0 4 4v10q0 4 -4 4h-572.45z" fill="var(--s1)" data-width="576.4458"><title>20×, No protection: 66.1%</title></path>
+<text class="value" x="646.45" y="257">66.1%</text>
+<path d="M64 264h392.02q4 0 4 4v10q0 4 -4 4h-392.02z" fill="var(--s2)" data-width="396.0159"><title>20×, Lifeline, 35 s latency: 45.4%</title></path>
+<text class="value" x="466.02" y="277">45.4%</text>
+<path d="M64 284h392.02q4 0 4 4v10q0 4 -4 4h-392.02z" fill="var(--s3)" data-width="396.0159"><title>20×, Lifeline, 120 s latency: 45.4%</title></path>
+<text class="value" x="466.02" y="297">45.4%</text>
+</svg>

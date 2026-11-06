@@ -8,13 +8,17 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "backtest": "tsx src/main.ts",
+    "pull": "tsx src/pull.ts"
   },
   "dependencies": {
+    "@lifeline/hyperliquid": "workspace:*",
     "@lifeline/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

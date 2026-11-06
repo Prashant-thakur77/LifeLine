@@ -1,0 +1,6 @@
+{
+  "p50Ms": 35000,
+  "p95Ms": 120000,
+  "measured": false,
+  "source": "Assumed, not measured: p50 is 1Click's 30 s timeEstimate plus one 5 s keeper poll, and p95 is the 120 s limit Gate 1 allows. Replace these with the real numbers from the A3 top-ups and set measured to true."
+}
