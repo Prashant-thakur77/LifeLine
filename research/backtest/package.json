@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@lifeline/hyperliquid": "workspace:*",
+    "@lifeline/keeper": "workspace:*",
     "@lifeline/shared": "workspace:*"
   },
   "devDependencies": {

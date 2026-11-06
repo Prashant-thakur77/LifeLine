@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Bar } from "../src/data";
-import { barPath, priceAt, simulate, type SimPolicy, type SimPosition } from "../src/sim";
+import { sizeRescue } from "@lifeline/keeper/sizing";
+import { POLICY_DEFAULTS, type HealthSnapshot } from "@lifeline/shared";
+import { barPath, priceAt, rescueSendUsd, simulate, type SimPolicy, type SimPosition } from "../src/sim";
 
 const HOUR = 3_600_000;
 
@@ -37,6 +39,44 @@ const policy = (o: Partial<SimPolicy> = {}): SimPolicy => ({
  * On that position: equity = 100 + 10 (p − 100), maintenance = 0.25 p.
  * Health 1.5 is at p ≈ 93.51, and liquidation (health 1) at p ≈ 92.31.
  */
+describe("rescueSendUsd matches the keeper's real sizing", () => {
+  const snapshot = (accountValue: number, maintenanceMarginUsed: number): HealthSnapshot => ({
+    hlAddress: "0x1111111111111111111111111111111111111111",
+    accountValue,
+    maintenanceMarginUsed,
+    health: accountValue / maintenanceMarginUsed,
+    positions: [],
+    at: "2026-11-08T15:00:00.000Z",
+  });
+
+  const cases = [];
+  for (const [accountValue, margin] of [[17, 10], [10, 25], [19.9, 10], [40, 30], [1, 50], [5, 3]] as const) {
+    for (const reserveUsd of [100, 50, 8, 2, 1.5, 0]) {
+      for (const spentUsd of [0, 40, 48.5, 50]) {
+        for (const feeUsd of [0.3153, 1]) cases.push({ accountValue, margin, reserveUsd, spentUsd, feeUsd });
+      }
+    }
+  }
+
+  it.each(cases)("%j", ({ accountValue, margin, reserveUsd, spentUsd, feeUsd }) => {
+    const keeper = sizeRescue({
+      snapshot: snapshot(accountValue, margin),
+      policy: { user: "a.near", hlAddress: "0x1111111111111111111111111111111111111111", ...POLICY_DEFAULTS, paused: false },
+      withdrawFeeUsd: feeUsd,
+      reserve: String(Math.round(reserveUsd * 1e6)),
+      spentToday: BigInt(Math.round(spentUsd * 1e6)),
+    });
+    const keeperUsd = Number(keeper.amount) / 1e6;
+    const dayLeft = 50 - spentUsd;
+    // The keeper leaves an amount over a limit for the policy engine to block, so no rescue fires.
+    const keeperFires = keeperUsd <= 25 && keeperUsd <= dayLeft && keeperUsd <= reserveUsd;
+
+    const send = rescueSendUsd(keeper.neededUsd, dayLeft, reserveUsd, policy({ reserveUsd, feeUsd }));
+    if (keeperFires) expect(send).toBeCloseTo(keeperUsd, 5);
+    else expect(send).toBeNull();
+  });
+});
+
 describe("barPath", () => {
   it("visits the adverse extreme first for a long", () => {
     const points = barPath(bar(0, 100, 110, 90, 105), HOUR, 1);

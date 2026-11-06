@@ -76,6 +76,19 @@ export function barPath(bar: Bar, barMs: number, side: Side, adverseLegMs?: numb
   });
 }
 
+/**
+ * What the keeper would send, in USD: (needed + fee) × 1.01, cut to the limits, or
+ * null if a limit is too small to quote, which the policy engine would block. A test
+ * holds this equal to the keeper's real sizeRescue, so the backtest measures Lifeline.
+ */
+export function rescueSendUsd(neededUsd: number, dayLeftUsd: number, reserveUsd: number, p: SimPolicy): number | null {
+  let send = Math.max((Math.max(neededUsd, 0) + p.feeUsd) * BUFFER, p.minSendUsd);
+  for (const limit of [p.maxPerRescueUsd, dayLeftUsd, reserveUsd]) {
+    if (limit >= p.minSendUsd && send > limit) send = limit;
+  }
+  return send > p.maxPerRescueUsd || send > dayLeftUsd || send > reserveUsd ? null : send;
+}
+
 export function priceAt(points: PathPoint[], t: number): number {
   const first = points[0]!;
   if (t <= first.t) return first.price;
@@ -134,14 +147,10 @@ export function simulate(
   };
 
   const fire = (t: number, price: number, p: SimPolicy) => {
-    const needed = Math.max(p.target * maintenanceAt(price) - equityAt(price), 0);
+    const needed = p.target * maintenanceAt(price) - equityAt(price);
     const dayLeft = p.maxPerDayUsd - sends.filter((s) => t - s.t < DAY_MS).reduce((sum, s) => sum + s.usd, 0);
-    let send = Math.max((needed + p.feeUsd) * BUFFER, p.minSendUsd);
-    for (const limit of [p.maxPerRescueUsd, dayLeft, reserve]) {
-      if (limit >= p.minSendUsd && send > limit) send = limit;
-    }
-    // A limit too small to quote: the policy engine would block this.
-    if (send > p.maxPerRescueUsd || send > dayLeft || send > reserve) return;
+    const send = rescueSendUsd(needed, dayLeft, reserve, p);
+    if (send === null) return;
 
     reserve -= send;
     reserveUsedUsd += send;

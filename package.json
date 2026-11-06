@@ -11,7 +11,8 @@
   },
   "scripts": {
     "test": "vitest run && node scripts/test-contracts.mjs",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "backtest": "pnpm --filter @lifeline/backtest backtest"
   },
   "devDependencies": {
     "@types/node": "catalog:",
