@@ -524,6 +524,18 @@ describe("when the rescue goes wrong", () => {
     expect(w.sent).toHaveLength(1);
   });
 
+  it("still doesn't repeat a failure once the AI has reworded it", async () => {
+    const { w, step, store } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.quoteError = new Error("1Click is down");
+    await step();
+    const first = store.ledger(100).find((r) => r.kind === "RESCUE_FAILED");
+    store.setExplanation(first?.id ?? "", "The AI's friendlier wording of the same failure.");
+    w.nowMs += 31_000;
+    await step();
+    expect(store.ledger(100).filter((r) => r.kind === "RESCUE_FAILED")).toHaveLength(1);
+  });
+
   it("refuses a live quote with no deposit address", async () => {
     const { w, step, last } = makeWorld();
     w.accountValue = TRIGGER_VALUE;

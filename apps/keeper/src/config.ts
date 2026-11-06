@@ -1,5 +1,9 @@
 export type Mode = "sim" | "live";
 
+export const DEFAULT_NEAR_AI_URL = "https://cloud-api.near.ai/v1";
+/** A private model, so it runs in a TEE and can be attested. Picked from /v1/models on 2026-11-06. */
+export const DEFAULT_NEAR_AI_MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017";
+
 export type LiveConfig = {
   network: "testnet" | "mainnet";
   rpcUrl: string;
@@ -15,6 +19,9 @@ export type LiveConfig = {
   dashboardUrl: string;
   botUsername: string | null;
   botToken: string | null;
+  nearAiUrl: string;
+  nearAiModel: string;
+  nearAiKey: string | null;
 };
 
 type Env = Record<string, string | undefined>;
@@ -58,8 +65,12 @@ export function readLiveConfig(env: Env): LiveConfig {
   }
 
   const botToken = optional(env.TELEGRAM_BOT_TOKEN) ?? null;
-  const botUsername = optional(env.TELEGRAM_BOT_USERNAME) ?? null;
+  // No token means no bot, so the API mustn't hand out codes for one.
+  const botUsername = botToken === null ? null : (optional(env.TELEGRAM_BOT_USERNAME) ?? null);
   if (botToken !== null && botUsername === null) throw new Error("TELEGRAM_BOT_TOKEN also needs TELEGRAM_BOT_USERNAME");
+  if (botToken !== null && optional(env.DASHBOARD_URL) === undefined) {
+    throw new Error("TELEGRAM_BOT_TOKEN also needs DASHBOARD_URL, or /pause would link people to localhost");
+  }
 
   const rawPort = optional(env.KEEPER_PORT) ?? "8787";
   if (!/^\d+$/.test(rawPort)) throw new Error("KEEPER_PORT must be a number");
@@ -79,5 +90,8 @@ export function readLiveConfig(env: Env): LiveConfig {
     dashboardUrl: optional(env.DASHBOARD_URL) ?? "http://localhost:3000",
     botUsername,
     botToken,
+    nearAiUrl: optional(env.NEAR_AI_BASE_URL) ?? DEFAULT_NEAR_AI_URL,
+    nearAiModel: optional(env.NEAR_AI_MODEL) ?? DEFAULT_NEAR_AI_MODEL,
+    nearAiKey: optional(env.NEAR_AI_API_KEY) ?? null,
   };
 }

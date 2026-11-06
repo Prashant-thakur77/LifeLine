@@ -132,6 +132,7 @@ Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
 - Those quotes lose a flat `quote.withdrawFee` of about 0.3153 USDC plus about 0.011%. The keeper reads the fee from a dry quote before sizing each rescue, so it follows any change.
 - `minAmountOut` is about 1% of the amount sent below `amountOut`, so the fee isn't part of the slippage. `swapType: EXACT_OUTPUT` also quotes on this route (3.0 USDC out for 3.349117 in), but hasn't been tried with real money.
 - `refundTo` must be an existing NEAR account, or the quote fails with a 400.
+- `GET /v1/attestation/report` answered without an API key for `deepseek-ai/DeepSeek-V4.1-Flash-1017`, though the NEAR agent skill says one is required, so send the key when there is one. Its `report_data` is the signing address padded to 32 bytes, then the nonce. `pnpm --filter keeper attest` verified it end to end through NVIDIA's NRAS and Intel's DCAP: 8 GPUs, Intel status `UpToDate`.
 - The quote response has no `quoteId` field. Its top-level keys are `quote`, `quoteRequest`, `signature`, `timestamp` and `correlationId`. The keeper passes `correlationId` as the vault's `quote_id`.
 - `verifyQuoteSignature` from `@defuse-protocol/one-click-sdk-typescript` accepts real dry and non-dry quotes and rejects a changed recipient or deposit address. A non-dry quote's `deadline` came back about 3 days out even when we asked for 5 minutes, so a deposit address stays usable long after the keeper's 60 s limit.
 
@@ -145,6 +146,7 @@ pnpm --filter <package> test     # one package, e.g. pnpm --filter policy test
 pnpm --filter keeper sim         # the keeper with a scripted price drop: no wallet, keys or funds
 pnpm --filter keeper live        # the real keeper: reads .env, and mainnet also needs KEEPER_ALLOW_MAINNET=yes
                                  # 1Click has no testnet, so on testnet live stops at the quote
+pnpm --filter keeper attest      # one real NEAR AI Cloud attestation check, through NVIDIA and Intel
 pnpm backtest                    # regenerates research/backtest/RESULTS.md and its charts from the saved candles
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 ```

@@ -14,6 +14,10 @@ describe("formatRecord", () => {
     expect(text).toContain("1.70");
   });
 
+  it("doesn't promise a rescue on a warning, because the user may have paused", () => {
+    expect(formatRecord(record({ kind: "WARN", healthBefore: 1.7 }), "mainnet")).toMatch(/unless you've paused/i);
+  });
+
   it("says a rescue started, and how much", () => {
     const text = formatRecord(record({ kind: "RESCUE_ALLOWED", healthBefore: 1.43, request }), "mainnet");
     expect(text).toMatch(/rescue started/i);

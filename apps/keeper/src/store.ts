@@ -5,7 +5,7 @@ import Database from "better-sqlite3";
 const TELEGRAM_CODE_TTL_MS = 10 * 60 * 1000;
 const TELEGRAM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I
 const TELEGRAM_CODE_LENGTH = 8;
-const MAX_OPEN_TELEGRAM_CODES = 1000;
+const MAX_OPEN_TELEGRAM_CODES_PER_USER = 5;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS audit (
@@ -24,6 +24,11 @@ const SCHEMA = `
     BEGIN SELECT RAISE(ABORT, 'the audit log is append-only'); END;
   CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit
     BEGIN SELECT RAISE(ABORT, 'the audit log is append-only'); END;
+
+  CREATE TABLE IF NOT EXISTS explanations (
+    record_id TEXT PRIMARY KEY REFERENCES audit (id),
+    text TEXT NOT NULL
+  );
 
   CREATE TABLE IF NOT EXISTS health (
     user TEXT PRIMARY KEY,
@@ -44,7 +49,15 @@ const SCHEMA = `
 `;
 
 type JsonRow = { json: string };
-const parseRecord = (row: JsonRow) => JSON.parse(row.json) as AuditRecord;
+type ExplainedRow = JsonRow & { text: string | null };
+
+const parseRaw = (row: JsonRow) => JSON.parse(row.json) as AuditRecord;
+const parseRecord = (row: ExplainedRow): AuditRecord => {
+  const record = parseRaw(row);
+  return row.text === null ? record : { ...record, explanation: row.text };
+};
+
+const SELECT_EXPLAINED = "SELECT a.json, e.text FROM audit a LEFT JOIN explanations e ON e.record_id = a.id";
 
 /** Nearest-rank percentile, so every answer is a latency that really happened. */
 export function percentile(values: number[], p: number): number | null {
@@ -71,21 +84,48 @@ export class Store {
 
   audit(user: string, limit: number): AuditRecord[] {
     const rows = this.db
-      .prepare("SELECT json FROM audit WHERE user = ? ORDER BY seq DESC LIMIT ?")
-      .all(user, limit) as JsonRow[];
+      .prepare(`${SELECT_EXPLAINED} WHERE a.user = ? ORDER BY a.seq DESC LIMIT ?`)
+      .all(user, limit) as ExplainedRow[];
     return rows.map(parseRecord);
   }
 
   ledger(limit: number): AuditRecord[] {
-    const rows = this.db.prepare("SELECT json FROM audit ORDER BY seq DESC LIMIT ?").all(limit) as JsonRow[];
+    const rows = this.db.prepare(`${SELECT_EXPLAINED} ORDER BY a.seq DESC LIMIT ?`).all(limit) as ExplainedRow[];
     return rows.map(parseRecord);
   }
 
   latest(user: string, kind: AuditRecord["kind"]): AuditRecord | null {
     const row = this.db
+      .prepare(`${SELECT_EXPLAINED} WHERE a.user = ? AND a.kind = ? ORDER BY a.seq DESC LIMIT 1`)
+      .get(user, kind) as ExplainedRow | undefined;
+    return row === undefined ? null : parseRecord(row);
+  }
+
+  /** The record as the keeper wrote it, for comparing with what it's about to write. */
+  latestRaw(user: string, kind: AuditRecord["kind"]): AuditRecord | null {
+    const row = this.db
       .prepare("SELECT json FROM audit WHERE user = ? AND kind = ? ORDER BY seq DESC LIMIT 1")
       .get(user, kind) as JsonRow | undefined;
-    return row === undefined ? null : parseRecord(row);
+    return row === undefined ? null : parseRaw(row);
+  }
+
+  /** Rescue, block and failure records still waiting for words, oldest first. */
+  unexplained(limit: number): AuditRecord[] {
+    const rows = this.db
+      .prepare(
+        `SELECT a.json FROM audit a LEFT JOIN explanations e ON e.record_id = a.id
+         WHERE e.record_id IS NULL AND a.kind IN ('RESCUE_ALLOWED', 'RESCUE_DONE', 'RESCUE_BLOCKED', 'RESCUE_FAILED')
+         ORDER BY a.seq LIMIT ?`,
+      )
+      .all(limit) as JsonRow[];
+    return rows.map(parseRaw);
+  }
+
+  /** Kept beside the record, not in it: the audit log itself can't change. */
+  setExplanation(recordId: string, text: string): void {
+    this.db
+      .prepare("INSERT INTO explanations (record_id, text) VALUES (?, ?) ON CONFLICT (record_id) DO UPDATE SET text = excluded.text")
+      .run(recordId, text);
   }
 
   /** Allowed rescues with no outcome yet: after a crash, these get picked back up. */
@@ -100,7 +140,7 @@ export class Store {
          ORDER BY a.seq`,
       )
       .all() as JsonRow[];
-    return rows.map(parseRecord);
+    return rows.map(parseRaw);
   }
 
   stats(): StatsResponse {
@@ -141,11 +181,9 @@ export class Store {
     return row === undefined ? null : (JSON.parse(row.json) as HealthResponse);
   }
 
-  /** Null once too many codes are open, so the public endpoint can't fill the disk. */
-  createTelegramCode(user: string, now: Date): { code: string; expiresAt: string } | null {
+  /** Each user keeps only their newest few, and only watched users get here, so this can't fill the disk. */
+  createTelegramCode(user: string, now: Date): { code: string; expiresAt: string } {
     this.db.prepare("DELETE FROM telegram_codes WHERE expires_at <= ?").run(now.toISOString());
-    const { open } = this.db.prepare("SELECT COUNT(*) AS open FROM telegram_codes").get() as { open: number };
-    if (open >= MAX_OPEN_TELEGRAM_CODES) return null;
 
     const code = Array.from(
       { length: TELEGRAM_CODE_LENGTH },
@@ -153,6 +191,13 @@ export class Store {
     ).join("");
     const expiresAt = new Date(now.getTime() + TELEGRAM_CODE_TTL_MS).toISOString();
     this.db.prepare("INSERT INTO telegram_codes (code, user, expires_at) VALUES (?, ?, ?)").run(code, user, expiresAt);
+    this.db
+      .prepare(
+        `DELETE FROM telegram_codes WHERE user = ? AND rowid NOT IN (
+           SELECT rowid FROM telegram_codes WHERE user = ? ORDER BY rowid DESC LIMIT ?
+         )`,
+      )
+      .run(user, user, MAX_OPEN_TELEGRAM_CODES_PER_USER);
     return { code, expiresAt };
   }
 

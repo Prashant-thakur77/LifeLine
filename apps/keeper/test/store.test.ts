@@ -67,6 +67,52 @@ describe("the audit log", () => {
   });
 });
 
+describe("unexplained records", () => {
+  it("are the rescue, block and failure records with no explanation yet", () => {
+    store.append(record({ id: "w", kind: "WARN" }));
+    for (const [id, kind] of [["a", "RESCUE_ALLOWED"], ["b", "RESCUE_DONE"], ["c", "RESCUE_BLOCKED"], ["d", "RESCUE_FAILED"]] as const) {
+      store.append(record({ id, kind }));
+    }
+    store.setExplanation("b", "Done.");
+    expect(store.unexplained(10).map((r) => r.id)).toEqual(["a", "c", "d"]);
+  });
+
+  it("are limited, oldest first", () => {
+    for (const id of ["a", "b", "c"]) store.append(record({ id, kind: "RESCUE_DONE" }));
+    expect(store.unexplained(2).map((r) => r.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("explanations", () => {
+  it("show up on every read of a record", () => {
+    store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+    store.setExplanation("a", "Plain words.");
+    expect(store.audit(USER, 1)[0]?.explanation).toBe("Plain words.");
+    expect(store.ledger(1)[0]?.explanation).toBe("Plain words.");
+    expect(store.latest(USER, "RESCUE_DONE")?.explanation).toBe("Plain words.");
+  });
+
+  it("leave the record itself alone, because the log is append-only", () => {
+    store.append(record({ id: "a", kind: "RESCUE_FAILED", explanation: "The keeper's own note." }));
+    store.setExplanation("a", "Plain words.");
+    expect(store.latestRaw(USER, "RESCUE_FAILED")?.explanation).toBe("The keeper's own note.");
+    expect(store.audit(USER, 1)[0]?.explanation).toBe("Plain words.");
+  });
+
+  it("can be replaced", () => {
+    store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+    store.setExplanation("a", "First.");
+    store.setExplanation("a", "Second.");
+    expect(store.audit(USER, 1)[0]?.explanation).toBe("Second.");
+  });
+
+  it("leave a record without one exactly as it was", () => {
+    const written = record({ id: "a", kind: "WARN" });
+    store.append(written);
+    expect(store.audit(USER, 1)).toEqual([written]);
+  });
+});
+
 describe("unfinished rescues", () => {
   const allowed = (id: string, requestId: string) =>
     record({ id, kind: "RESCUE_ALLOWED", request: rescueRequest({ id: requestId }) });
@@ -170,13 +216,12 @@ describe("telegram link codes", () => {
 
   it("issues a code that expires in 10 minutes", () => {
     const issued = store.createTelegramCode(USER, now);
-    expect(issued?.code).toMatch(/^[A-Z2-9]{8}$/);
-    expect(issued?.expiresAt).toBe("2026-11-08T15:10:00.000Z");
+    expect(issued.code).toMatch(/^[A-Z2-9]{8}$/);
+    expect(issued.expiresAt).toBe("2026-11-08T15:10:00.000Z");
   });
 
   it("links a chat with a good code, once only", () => {
     const issued = store.createTelegramCode(USER, now);
-    if (issued === null) throw new Error("expected a code");
     expect(store.consumeTelegramCode(issued.code, 42, now)).toBe(USER);
     expect(store.chatsFor(USER)).toEqual([42]);
     expect(store.consumeTelegramCode(issued.code, 99, now)).toBeNull();
@@ -185,7 +230,6 @@ describe("telegram link codes", () => {
 
   it("refuses an expired or unknown code", () => {
     const issued = store.createTelegramCode(USER, now);
-    if (issued === null) throw new Error("expected a code");
     expect(store.consumeTelegramCode(issued.code, 42, new Date(now.getTime() + 10 * 60_000))).toBeNull();
     expect(store.consumeTelegramCode("NOSUCHCD", 42, now)).toBeNull();
     expect(store.chatsFor(USER)).toEqual([]);
@@ -194,7 +238,6 @@ describe("telegram link codes", () => {
   it("lets one account have several chats, so a stranger's link can't replace the owner's", () => {
     for (const chat of [1, 2]) {
       const issued = store.createTelegramCode(USER, now);
-      if (issued === null) throw new Error("expected a code");
       store.consumeTelegramCode(issued.code, chat, now);
     }
     expect(store.chatsFor(USER).sort()).toEqual([1, 2]);
@@ -203,7 +246,6 @@ describe("telegram link codes", () => {
   it("lets one chat follow several accounts, and linking twice changes nothing", () => {
     for (const user of [USER, "bob.near", USER]) {
       const issued = store.createTelegramCode(user, now);
-      if (issued === null) throw new Error("expected a code");
       store.consumeTelegramCode(issued.code, 42, now);
     }
     expect(store.usersForChat(42).sort()).toEqual([USER, "bob.near"].sort());
@@ -212,7 +254,6 @@ describe("telegram link codes", () => {
   it("unlinks a chat from everything, and says how many", () => {
     for (const user of [USER, "bob.near"]) {
       const issued = store.createTelegramCode(user, now);
-      if (issued === null) throw new Error("expected a code");
       store.consumeTelegramCode(issued.code, 42, now);
     }
     expect(store.unlinkChat(42)).toBe(2);
@@ -222,13 +263,12 @@ describe("telegram link codes", () => {
 
   it("keeps links across a restart", () => {
     const issued = store.createTelegramCode(USER, now);
-    if (issued === null) throw new Error("expected a code");
     store.consumeTelegramCode(issued.code, 42, now);
     expect(store.db.prepare("SELECT chat_id AS chat FROM telegram_chats").all()).toEqual([{ chat: 42 }]);
   });
 
   it("issues a different code each time", () => {
-    expect(store.createTelegramCode(USER, now)?.code).not.toBe(store.createTelegramCode(USER, now)?.code);
+    expect(store.createTelegramCode(USER, now).code).not.toBe(store.createTelegramCode(USER, now).code);
   });
 
   it("purges expired codes, so the table can't grow forever", () => {
@@ -238,9 +278,17 @@ describe("telegram link codes", () => {
     expect(n).toBe(1);
   });
 
-  it("stops issuing at the cap, so nobody can fill the disk through the API", () => {
-    for (let i = 0; i < 1000; i += 1) expect(store.createTelegramCode(`user-${i}.near`, now)).not.toBeNull();
-    expect(store.createTelegramCode(USER, now)).toBeNull();
-    expect(store.createTelegramCode(USER, new Date(now.getTime() + 11 * 60_000))).not.toBeNull();
+  it("keeps at most 5 open codes per user, dropping the oldest, so nobody can fill the disk", () => {
+    const first = store.createTelegramCode(USER, now);
+    for (let i = 0; i < 6; i += 1) store.createTelegramCode(USER, now);
+    const { n } = store.db.prepare("SELECT COUNT(*) AS n FROM telegram_codes").get() as { n: number };
+    expect(n).toBe(5);
+    expect(store.consumeTelegramCode(first.code, 42, now)).toBeNull();
+  });
+
+  it("doesn't let one user's requests touch another's codes", () => {
+    const theirs = store.createTelegramCode("bob.near", now);
+    for (let i = 0; i < 6; i += 1) store.createTelegramCode(USER, now);
+    expect(store.consumeTelegramCode(theirs.code, 42, now)).toBe("bob.near");
   });
 });

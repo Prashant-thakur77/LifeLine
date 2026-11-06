@@ -118,9 +118,8 @@ export function createApi(deps: ApiDeps): Server {
         expect("POST");
         const user = parseLinkUser(await readBody(request));
         if (botUsername === null) throw new HttpError(503, "the Telegram bot isn't set up");
-        const issued = store.createTelegramCode(user, now());
-        if (issued === null) throw new HttpError(429, "too many open link codes, try again in a few minutes");
-        const response: TelegramLinkResponse = { ...issued, botUsername };
+        if (store.health(user) === null) throw new HttpError(404, "this user isn't being watched");
+        const response: TelegramLinkResponse = { ...store.createTelegramCode(user, now()), botUsername };
         return response;
       }
       default:

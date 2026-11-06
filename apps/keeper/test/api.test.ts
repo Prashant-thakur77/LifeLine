@@ -129,6 +129,14 @@ describe("GET /api/stats", () => {
 });
 
 describe("POST /api/telegram/link", () => {
+  beforeEach(() => {
+    store.saveHealth(USER, { status: "ok", snapshot: snapshot(50, 34), policy: policy() });
+  });
+
+  it("refuses an account the keeper isn't watching, so codes can't pile up for any name", async () => {
+    expect((await post("/api/telegram/link", JSON.stringify({ user: "nobody.near" }))).status).toBe(404);
+  });
+
   it("issues a code with the fixture's shape", async () => {
     const response = await post("/api/telegram/link", JSON.stringify({ user: USER }));
     expect(response.status).toBe(200);
@@ -144,11 +152,6 @@ describe("POST /api/telegram/link", () => {
 
   it("refuses an oversized body", async () => {
     expect((await post("/api/telegram/link", `{"user":"${"a".repeat(5000)}"}`)).status).toBe(413);
-  });
-
-  it("is a 429 once too many codes are open", async () => {
-    for (let i = 0; i < 1000; i += 1) store.createTelegramCode(`user-${i}.near`, new Date(AT));
-    expect((await post("/api/telegram/link", JSON.stringify({ user: USER }))).status).toBe(429);
   });
 
   it("is a 503 when no bot is set up", async () => {
