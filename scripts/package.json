@@ -1,0 +1,24 @@
+{
+  "name": "@lifeline/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "demo:sim": "tsx src/demo-sim.ts",
+    "demo:attack": "tsx src/demo-attack.ts"
+  },
+  "dependencies": {
+    "@lifeline/hyperliquid": "workspace:*",
+    "@lifeline/keeper": "workspace:*",
+    "@lifeline/policy": "workspace:*",
+    "@lifeline/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

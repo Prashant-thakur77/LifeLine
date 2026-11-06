@@ -11,7 +11,7 @@ import {
   type RescueRequest,
 } from "@lifeline/shared";
 import type { HealthResult } from "@lifeline/hyperliquid";
-import { QuoteRefusedError, VaultRejectedError, type Intents, type ReadHealth, type SwapStatus, type Vault } from "./ports";
+import { QuoteRefusedError, VaultRejectedError, type Intents, type Quote, type ReadHealth, type SwapStatus, type Vault } from "./ports";
 import { sizeRescue, type RescueSize } from "./sizing";
 import type { Store } from "./store";
 
@@ -61,6 +61,37 @@ function healthResponse(result: HealthResult, policy: Policy): HealthResponse {
     status: "ok",
     snapshot: { ...snapshot, health: Number.isFinite(snapshot.health) ? snapshot.health : null },
     policy,
+  };
+}
+
+/**
+ * What the policy engine judges. Every quote fact comes from 1Click's answer, not
+ * from what the keeper asked for, so a quote that differs can't slip through.
+ */
+export function requestFromQuote(input: {
+  id: string;
+  user: string;
+  token: string;
+  quote: Quote;
+  depositAddress: string;
+  usdNeeded: number;
+  snapshot: HealthSnapshot;
+}): PolicyRequest {
+  const { id, user, token, quote, depositAddress, usdNeeded, snapshot } = input;
+  return {
+    id,
+    user,
+    token,
+    amount: quote.amountIn,
+    usdNeeded,
+    quoteId: quote.quoteId,
+    depositAddress,
+    recipient: quote.recipient,
+    quoteAt: quote.quotedAt,
+    snapshot,
+    destinationAsset: quote.destinationAsset,
+    minAmountOutUsd: Number(quote.minAmountOut) / HYPERLIQUID_UNITS,
+    refundTo: quote.refundTo,
   };
 }
 
@@ -294,22 +325,16 @@ export class Keeper {
 
       const fresh = await this.read(hlAddress);
       const snapshot = fresh.status === "ok" ? fresh.snapshot : detected;
-      request = {
+      request = requestFromQuote({
         id,
         user,
         token,
-        amount: quote.amountIn,
-        usdNeeded: size.usdNeeded,
-        quoteId: quote.quoteId,
+        quote,
         depositAddress,
-        recipient: quote.recipient,
-        quoteAt: quote.quotedAt,
+        usdNeeded: size.usdNeeded,
         // An account that just closed has infinite health, which JSON can't carry.
         snapshot: Number.isFinite(snapshot.health) ? snapshot : detected,
-        destinationAsset: quote.destinationAsset,
-        minAmountOutUsd: Number(quote.minAmountOut) / HYPERLIQUID_UNITS,
-        refundTo: quote.refundTo,
-      };
+      });
 
       decision = evaluate(request, policy, history, snapshot, now());
       if (decision.verdict === "block") {

@@ -8,15 +8,15 @@ import type { Store } from "./store";
 export const SIM_USER = "demo.near";
 const SIM_HL_ADDRESS = "0x1111111111111111111111111111111111111111";
 
-const ETH_SIZE = 0.1;
-const ENTRY_PRICE = 3000;
+const NOTIONAL_USD = 300;
+const BASE_PRICE = 3000; // what PRICE_DROP is written against
 const START_MARGIN_USD = 30; // 10× on 300 USD of ETH
-const MAINTENANCE_RATE = 0.025;
+const MAINTENANCE_RATE = 0.02; // half the initial margin at ETH's 25× max leverage
 const START_RESERVE = "100000000"; // 100 USDC
 const LAST_SEEN_FEE_USD = 0.3153; // replaced as soon as a quote reports the fee
 
-/** ETH price at each tick: through warn at 2820 and the trigger at 2800, then flat. */
-export const PRICE_DROP = [3000, 2960, 2920, 2880, 2840, 2820, 2800, 2800, 2800, 2800, 2800, 2800];
+/** ETH price at each tick from a 3,000 start: through warn at 2800 and the trigger at 2780, then flat. */
+export const PRICE_DROP = [3000, 2960, 2920, 2880, 2840, 2800, 2780, 2780, 2780, 2780, 2780, 2780];
 
 const SETTLEMENT: SwapStatus[] = ["KNOWN_DEPOSIT_TX", "PROCESSING", "SUCCESS"];
 
@@ -34,9 +34,10 @@ export type SimWorld = {
  * A pretend account, vault and settlement, so the real keeper can run with no
  * wallet, keys or funds. Only the quotes are real, and they're always dry.
  */
-export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now: () => Date }): SimWorld {
-  const { quotes, now } = options;
-  let price = ENTRY_PRICE;
+export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now: () => Date; entryPrice?: number }): SimWorld {
+  const { quotes, now, entryPrice = BASE_PRICE } = options;
+  const size = NOTIONAL_USD / entryPrice;
+  let price = entryPrice;
   let margin = START_MARGIN_USD;
   let reserve = BigInt(START_RESERVE);
   let feeUsd = LAST_SEEN_FEE_USD;
@@ -55,9 +56,9 @@ export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now
     },
 
     readHealth: async () => {
-      const accountValue = margin + ETH_SIZE * (price - ENTRY_PRICE);
-      const maintenanceMarginUsed = ETH_SIZE * price * MAINTENANCE_RATE;
-      const liquidationPx = (ETH_SIZE * ENTRY_PRICE - margin) / (ETH_SIZE * (1 - MAINTENANCE_RATE));
+      const accountValue = margin + size * (price - entryPrice);
+      const maintenanceMarginUsed = size * price * MAINTENANCE_RATE;
+      const liquidationPx = (size * entryPrice - margin) / (size * (1 - MAINTENANCE_RATE));
       return {
         status: "ok",
         isolatedCoins: [],
@@ -66,7 +67,7 @@ export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now
           accountValue,
           maintenanceMarginUsed,
           health: accountValue / maintenanceMarginUsed,
-          positions: [{ coin: "ETH", size: ETH_SIZE, entryPx: ENTRY_PRICE, liquidationPx }],
+          positions: [{ coin: "ETH", size, entryPx: entryPrice, liquidationPx }],
           at: now().toISOString(),
         },
       };
@@ -116,11 +117,13 @@ export async function runSim(options: {
   sleep: (ms: number) => Promise<void>;
   log: (line: string) => void;
   tickMs?: number;
+  startPrice?: number; // scales the whole script, so a demo can open at the live price
   onRecord?: (record: AuditRecord) => void;
   onTick?: (price: number, health: number) => void;
 }): Promise<SimResult> {
-  const { store, quotes, now, sleep, log, tickMs = 1000, onRecord, onTick } = options;
-  const world = createSimWorld({ quotes, now });
+  const { store, quotes, now, sleep, log, tickMs = 1000, startPrice = BASE_PRICE, onRecord, onTick } = options;
+  const world = createSimWorld({ quotes, now, entryPrice: startPrice });
+  const scale = startPrice / BASE_PRICE;
   const keeper = new Keeper({
     store,
     vault: world.vault,
@@ -136,7 +139,8 @@ export async function runSim(options: {
   });
 
   const reserveBefore = world.reserve();
-  for (const price of PRICE_DROP) {
+  for (const scriptPrice of PRICE_DROP) {
+    const price = scriptPrice * scale;
     world.setPrice(price);
     await keeper.tick();
     const read = await world.readHealth(world.hlAddress);

@@ -344,6 +344,34 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
 
+  scripts:
+    dependencies:
+      '@lifeline/hyperliquid':
+        specifier: workspace:*
+        version: link:../packages/hyperliquid
+      '@lifeline/keeper':
+        specifier: workspace:*
+        version: link:../apps/keeper
+      '@lifeline/policy':
+        specifier: workspace:*
+        version: link:../packages/policy
+      '@lifeline/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.5
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.15
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
+
 packages:
 
   '@defuse-protocol/one-click-sdk-typescript@0.1.26':

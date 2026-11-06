@@ -89,10 +89,37 @@ describe("the scripted price drop", () => {
   });
 });
 
+describe("starting from a live price", () => {
+  it("gives the same story at any price, because the position scales with it", async () => {
+    let nowMs = AT_MS;
+    const store = new Store(":memory:");
+    const ticks: { price: number; health: number }[] = [];
+    await runSim({
+      store,
+      quotes: fakeQuotes(),
+      now: () => new Date(nowMs),
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+      startPrice: 2238.05,
+      onTick: (price, health) => ticks.push({ price, health }),
+    });
+    expect(ticks[0]?.price).toBeCloseTo(2238.05);
+    expect(ticks[0]?.health).toBeCloseTo(5);
+    expect(ticks.at(-1)?.price).toBeLessThan(2238.05);
+    expect(store.latest(SIM_USER, "RESCUE_DONE")?.healthBefore).toBeLessThan(1.5);
+    expect(store.latest(SIM_USER, "RESCUE_DONE")?.healthAfter).toBeGreaterThanOrEqual(1.99);
+    expect(store.ledger(100).filter((r) => r.kind === "RESCUE_DONE")).toHaveLength(1);
+  });
+});
+
 describe("the sim's account", () => {
   it("starts healthy, and health falls as the price falls", async () => {
     const world = createSimWorld({ quotes: fakeQuotes(), now: () => new Date(AT_MS) });
     world.setPrice(PRICE_DROP[0] ?? 0);
+    expect((await world.readHealth(world.hlAddress)).status).toBe("ok");
     const first = await world.readHealth(world.hlAddress);
     world.setPrice(PRICE_DROP.at(-1) ?? 0);
     const last = await world.readHealth(world.hlAddress);
@@ -121,6 +148,14 @@ describe("the sim's account", () => {
     const after = await world.readHealth(world.hlAddress);
     if (before.status !== "ok" || after.status !== "ok") throw new Error("expected ok");
     expect(after.snapshot.accountValue - before.snapshot.accountValue).toBeCloseTo(5 - 0.3153, 3);
+  });
+
+  it("uses Hyperliquid's real maintenance rate for ETH, 2%", async () => {
+    const world = createSimWorld({ quotes: fakeQuotes(), now: () => new Date(AT_MS) });
+    world.setPrice(3000);
+    const read = await world.readHealth(world.hlAddress);
+    if (read.status !== "ok") throw new Error("expected ok");
+    expect(read.snapshot.maintenanceMarginUsed).toBeCloseTo(300 * 0.02);
   });
 
   it("reports PENDING_DEPOSIT for a deposit it never received", async () => {

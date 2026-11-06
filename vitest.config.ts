@@ -5,6 +5,6 @@ import { defineConfig } from "vitest/config";
 // scripts/test-contracts.mjs.
 export default defineConfig({
   test: {
-    projects: ["packages/*", "apps/*", "research/*"],
+    projects: ["packages/*", "apps/*", "research/*", "scripts"],
   },
 });
