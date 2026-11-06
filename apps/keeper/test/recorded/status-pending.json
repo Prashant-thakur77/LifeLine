@@ -1,0 +1,73 @@
+{
+  "status": "PENDING_DEPOSIT",
+  "updatedAt": "2026-11-06T08:14:29.046Z",
+  "correlationId": "ac405749-0a5a-45db-ae51-73052171b4dc",
+  "swapDetails": {
+    "depositedAmount": null,
+    "depositedAmountUsd": null,
+    "depositedAmountFormatted": null,
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "amountIn": null,
+    "amountInFormatted": null,
+    "amountInUsd": null,
+    "amountOut": null,
+    "amountOutFormatted": null,
+    "amountOutUsd": null,
+    "slippage": null,
+    "refundedAmount": "0",
+    "refundedAmountFormatted": "0",
+    "refundedAmountUsd": "0",
+    "refundReason": null,
+    "refundFee": "0",
+    "withdrawFee": "31530000",
+    "originChainTxHashes": [],
+    "destinationChainTxHashes": []
+  },
+  "quoteResponse": {
+    "timestamp": "2026-11-06T08:14:28.581Z",
+    "signature": "ed25519:5AGGMx4WEtYUXAnLHLgQjyotzqX8e98XHhhNt8Mmr7wPVfVp3zJz9Kw5FCFwHrKxzZ4T2nSGpCY5eXw2TdrVCSeF",
+    "quoteRequest": {
+      "dry": false,
+      "swapType": "EXACT_INPUT",
+      "depositMode": "SIMPLE",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054",
+      "amount": "5000000",
+      "refundTo": "wrap.near",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "0x1111111111111111111111111111111111111111",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-11-06T08:19:28.421Z",
+      "appFees": [
+        {
+          "limitOrderId": null,
+          "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+          "fee": 1
+        }
+      ],
+      "virtualChainRecipient": null,
+      "virtualChainRefundRecipient": null,
+      "referral": null,
+      "confidentiality": "public"
+    },
+    "quote": {
+      "amountIn": "5000000",
+      "amountInFormatted": "5.0",
+      "amountInUsd": "4.997630000000",
+      "minAmountIn": "5000000",
+      "amountOut": "468422200",
+      "amountOutFormatted": "4.684222",
+      "amountOutUsd": "4.682001678772",
+      "minAmountOut": "463427900",
+      "timeWhenInactive": "2026-11-09T08:19:28.421Z",
+      "depositAddress": "94147b6fc4cdf438ec1968bec88c2e677e0f984a955f6ef3389f4be0dc4cd148",
+      "deadline": "2026-11-09T08:19:28.421Z",
+      "timeEstimate": 30,
+      "refundFee": "0",
+      "withdrawFee": "31530000"
+    }
+  }
+}
