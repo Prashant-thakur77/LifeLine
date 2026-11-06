@@ -126,7 +126,7 @@ Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
 - `maintenanceMarginUsed` is the top-level `crossMaintenanceMarginUsed` and `accountValue` is `crossMarginSummary.accountValue`, both in `clearinghouseState`. Don't use `marginSummary.accountValue`: it also counts isolated margin, which can't save a cross position.
 - Health covers cross margin only. An isolated position isn't protected by a top-up, and an account with only isolated positions reads 0 maintenance margin. `packages/hyperliquid` reports that as unknown, never safe.
 - On 5 sampled single-position cross accounts, the formula matched Hyperliquid's `liquidationPx` exactly on 2. On the other 3 Hyperliquid's price was further away, so health reads low and a rescue fires early, not late. All 4 accounts looked up with `userAbstraction` (both exact matches and 2 of the other 3) were `unifiedAccount`s holding spot USDC, so unified mode alone doesn't explain the gap.
-- Hyperliquid keeps only about the most recent 5,000 candles per interval: 1h reaches back to April 2026, 4h to July 2024, and 1d to July 2023.
+- Hyperliquid keeps only about the most recent 5,000 candles per interval: 1m reaches back about 3.5 days, 5m to October 2026, 15m to September 2026, 1h to April 2026, 4h to July 2024. 1d goes back to August 2020, before Hyperliquid launched, so the older daily candles must come from elsewhere.
 - The 1Click destination for margin is `1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054` (8 decimals), which credits the perps balance. The similar `1cs_v1:hypercore:erc20:…` USDC lands on HyperEVM and doesn't add margin.
 - The minimum for a NEAR USDC → Hyperliquid USDC quote is above 1 USDC: 1 USDC was rejected with "Amount is too low for the destination chain", 2 USDC worked. The docs' 0.5 USDC minimum and 0.2 USDC fee are for deposits from Hyperliquid, the opposite direction.
 - Those quotes lose a flat `quote.withdrawFee` of about 0.3153 USDC plus about 0.011%. The keeper reads the fee from a dry quote before sizing each rescue, so it follows any change.
@@ -145,6 +145,7 @@ pnpm --filter <package> test     # one package, e.g. pnpm --filter policy test
 pnpm --filter keeper sim         # the keeper with a scripted price drop: no wallet, keys or funds
 pnpm --filter keeper live        # the real keeper: reads .env, and mainnet also needs KEEPER_ALLOW_MAINNET=yes
                                  # 1Click has no testnet, so on testnet live stops at the quote
+pnpm backtest                    # regenerates research/backtest/RESULTS.md and its charts from the saved candles
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 ```
 

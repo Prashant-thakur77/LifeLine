@@ -12,3 +12,9 @@ pnpm --filter keeper sim
 ```
 
 A scripted price drop takes the account below its trigger. The keeper warns, gets a real dry quote from 1Click, runs the policy engine and finishes exactly one rescue, in about 15 seconds. It needs internet access for the quotes. The settlement is simulated, so its latency isn't a real measurement.
+
+To rerun the backtest from the saved candles, which regenerates `research/backtest/RESULTS.md` and its charts in about 15 seconds:
+
+```sh
+pnpm backtest
+```
