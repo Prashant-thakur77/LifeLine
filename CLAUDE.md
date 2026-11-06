@@ -69,7 +69,7 @@ Settled. Don't reopen them unless the day-1 spike proves one wrong.
 **Health formula**
 
 - `health = accountValue / maintenanceMarginUsed`, both read from Hyperliquid's `clearinghouseState`. Hyperliquid liquidates as health approaches 1.0.
-- Rescue size: `needed = target × maintenanceMarginUsed − accountValue`. We send `needed + 0.2 USDC (1Click fee) + 1%`, cut down to the policy caps and the reserve balance.
+- Rescue size: `needed = target × maintenanceMarginUsed − accountValue`. We send `(needed + quote.withdrawFee) × 1.01`, cut down to the policy caps and the reserve balance, and never less than 2 USDC. Changed on 2026-11-06 from a flat 0.2 USDC, which made the policy engine block every rescue needing about $11 or less.
 
 **Default policy** (values are in `packages/shared/src/constants.ts`)
 
@@ -128,11 +128,12 @@ Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
 - On 5 sampled single-position cross accounts, the formula matched Hyperliquid's `liquidationPx` exactly on 2. On the other 3 Hyperliquid's price was further away, so health reads low and a rescue fires early, not late. All 4 accounts looked up with `userAbstraction` (both exact matches and 2 of the other 3) were `unifiedAccount`s holding spot USDC, so unified mode alone doesn't explain the gap.
 - Hyperliquid keeps only about the most recent 5,000 candles per interval: 1h reaches back to April 2026, 4h to July 2024, and 1d to July 2023.
 - The 1Click destination for margin is `1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054` (8 decimals), which credits the perps balance. The similar `1cs_v1:hypercore:erc20:…` USDC lands on HyperEVM and doesn't add margin.
-- The minimum for a NEAR USDC → Hyperliquid USDC quote is above 1 USDC: 1 USDC was rejected with "Amount is too low for the destination chain", 2 USDC worked.
-- Those quotes lose a flat `quote.withdrawFee` of about 0.3153 USDC plus about 0.011%, not the 0.2 in the rescue-size formula above. That formula's correction is still open between the teammates.
+- The minimum for a NEAR USDC → Hyperliquid USDC quote is above 1 USDC: 1 USDC was rejected with "Amount is too low for the destination chain", 2 USDC worked. The docs' 0.5 USDC minimum and 0.2 USDC fee are for deposits from Hyperliquid, the opposite direction.
+- Those quotes lose a flat `quote.withdrawFee` of about 0.3153 USDC plus about 0.011%. The keeper reads the fee from a dry quote before sizing each rescue, so it follows any change.
 - `minAmountOut` is about 1% of the amount sent below `amountOut`, so the fee isn't part of the slippage. `swapType: EXACT_OUTPUT` also quotes on this route (3.0 USDC out for 3.349117 in), but hasn't been tried with real money.
 - `refundTo` must be an existing NEAR account, or the quote fails with a 400.
-- The quote response has no `quoteId` field. Its top-level keys are `quote`, `quoteRequest`, `signature`, `timestamp` and `correlationId`.
+- The quote response has no `quoteId` field. Its top-level keys are `quote`, `quoteRequest`, `signature`, `timestamp` and `correlationId`. The keeper passes `correlationId` as the vault's `quote_id`.
+- `verifyQuoteSignature` from `@defuse-protocol/one-click-sdk-typescript` accepts real dry and non-dry quotes and rejects a changed recipient or deposit address. A non-dry quote's `deadline` came back about 3 days out even when we asked for 5 minutes, so a deposit address stays usable long after the keeper's 60 s limit.
 
 ## Commands
 
@@ -141,6 +142,8 @@ pnpm install
 pnpm test                        # all TypeScript tests, then the vault's cargo tests
 pnpm typecheck
 pnpm --filter <package> test     # one package, e.g. pnpm --filter policy test
+pnpm --filter keeper sim         # the keeper with a scripted price drop: no wallet, keys or funds
+pnpm --filter keeper live        # the real keeper: reads .env, and mainnet also needs KEEPER_ALLOW_MAINNET=yes
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 ```
 

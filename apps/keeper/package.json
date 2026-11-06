@@ -8,13 +8,22 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "sim": "tsx src/main.ts --sim",
+    "live": "tsx src/main.ts --live"
   },
   "dependencies": {
-    "@lifeline/shared": "workspace:*"
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@lifeline/hyperliquid": "workspace:*",
+    "@lifeline/policy": "workspace:*",
+    "@lifeline/shared": "workspace:*",
+    "better-sqlite3": "13.0.3",
+    "near-api-js": "7.4.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
     "@types/node": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

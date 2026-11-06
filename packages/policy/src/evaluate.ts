@@ -10,16 +10,22 @@ import {
 } from "@lifeline/shared";
 
 /** Reasons beyond the plan's 12 codes, for input that can't be trusted at all. */
-export const GUARD_CODES = ["MALFORMED_INPUT", "USER_MISMATCH", "SNAPSHOT_MISMATCH"] as const;
+export const GUARD_CODES = [
+  "MALFORMED_INPUT",
+  "USER_MISMATCH",
+  "SNAPSHOT_MISMATCH",
+  "REFUND_MISMATCH",
+] as const;
 
 /**
- * A rescue plus the two quote facts the shared RescueRequest doesn't carry.
+ * A rescue plus the three quote facts the shared RescueRequest doesn't carry.
  * `usdNeeded` is what this rescue means to deliver, after any cut to the caps or
  * the reserve, so a deliberately partial rescue isn't blocked as slippage.
  */
 export type PolicyRequest = RescueRequest & {
   destinationAsset: string; // the quote's destinationAsset
   minAmountOutUsd: number; // the quote's minAmountOut in USD: the least 1Click guarantees
+  refundTo: string; // the quote's refundTo: where the funds go if the swap fails
 };
 
 export type RescueHistory = {
@@ -39,6 +45,15 @@ const exceeds = (value: bigint | null, limit: bigint | null) =>
 /** Written so an unreadable time counts as stale. Skew in either direction counts too. */
 const isStale = (at: string, nowMs: number, limitSec: number) =>
   !(Math.abs(nowMs - Date.parse(at)) <= limitSec * 1000);
+
+/** What the 24 h cap has already used. A rescue exactly 24 h old has dropped out. */
+export function spentInLast24h(rescues: RescueHistory["rescues"], now: Date): bigint {
+  const nowMs = now.getTime();
+  return rescues.reduce(
+    (sum, r) => (nowMs - Date.parse(r.at) < DAY_MS ? sum + (parseUnits(r.amount) ?? 0n) : sum),
+    0n,
+  );
+}
 
 /**
  * Decides whether the keeper may run this rescue. A pure function: no network,
@@ -60,9 +75,7 @@ export function evaluate(
   const reserve = parseUnits(history.reserve);
   const rescues = history.rescues.map((r) => ({ amount: parseUnits(r.amount), at: Date.parse(r.at) }));
 
-  const spentToday = rescues
-    .filter((r) => nowMs - r.at < DAY_MS)
-    .reduce((sum, r) => sum + (r.amount ?? 0n), 0n);
+  const spentToday = spentInLast24h(history.rescues, now);
   const newestRescue = Math.max(...rescues.map((r) => r.at).filter(Number.isFinite));
   const minimumOut = request.usdNeeded * (1 - MAX_QUOTE_SLIPPAGE_BPS / 10_000);
 
@@ -82,6 +95,7 @@ export function evaluate(
     ["USER_MISMATCH", request.user !== policy.user],
     ["SNAPSHOT_MISMATCH", !sameAddress(freshSnapshot.hlAddress, policy.hlAddress)],
     ["RECIPIENT_MISMATCH", !sameAddress(request.recipient, policy.hlAddress)],
+    ["REFUND_MISMATCH", request.refundTo !== policy.user],
     ["WRONG_DEST_ASSET", request.destinationAsset !== ASSETS.HYPERLIQUID_USDC.assetId],
     ["PAUSED", policy.paused],
     ["OVER_PER_RESCUE", exceeds(amount, maxPerRescue)],

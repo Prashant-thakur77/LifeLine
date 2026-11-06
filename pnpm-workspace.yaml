@@ -11,5 +11,7 @@ catalog:
 
 # pnpm stops the install until each dependency's build script has a decision.
 # esbuild's only speeds up its first run; the binary is an optional dependency.
+# better-sqlite3's fetches or compiles the native module the keeper needs.
 allowBuilds:
+  better-sqlite3: true
   esbuild: false
