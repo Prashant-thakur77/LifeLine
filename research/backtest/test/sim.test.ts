@@ -153,6 +153,11 @@ describe("with no protection", () => {
     expect(simulate(position({ holdMs: 3 * HOUR }), bars, HOUR, null).liquidated).toBe(true);
   });
 
+  it("closes at the end of the hold, ignoring what the price does afterwards", () => {
+    const bars = [flat(0, 100), flat(HOUR, 100), bar(2 * HOUR, 100, 200, 100, 200)];
+    expect(simulate(position({ holdMs: 2 * HOUR }), bars, HOUR, null).pnlUsd).toBeCloseTo(0);
+  });
+
   it("enters at the entry bar's open", () => {
     const bars = [bar(0, 50, 50, 50, 50), flat(HOUR, 100), flat(2 * HOUR, 100)];
     const outcome = simulate(position({ entryIndex: 1, holdMs: HOUR }), bars, HOUR, null);

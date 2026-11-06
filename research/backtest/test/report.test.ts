@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Bar } from "../src/data";
 import { buildReport, markdownTable, pct, usd, worstFailure } from "../src/report";
-import { runGrid } from "../src/run";
+import { runGrid, type Cell } from "../src/run";
+import { summarize } from "../src/summary";
 import { INTERVAL_MS, RUNS, type Interval } from "../src/scenario";
 
 const HOUR = 3_600_000;
@@ -52,6 +53,20 @@ describe("runGrid", () => {
     }
   });
 
+  it("never lets the unprotected baseline fire a rescue", () => {
+    for (const { cells } of results) {
+      for (const cell of cells) expect(cell.none.every((o) => o.rescuesFired === 0 && o.reserveUsedUsd === 0)).toBe(true);
+    }
+  });
+
+  it("really does run the flash crash harder than the even pace", () => {
+    const find = (id: string) => results.find((result) => result.run.id === id)?.cells ?? [];
+    const late = (cells: Cell[]) => summarize(cells.flatMap((cell) => cell.p50)).rescuesLate;
+    expect(late(find("primary-flash"))).toBeGreaterThan(late(find("primary")));
+    const liquidated = (cells: Cell[]) => summarize(cells.flatMap((cell) => cell.p50)).liquidated;
+    expect(liquidated(find("primary-flash"))).toBeGreaterThan(liquidated(find("primary")));
+  });
+
   it("gives the same answer every run", () => {
     expect(grid()[0]?.cells[0]?.p50).toEqual(results[0]?.cells[0]?.p50);
   });
@@ -85,6 +100,18 @@ describe("the report", () => {
   it("links the charts it writes", () => {
     for (const name of Object.keys(report.charts)) expect(report.markdown).toContain(`charts/${name}`);
     expect(Object.keys(report.charts)).toHaveLength(2);
+  });
+
+  it("shows a real example of a crash beating a rescue", () => {
+    const section = report.markdown.slice(report.markdown.indexOf("**The crash beat the rescue"));
+    expect(section.split("\n")[0]).toMatch(/opened \d{4}-\d{2}-\d{2}/);
+  });
+
+  it("says so when Lifeline costs money on average, rather than hiding it", () => {
+    const primary = grid()[0]?.cells ?? [];
+    const mean = (key: "none" | "p50") => summarize(primary.flatMap((cell) => cell[key])).meanPnlUsd;
+    expect(mean("p50")).toBeLessThan(mean("none"));
+    expect(report.markdown).toContain("costs money, because it buys survival, not profit");
   });
 
   it("doesn't claim a conclusion about latency, because the numbers change when it does", () => {
