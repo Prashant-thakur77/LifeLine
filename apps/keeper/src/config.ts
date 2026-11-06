@@ -12,7 +12,9 @@ export type LiveConfig = {
   port: number;
   dbPath: string;
   corsOrigin: string;
+  dashboardUrl: string;
   botUsername: string | null;
+  botToken: string | null;
 };
 
 type Env = Record<string, string | undefined>;
@@ -55,6 +57,10 @@ export function readLiveConfig(env: Env): LiveConfig {
     if (!account.endsWith(suffix)) throw new Error(`${account} isn't a ${network} account: it must end in ${suffix}`);
   }
 
+  const botToken = optional(env.TELEGRAM_BOT_TOKEN) ?? null;
+  const botUsername = optional(env.TELEGRAM_BOT_USERNAME) ?? null;
+  if (botToken !== null && botUsername === null) throw new Error("TELEGRAM_BOT_TOKEN also needs TELEGRAM_BOT_USERNAME");
+
   const rawPort = optional(env.KEEPER_PORT) ?? "8787";
   if (!/^\d+$/.test(rawPort)) throw new Error("KEEPER_PORT must be a number");
 
@@ -70,6 +76,8 @@ export function readLiveConfig(env: Env): LiveConfig {
     port: Number(rawPort),
     dbPath: optional(env.KEEPER_DB_PATH) ?? "./data/keeper.sqlite",
     corsOrigin: optional(env.DASHBOARD_URL) ?? "*",
-    botUsername: optional(env.TELEGRAM_BOT_USERNAME) ?? null,
+    dashboardUrl: optional(env.DASHBOARD_URL) ?? "http://localhost:3000",
+    botUsername,
+    botToken,
   };
 }

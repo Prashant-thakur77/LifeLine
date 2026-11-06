@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dirname } from "node:path";
+import { createLifelineBot } from "@lifeline/bot";
 import { getHealth } from "@lifeline/hyperliquid";
 import { createApi, NOT_AVAILABLE_ATTESTATION } from "./api";
 import { parseMode, readLiveConfig, type LiveConfig } from "./config";
@@ -64,6 +65,11 @@ async function runSimCli(): Promise<number> {
 async function runLive(config: LiveConfig): Promise<void> {
   mkdirSync(dirname(config.dbPath), { recursive: true });
   const store = new Store(config.dbPath);
+  const log = (line: string) => console.log(`${now().toISOString()} ${line}`);
+  const telegram =
+    config.botToken === null
+      ? null
+      : createLifelineBot({ token: config.botToken, store, dashboardUrl: config.dashboardUrl, network: config.network, now, log });
   const keeper = new Keeper({
     store,
     vault: createNearVault(connectNear(config)),
@@ -78,8 +84,11 @@ async function runLive(config: LiveConfig): Promise<void> {
     sleep,
     newId: randomUUID,
     dryQuotes: false,
-    log: (line) => console.log(`${now().toISOString()} ${line}`),
-    onRecord: (record) => console.log(`${now().toISOString()} ${record.user}: ${describeRecord(record)}`),
+    log,
+    onRecord: (record) => {
+      log(`${record.user}: ${describeRecord(record)}`);
+      void telegram?.notify(record);
+    },
   });
   const api = createApi({
     store,
@@ -91,6 +100,7 @@ async function runLive(config: LiveConfig): Promise<void> {
 
   const shutdown = () => {
     keeper.stop();
+    void telegram?.stop();
     api.close();
     store.close();
     process.exit(0);
@@ -100,6 +110,7 @@ async function runLive(config: LiveConfig): Promise<void> {
 
   const port = await listen(api, config.port);
   console.log(`Lifeline keeper, live on ${config.network}, watching ${config.users.join(", ")}. API on port ${port}.`);
+  telegram?.start();
   keeper.recover();
   await keeper.run();
 }

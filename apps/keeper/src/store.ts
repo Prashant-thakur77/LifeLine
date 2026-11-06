@@ -35,6 +35,12 @@ const SCHEMA = `
     user TEXT NOT NULL,
     expires_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS telegram_chats (
+    chat_id INTEGER NOT NULL,
+    user TEXT NOT NULL,
+    PRIMARY KEY (chat_id, user)
+  );
 `;
 
 type JsonRow = { json: string };
@@ -148,6 +154,33 @@ export class Store {
     const expiresAt = new Date(now.getTime() + TELEGRAM_CODE_TTL_MS).toISOString();
     this.db.prepare("INSERT INTO telegram_codes (code, user, expires_at) VALUES (?, ?, ?)").run(code, user, expiresAt);
     return { code, expiresAt };
+  }
+
+  /** One use only: the code is gone whether or not it was still good. */
+  consumeTelegramCode(code: string, chatId: number, now: Date): string | null {
+    const claim = this.db.transaction(() => {
+      const row = this.db.prepare("DELETE FROM telegram_codes WHERE code = ? RETURNING user, expires_at").get(code) as
+        | { user: string; expires_at: string }
+        | undefined;
+      if (row === undefined || row.expires_at <= now.toISOString()) return null;
+      this.db.prepare("INSERT OR IGNORE INTO telegram_chats (chat_id, user) VALUES (?, ?)").run(chatId, row.user);
+      return row.user;
+    });
+    return claim();
+  }
+
+  chatsFor(user: string): number[] {
+    const rows = this.db.prepare("SELECT chat_id AS chat FROM telegram_chats WHERE user = ?").all(user) as { chat: number }[];
+    return rows.map((row) => row.chat);
+  }
+
+  usersForChat(chatId: number): string[] {
+    const rows = this.db.prepare("SELECT user FROM telegram_chats WHERE chat_id = ?").all(chatId) as { user: string }[];
+    return rows.map((row) => row.user);
+  }
+
+  unlinkChat(chatId: number): number {
+    return this.db.prepare("DELETE FROM telegram_chats WHERE chat_id = ?").run(chatId).changes;
   }
 
   close(): void {

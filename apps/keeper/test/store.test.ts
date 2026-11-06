@@ -174,6 +174,59 @@ describe("telegram link codes", () => {
     expect(issued?.expiresAt).toBe("2026-11-08T15:10:00.000Z");
   });
 
+  it("links a chat with a good code, once only", () => {
+    const issued = store.createTelegramCode(USER, now);
+    if (issued === null) throw new Error("expected a code");
+    expect(store.consumeTelegramCode(issued.code, 42, now)).toBe(USER);
+    expect(store.chatsFor(USER)).toEqual([42]);
+    expect(store.consumeTelegramCode(issued.code, 99, now)).toBeNull();
+    expect(store.chatsFor(USER)).toEqual([42]);
+  });
+
+  it("refuses an expired or unknown code", () => {
+    const issued = store.createTelegramCode(USER, now);
+    if (issued === null) throw new Error("expected a code");
+    expect(store.consumeTelegramCode(issued.code, 42, new Date(now.getTime() + 10 * 60_000))).toBeNull();
+    expect(store.consumeTelegramCode("NOSUCHCD", 42, now)).toBeNull();
+    expect(store.chatsFor(USER)).toEqual([]);
+  });
+
+  it("lets one account have several chats, so a stranger's link can't replace the owner's", () => {
+    for (const chat of [1, 2]) {
+      const issued = store.createTelegramCode(USER, now);
+      if (issued === null) throw new Error("expected a code");
+      store.consumeTelegramCode(issued.code, chat, now);
+    }
+    expect(store.chatsFor(USER).sort()).toEqual([1, 2]);
+  });
+
+  it("lets one chat follow several accounts, and linking twice changes nothing", () => {
+    for (const user of [USER, "bob.near", USER]) {
+      const issued = store.createTelegramCode(user, now);
+      if (issued === null) throw new Error("expected a code");
+      store.consumeTelegramCode(issued.code, 42, now);
+    }
+    expect(store.usersForChat(42).sort()).toEqual([USER, "bob.near"].sort());
+  });
+
+  it("unlinks a chat from everything, and says how many", () => {
+    for (const user of [USER, "bob.near"]) {
+      const issued = store.createTelegramCode(user, now);
+      if (issued === null) throw new Error("expected a code");
+      store.consumeTelegramCode(issued.code, 42, now);
+    }
+    expect(store.unlinkChat(42)).toBe(2);
+    expect(store.chatsFor(USER)).toEqual([]);
+    expect(store.unlinkChat(42)).toBe(0);
+  });
+
+  it("keeps links across a restart", () => {
+    const issued = store.createTelegramCode(USER, now);
+    if (issued === null) throw new Error("expected a code");
+    store.consumeTelegramCode(issued.code, 42, now);
+    expect(store.db.prepare("SELECT chat_id AS chat FROM telegram_chats").all()).toEqual([{ chat: 42 }]);
+  });
+
   it("issues a different code each time", () => {
     expect(store.createTelegramCode(USER, now)?.code).not.toBe(store.createTelegramCode(USER, now)?.code);
   });

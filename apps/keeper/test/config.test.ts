@@ -35,7 +35,9 @@ describe("readLiveConfig", () => {
       port: 8787,
       dbPath: "./data/keeper.sqlite",
       corsOrigin: "*",
+      dashboardUrl: "http://localhost:3000",
       botUsername: null,
+      botToken: null,
     });
   });
 
@@ -76,6 +78,16 @@ describe("readLiveConfig", () => {
 
   it("refuses a bad port", () => {
     expect(() => readLiveConfig({ ...env, KEEPER_PORT: "abc" })).toThrow(/KEEPER_PORT/);
+  });
+
+  it("needs the bot's username alongside its token, because the API hands it out", () => {
+    expect(() => readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token" })).toThrow(/TELEGRAM_BOT_USERNAME/);
+    const config = readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token", TELEGRAM_BOT_USERNAME: "lifeline_bot" });
+    expect(config.botToken).toBe("1:secret-token");
+  });
+
+  it("doesn't print the bot's token in that error", () => {
+    expect(() => readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token" })).not.toThrow(/secret-token/);
   });
 
   it("treats blank optional settings as unset", () => {

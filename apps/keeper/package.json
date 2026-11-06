@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@lifeline/bot": "workspace:*",
     "@lifeline/hyperliquid": "workspace:*",
     "@lifeline/policy": "workspace:*",
     "@lifeline/shared": "workspace:*",
