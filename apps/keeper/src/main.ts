@@ -17,6 +17,7 @@ import { createRecordPipeline } from "./pipeline";
 import { runSim, SIM_USER } from "./sim";
 import { Store } from "./store";
 
+const SHUTDOWN_DRAIN_MS = 5_000;
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const now = () => new Date();
 const listen = (server: Server, port: number) =>
@@ -132,21 +133,24 @@ async function runLive(config: LiveConfig): Promise<void> {
     corsOrigin: config.corsOrigin,
   });
 
-  const shutdown = () => {
+  const shutdown = async () => {
     keeper.stop();
     attestation.stop();
-    void telegram?.stop();
+    telegram?.stopPolling();
     api.close();
+    // Give messages and explanations a moment. A restart backfills any explanation it misses.
+    await Promise.race([pipeline.settled(), sleep(SHUTDOWN_DRAIN_MS)]);
     store.close();
     process.exit(0);
   };
-  process.once("SIGTERM", shutdown);
-  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", () => void shutdown());
+  process.once("SIGINT", () => void shutdown());
 
   const port = await listen(api, config.port);
   console.log(`Lifeline keeper, live on ${config.network}, watching ${config.users.join(", ")}. API on port ${port}.`);
-  telegram?.start();
+  void telegram?.poll();
   void attestation.run();
+  pipeline.backfill();
   keeper.recover();
   await keeper.run();
 }

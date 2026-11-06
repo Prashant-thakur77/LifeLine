@@ -5,7 +5,7 @@ import Database from "better-sqlite3";
 const TELEGRAM_CODE_TTL_MS = 10 * 60 * 1000;
 const TELEGRAM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I
 const TELEGRAM_CODE_LENGTH = 8;
-const MAX_OPEN_TELEGRAM_CODES = 1000;
+const MAX_OPEN_TELEGRAM_CODES_PER_USER = 5;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS audit (
@@ -109,6 +109,18 @@ export class Store {
     return row === undefined ? null : parseRaw(row);
   }
 
+  /** Rescue, block and failure records still waiting for words, oldest first. */
+  unexplained(limit: number): AuditRecord[] {
+    const rows = this.db
+      .prepare(
+        `SELECT a.json FROM audit a LEFT JOIN explanations e ON e.record_id = a.id
+         WHERE e.record_id IS NULL AND a.kind IN ('RESCUE_ALLOWED', 'RESCUE_DONE', 'RESCUE_BLOCKED', 'RESCUE_FAILED')
+         ORDER BY a.seq LIMIT ?`,
+      )
+      .all(limit) as JsonRow[];
+    return rows.map(parseRaw);
+  }
+
   /** Kept beside the record, not in it: the audit log itself can't change. */
   setExplanation(recordId: string, text: string): void {
     this.db
@@ -169,11 +181,9 @@ export class Store {
     return row === undefined ? null : (JSON.parse(row.json) as HealthResponse);
   }
 
-  /** Null once too many codes are open, so the public endpoint can't fill the disk. */
-  createTelegramCode(user: string, now: Date): { code: string; expiresAt: string } | null {
+  /** Each user keeps only their newest few, and only watched users get here, so this can't fill the disk. */
+  createTelegramCode(user: string, now: Date): { code: string; expiresAt: string } {
     this.db.prepare("DELETE FROM telegram_codes WHERE expires_at <= ?").run(now.toISOString());
-    const { open } = this.db.prepare("SELECT COUNT(*) AS open FROM telegram_codes").get() as { open: number };
-    if (open >= MAX_OPEN_TELEGRAM_CODES) return null;
 
     const code = Array.from(
       { length: TELEGRAM_CODE_LENGTH },
@@ -181,6 +191,13 @@ export class Store {
     ).join("");
     const expiresAt = new Date(now.getTime() + TELEGRAM_CODE_TTL_MS).toISOString();
     this.db.prepare("INSERT INTO telegram_codes (code, user, expires_at) VALUES (?, ?, ?)").run(code, user, expiresAt);
+    this.db
+      .prepare(
+        `DELETE FROM telegram_codes WHERE user = ? AND rowid NOT IN (
+           SELECT rowid FROM telegram_codes WHERE user = ? ORDER BY rowid DESC LIMIT ?
+         )`,
+      )
+      .run(user, user, MAX_OPEN_TELEGRAM_CODES_PER_USER);
     return { code, expiresAt };
   }
 

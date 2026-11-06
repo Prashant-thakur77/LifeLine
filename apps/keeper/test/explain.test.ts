@@ -1,6 +1,6 @@
 import type { AuditRecord } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
-import { createExplainer, factsFor, isGrounded, templateExplanation } from "../src/explain";
+import { createExplainer, factsFor, templateExplanation } from "../src/explain";
 import { record, rescueRequest } from "./helpers";
 
 const done = record({
@@ -27,27 +27,68 @@ const explainer = (fetchFn: typeof fetch, apiKey: string | null = "key") =>
   createExplainer({ baseUrl: "https://near-ai.test/v1", apiKey, model: "m", fetch: fetchFn, log: () => {} });
 
 describe("explain", () => {
-  it("returns the model's words when they stick to the facts", async () => {
-    const text = "Your health fell to 1.43, so Lifeline moved 18.20 USDC. Health is now 2.01.";
-    const { fetchFn } = chat(text);
-    expect(await explainer(fetchFn).explain(done)).toBe(text);
+  it("puts the exact figures first, then the model's words", async () => {
+    const words = "Your position lost value, so your reserve topped it up.";
+    const { fetchFn } = chat(words);
+    expect(await explainer(fetchFn).explain(done)).toBe(`${templateExplanation(done)} ${words}`);
   });
 
   it("asks the configured model on the OpenAI-compatible endpoint, with the key", async () => {
-    const { fetchFn, calls } = chat("Health fell to 1.43.");
+    const { fetchFn, calls } = chat("Your position lost value.");
     await explainer(fetchFn).explain(done);
     expect(calls[0]?.url).toBe("https://near-ai.test/v1/chat/completions");
     expect(new Headers(calls[0]?.init.headers).get("authorization")).toBe("Bearer key");
     const body = JSON.parse(String(calls[0]?.init.body)) as { model: string; messages: { role: string; content: string }[] };
     expect(body.model).toBe("m");
     expect(body.messages[0]?.role).toBe("system");
+    expect(body.messages[0]?.content).toMatch(/digits/i);
     expect(body.messages[1]?.content).toContain("1.4286");
     expect(calls[0]?.init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("refuses a made-up number, because the ledger can't carry a false figure", async () => {
-    const { fetchFn } = chat("ETH fell 37% and Lifeline moved 999 USDC.");
+  it("keeps the keeper's own note word for word, whatever the model says", async () => {
+    const note = "1Click still not finished after 30 minutes; last status PROCESSING. The money may still arrive.";
+    const failed = record({ id: "a", kind: "RESCUE_FAILED", explanation: note });
+    const { fetchFn } = chat("Your rescue is still being worked on.");
+    expect(await explainer(fetchFn).explain(failed)).toContain(note);
+  });
+
+  it.each([
+    ["a made-up number", "ETH fell by a lot, about 37 percent."],
+    ["figures of its own", "Your health went from 18.20 to 1.43."],
+    ["a link", "Check your account at evil.example for details."],
+    ["a full link", "See https://evil.example/claim right away."],
+  ])("drops the model's words if they contain %s", async (_name, words) => {
+    const { fetchFn } = chat(words);
     expect(await explainer(fetchFn).explain(done)).toBe(templateExplanation(done));
+  });
+
+  it.each([
+    ["RESCUE_FAILED", "The rescue succeeded and you are safe."],
+    ["RESCUE_FAILED", "Lifeline moved your money to Hyperliquid."],
+    ["RESCUE_BLOCKED", "Lifeline moved your money to Hyperliquid."],
+    ["RESCUE_BLOCKED", "The rescue was completed."],
+    ["RESCUE_DONE", "The rescue failed."],
+    ["RESCUE_DONE", "Your position was liquidated."],
+    ["RESCUE_ALLOWED", "The rescue has already finished."],
+    ["RESCUE_ALLOWED", "The rescue failed."],
+  ] as const)("drops words on %s that contradict what happened: %s", async (kind, words) => {
+    const r = record({ id: "a", kind });
+    const { fetchFn } = chat(words);
+    expect(await explainer(fetchFn).explain(r)).toBe(templateExplanation(r));
+  });
+
+  it("doesn't mistake a denial for a contradiction", async () => {
+    const r = record({ id: "a", kind: "RESCUE_BLOCKED" });
+    const words = "No money moved, because your safety rules said no.";
+    const { fetchFn } = chat(words);
+    expect(await explainer(fetchFn).explain(r)).toBe(`${templateExplanation(r)} ${words}`);
+  });
+
+  it("doesn't count the 1 in 1Click as a digit", async () => {
+    const words = "1Click handled the swap.";
+    const { fetchFn } = chat(words);
+    expect(await explainer(fetchFn).explain(done)).toBe(`${templateExplanation(done)} ${words}`);
   });
 
   it("falls back to the template when the API fails", async () => {
@@ -56,7 +97,7 @@ describe("explain", () => {
   });
 
   it("falls back on an error status", async () => {
-    const { fetchFn } = chat("Health fell.", 500);
+    const { fetchFn } = chat("Your position lost value.", 500);
     expect(await explainer(fetchFn).explain(done)).toBe(templateExplanation(done));
   });
 
@@ -73,17 +114,30 @@ describe("explain", () => {
   });
 
   it("removes any reasoning a model thinks out loud", async () => {
-    const { fetchFn } = chat("<think>let me consider 777</think>Health fell to 1.43.");
-    expect(await explainer(fetchFn).explain(done)).toBe("Health fell to 1.43.");
+    const { fetchFn } = chat("<think>let me consider this</think>Your position lost value.");
+    expect(await explainer(fetchFn).explain(done)).toBe(`${templateExplanation(done)} Your position lost value.`);
   });
 
-  it("cuts an over-long answer", async () => {
-    const { fetchFn } = chat("Health fell. ".repeat(200));
-    expect((await explainer(fetchFn).explain(done))?.length).toBeLessThanOrEqual(600);
+  it("drops reasoning that never closes, instead of publishing it", async () => {
+    const { fetchFn } = chat("<think>let me consider whether to mention the secret plan");
+    expect(await explainer(fetchFn).explain(done)).toBe(templateExplanation(done));
+  });
+
+  it("drops an answer the token limit cut off mid-sentence", async () => {
+    const fetchFn = (async () =>
+      new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "Your health fell, so Lifeline" } }] }))) as unknown as typeof fetch;
+    expect(await explainer(fetchFn).explain(done)).toBe(templateExplanation(done));
+  });
+
+  it("cuts an over-long answer at a sentence", async () => {
+    const { fetchFn } = chat("Your position lost value. ".repeat(100));
+    const text = await explainer(fetchFn).explain(done);
+    expect((text?.length ?? 0) - templateExplanation(done).length).toBeLessThanOrEqual(401);
+    expect(text?.endsWith(".")).toBe(true);
   });
 
   it("explains rescues, blocks and failures, but not warnings", async () => {
-    const { fetchFn } = chat("Done.");
+    const { fetchFn } = chat("Plain words.");
     for (const kind of ["RESCUE_ALLOWED", "RESCUE_DONE", "RESCUE_BLOCKED", "RESCUE_FAILED"] as const) {
       expect(await explainer(fetchFn).explain(record({ id: "a", kind }))).toBeDefined();
     }
@@ -112,33 +166,13 @@ describe("factsFor", () => {
     expect(text).not.toContain("deposit-1");
   });
 
+  it("doesn't send the keeper's note, which could quote a chain error naming an account", () => {
+    const text = JSON.stringify(factsFor(record({ id: "a", kind: "RESCUE_FAILED", explanation: "The vault refused: alice.near is paused." })));
+    expect(text).not.toContain("alice.near");
+  });
+
   it("includes the coins involved", () => {
     expect(factsFor(done).coins).toEqual(["ETH"]);
-  });
-});
-
-describe("isGrounded", () => {
-  const facts = { healthBefore: 1.4286, amountUsdc: 18.2, note: "24-hour limit" };
-
-  it("accepts a fact rounded any way", () => {
-    expect(isGrounded("Health was 1.43, or 1.4, and 18.20 USDC moved.", facts)).toBe(true);
-  });
-
-  it("accepts numbers that appear in the fact text", () => {
-    expect(isGrounded("Your 24-hour limit was reached.", facts)).toBe(true);
-  });
-
-  it("doesn't count the 1 in 1Click as a number", () => {
-    expect(isGrounded("1Click delivered it.", {})).toBe(true);
-  });
-
-  it("rejects anything else", () => {
-    expect(isGrounded("Health was 1.5.", facts)).toBe(false);
-    expect(isGrounded("It fell 6% in 20 minutes.", facts)).toBe(false);
-  });
-
-  it("accepts text with no numbers", () => {
-    expect(isGrounded("Your health recovered.", facts)).toBe(true);
   });
 });
 

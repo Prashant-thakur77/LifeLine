@@ -65,8 +65,12 @@ export function readLiveConfig(env: Env): LiveConfig {
   }
 
   const botToken = optional(env.TELEGRAM_BOT_TOKEN) ?? null;
-  const botUsername = optional(env.TELEGRAM_BOT_USERNAME) ?? null;
+  // No token means no bot, so the API mustn't hand out codes for one.
+  const botUsername = botToken === null ? null : (optional(env.TELEGRAM_BOT_USERNAME) ?? null);
   if (botToken !== null && botUsername === null) throw new Error("TELEGRAM_BOT_TOKEN also needs TELEGRAM_BOT_USERNAME");
+  if (botToken !== null && optional(env.DASHBOARD_URL) === undefined) {
+    throw new Error("TELEGRAM_BOT_TOKEN also needs DASHBOARD_URL, or /pause would link people to localhost");
+  }
 
   const rawPort = optional(env.KEEPER_PORT) ?? "8787";
   if (!/^\d+$/.test(rawPort)) throw new Error("KEEPER_PORT must be a number");

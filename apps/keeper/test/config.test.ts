@@ -84,13 +84,34 @@ describe("readLiveConfig", () => {
   });
 
   it("needs the bot's username alongside its token, because the API hands it out", () => {
-    expect(() => readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token" })).toThrow(/TELEGRAM_BOT_USERNAME/);
-    const config = readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token", TELEGRAM_BOT_USERNAME: "lifeline_bot" });
+    const withDashboard = { ...env, DASHBOARD_URL: "https://lifeline.example", TELEGRAM_BOT_TOKEN: "1:secret-token" };
+    expect(() => readLiveConfig(withDashboard)).toThrow(/TELEGRAM_BOT_USERNAME/);
+    const config = readLiveConfig({ ...withDashboard, TELEGRAM_BOT_USERNAME: "lifeline_bot" });
     expect(config.botToken).toBe("1:secret-token");
   });
 
+  it("needs the dashboard's address with a bot, or /pause would link people to localhost", () => {
+    expect(() => readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token", TELEGRAM_BOT_USERNAME: "lifeline_bot" })).toThrow(/DASHBOARD_URL/);
+  });
+
+  it("doesn't hand out link codes for a bot that isn't running", () => {
+    expect(readLiveConfig({ ...env, TELEGRAM_BOT_USERNAME: "lifeline_bot" }).botUsername).toBeNull();
+  });
+
   it("doesn't print the bot's token in that error", () => {
-    expect(() => readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token" })).not.toThrow(/secret-token/);
+    let message = "";
+    try {
+      readLiveConfig({ ...env, TELEGRAM_BOT_TOKEN: "1:secret-token" });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).not.toBe("");
+    expect(message).not.toContain("secret-token");
+  });
+
+  it("reads the NEAR AI settings", () => {
+    const config = readLiveConfig({ ...env, NEAR_AI_BASE_URL: "https://near-ai.test/v1", NEAR_AI_MODEL: "some/model", NEAR_AI_API_KEY: "key" });
+    expect(config).toMatchObject({ nearAiUrl: "https://near-ai.test/v1", nearAiModel: "some/model", nearAiKey: "key" });
   });
 
   it("reads the NEAR AI settings", () => {
@@ -109,6 +130,7 @@ describe("readLiveConfig", () => {
     const config = readLiveConfig({
       ...env,
       ONECLICK_JWT: "jwt",
+      TELEGRAM_BOT_TOKEN: "1:secret-token",
       TELEGRAM_BOT_USERNAME: "lifeline_bot",
       DASHBOARD_URL: "https://lifeline.example",
       KEEPER_PORT: "9000",

@@ -25,6 +25,12 @@ To check that the model writing Lifeline's explanations really runs in secure ha
 pnpm --filter keeper attest
 ```
 
+To check that the model writing Lifeline's explanations really runs in secure hardware, verified through NVIDIA and Intel with a fresh nonce:
+
+```sh
+pnpm --filter keeper attest
+```
+
 To rerun the backtest from the saved candles, which regenerates `research/backtest/RESULTS.md` and its charts in about 15 seconds:
 
 ```sh

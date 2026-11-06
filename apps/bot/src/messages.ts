@@ -46,7 +46,7 @@ export function formatRecord(record: AuditRecord, network: Network): string {
 
   switch (kind) {
     case "WARN":
-      lines.push(`Lifeline warning for ${user}${atHealth}. A rescue fires if it falls below your trigger.`);
+      lines.push(`Lifeline warning for ${user}${atHealth}. A rescue fires if it falls below your trigger, unless you've paused.`);
       break;
     case "RESCUE_ALLOWED": {
       const usdc = Number(request?.amount ?? 0) / 10 ** ASSETS.NEAR_USDC.decimals;
