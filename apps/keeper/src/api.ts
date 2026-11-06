@@ -63,6 +63,15 @@ function parseLinkUser(body: string): string {
   return user;
 }
 
+/** Any client can send any path, and a throw outside the promise chain would kill the keeper. */
+function parseUrl(raw: string | undefined): URL {
+  try {
+    return new URL(raw ?? "/", "http://keeper");
+  } catch {
+    throw new HttpError(400, "badly formed path");
+  }
+}
+
 function decodeSegment(segment: string): string {
   try {
     return decodeURIComponent(segment);
@@ -75,8 +84,8 @@ function decodeSegment(segment: string): string {
 export function createApi(deps: ApiDeps): Server {
   const { store, now, botUsername, attestation, corsOrigin } = deps;
 
-  const route = async (request: IncomingMessage, method: string, url: URL): Promise<unknown> => {
-    const { pathname, searchParams } = url;
+  const route = async (request: IncomingMessage, method: string): Promise<unknown> => {
+    const { pathname, searchParams } = parseUrl(request.url);
     const expect = (allowed: string) => {
       if (method !== allowed) throw new HttpError(405, `use ${allowed}`);
     };
@@ -109,7 +118,9 @@ export function createApi(deps: ApiDeps): Server {
         expect("POST");
         const user = parseLinkUser(await readBody(request));
         if (botUsername === null) throw new HttpError(503, "the Telegram bot isn't set up");
-        const response: TelegramLinkResponse = { ...store.createTelegramCode(user, now()), botUsername };
+        const issued = store.createTelegramCode(user, now());
+        if (issued === null) throw new HttpError(429, "too many open link codes, try again in a few minutes");
+        const response: TelegramLinkResponse = { ...issued, botUsername };
         return response;
       }
       default:
@@ -133,7 +144,7 @@ export function createApi(deps: ApiDeps): Server {
       respond(response, 204);
       return;
     }
-    route(request, method, new URL(request.url ?? "/", "http://keeper")).then(
+    route(request, method).then(
       (body) => respond(response, 200, body),
       (error: unknown) => {
         if (error instanceof HttpError) respond(response, error.status, { error: error.message });

@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 const TELEGRAM_CODE_TTL_MS = 10 * 60 * 1000;
 const TELEGRAM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I
 const TELEGRAM_CODE_LENGTH = 8;
+const MAX_OPEN_TELEGRAM_CODES = 1000;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS audit (
@@ -101,7 +102,8 @@ export class Store {
       .prepare(
         `SELECT
            COALESCE(SUM(kind = 'RESCUE_DONE'), 0) AS rescues,
-           COALESCE(SUM(CASE WHEN kind = 'RESCUE_DONE' THEN json_extract(json, '$.request.usdNeeded') END), 0) AS usd,
+           COALESCE(SUM(CASE WHEN kind = 'RESCUE_DONE' AND json_extract(json, '$.latencyMs') IS NOT NULL
+                        THEN json_extract(json, '$.request.usdNeeded') END), 0) AS usd,
            COALESCE(SUM(kind = 'RESCUE_BLOCKED'), 0) AS blocked
          FROM audit`,
       )
@@ -133,7 +135,12 @@ export class Store {
     return row === undefined ? null : (JSON.parse(row.json) as HealthResponse);
   }
 
-  createTelegramCode(user: string, now: Date): { code: string; expiresAt: string } {
+  /** Null once too many codes are open, so the public endpoint can't fill the disk. */
+  createTelegramCode(user: string, now: Date): { code: string; expiresAt: string } | null {
+    this.db.prepare("DELETE FROM telegram_codes WHERE expires_at <= ?").run(now.toISOString());
+    const { open } = this.db.prepare("SELECT COUNT(*) AS open FROM telegram_codes").get() as { open: number };
+    if (open >= MAX_OPEN_TELEGRAM_CODES) return null;
+
     const code = Array.from(
       { length: TELEGRAM_CODE_LENGTH },
       () => TELEGRAM_CODE_ALPHABET[randomInt(TELEGRAM_CODE_ALPHABET.length)],

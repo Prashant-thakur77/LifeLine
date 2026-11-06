@@ -144,6 +144,7 @@ pnpm typecheck
 pnpm --filter <package> test     # one package, e.g. pnpm --filter policy test
 pnpm --filter keeper sim         # the keeper with a scripted price drop: no wallet, keys or funds
 pnpm --filter keeper live        # the real keeper: reads .env, and mainnet also needs KEEPER_ALLOW_MAINNET=yes
+                                 # 1Click has no testnet, so on testnet live stops at the quote
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 ```
 

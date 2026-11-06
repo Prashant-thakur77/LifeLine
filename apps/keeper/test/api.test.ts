@@ -1,5 +1,5 @@
+import { request as httpRequest, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
 import type { AuditResponse, HealthResponse, StatsResponse, TelegramLinkResponse } from "@lifeline/shared";
 import { fixtures } from "@lifeline/shared/fixtures";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -146,6 +146,11 @@ describe("POST /api/telegram/link", () => {
     expect((await post("/api/telegram/link", `{"user":"${"a".repeat(5000)}"}`)).status).toBe(413);
   });
 
+  it("is a 429 once too many codes are open", async () => {
+    for (let i = 0; i < 1000; i += 1) store.createTelegramCode(`user-${i}.near`, new Date(AT));
+    expect((await post("/api/telegram/link", JSON.stringify({ user: USER }))).status).toBe(429);
+  });
+
   it("is a 503 when no bot is set up", async () => {
     await new Promise((resolve) => server?.close(resolve));
     await start({ botUsername: null });
@@ -168,6 +173,24 @@ describe("GET /api/attestation", () => {
 });
 
 describe("the HTTP edges", () => {
+  const rawGet = (path: string) =>
+    new Promise<number>((resolve, reject) => {
+      const { hostname, port } = new URL(base);
+      httpRequest({ hostname, port, path, method: "GET" }, (response) => {
+        response.resume();
+        resolve(response.statusCode ?? 0);
+      })
+        .on("error", reject)
+        .end();
+    });
+
+  it.each(["//", "//\\", "///", "http://", "/%"])("survives the unparsable path %s, because a crash would stop every rescue", async (path) => {
+    const status = await rawGet(path);
+    expect(status).toBeGreaterThanOrEqual(400);
+    expect(status).toBeLessThan(500);
+    expect((await get("/api/stats")).status).toBe(200);
+  });
+
   it("lets the dashboard call it from another origin", async () => {
     const response = await get("/api/stats");
     expect(response.headers.get("access-control-allow-origin")).toBe("https://lifeline.example");

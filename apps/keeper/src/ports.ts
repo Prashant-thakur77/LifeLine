@@ -53,10 +53,18 @@ export class VaultRejectedError extends Error {
   override readonly name = "VaultRejectedError";
 }
 
+/** 1Click answered, but no usable quote came of it. Its reason is safe to show publicly. */
+export class QuoteRefusedError extends Error {
+  override readonly name = "QuoteRefusedError";
+}
+
+/** A past rescue. `quoteId` is how the keeper tells whether a rescue landed. */
+export type RescueRecord = { amount: string; at: string; quoteId?: string };
+
 export type Vault = {
   getPolicy(user: string): Promise<Policy | null>;
   getReserve(user: string, token: string): Promise<string>;
-  getRescues(user: string): Promise<{ amount: string; at: string }[]>;
+  getRescues(user: string): Promise<RescueRecord[]>;
   rescue(args: RescueArgs): Promise<{ txHash: string }>;
 };
 

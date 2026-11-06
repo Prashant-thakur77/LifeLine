@@ -11,7 +11,7 @@ import {
   type RescueRequest,
 } from "@lifeline/shared";
 import type { HealthResult } from "@lifeline/hyperliquid";
-import { VaultRejectedError, type Intents, type ReadHealth, type SwapStatus, type Vault } from "./ports";
+import { QuoteRefusedError, VaultRejectedError, type Intents, type ReadHealth, type SwapStatus, type Vault } from "./ports";
 import { sizeRescue, type RescueSize } from "./sizing";
 import type { Store } from "./store";
 
@@ -23,9 +23,10 @@ const REPEAT_RECORD_MS = WARN_RECORD_INTERVAL_SEC * SEC;
 const QUOTE_RETRY_MS = 30 * SEC;
 const STATUS_POLL_MS = 2 * SEC;
 const CREDIT_POLL_MS = SEC;
-const RESCUE_TIMEOUT_MS = 10 * MIN;
-const UNSURE_TIMEOUT_MS = 2 * MIN; // after a crash or an unclear send: a real deposit shows up fast
+const SENT_TIMEOUT_MS = 30 * MIN; // how long a rescue known to be sent keeps the user locked
+const UNSURE_GRACE_MS = 30 * SEC; // after a crash or an unclear send, before asking the chain
 const CREDIT_TIMEOUT_MS = MIN;
+const REFUSED_RETRY_MS = 5 * MIN; // a refusal the engine didn't predict won't clear itself in 5 s
 
 const FINAL_STATUSES: ReadonlySet<SwapStatus> = new Set(["SUCCESS", "REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"]);
 
@@ -47,7 +48,9 @@ export type KeeperDeps = {
 
 type RecordFields = Omit<AuditRecord, "id" | "at" | "user">;
 
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+/** RPC errors can quote their URL, and a URL can carry an API key. */
+const redact = (text: string) => text.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, "<url>");
+const messageOf = (error: unknown) => redact(error instanceof Error ? error.message : String(error));
 const finiteOrUndefined = (value: number | undefined) =>
   value !== undefined && Number.isFinite(value) ? value : undefined;
 
@@ -70,6 +73,7 @@ export class Keeper {
   private readonly active = new Set<string>();
   private readonly reading = new Set<string>();
   private readonly quoteRetryAt = new Map<string, number>();
+  private readonly firstBelowAt = new Map<string, number>();
   private readonly tasks = new Set<Promise<unknown>>();
   private stopped = false;
 
@@ -113,9 +117,8 @@ export class Keeper {
         ...(record.healthBefore === undefined ? {} : { healthBefore: record.healthBefore }),
       };
       this.deps.log(`resuming rescue ${record.request.id} for ${record.user}`);
-      this.runExclusive(record.user, () =>
-        this.follow(record.user, record.request as RescueRequest, fields, Date.parse(record.at), UNSURE_TIMEOUT_MS),
-      );
+      // No latency for these: the time the keeper was down isn't rescue time.
+      this.runExclusive(record.user, () => this.settleUnsure(record.user, record.request as RescueRequest, fields, null));
     }
   }
 
@@ -138,11 +141,18 @@ export class Keeper {
     if (this.reading.has(user)) return;
     this.reading.add(user);
     try {
-      const policy = await this.deps.vault.getPolicy(user);
+      let policy: Policy | null;
+      try {
+        policy = await this.deps.vault.getPolicy(user);
+      } catch (error) {
+        this.deps.log(`${user}: vault read failed: ${messageOf(error)}`);
+        this.markUnknown(user);
+        return;
+      }
       if (policy === null) return;
 
       const result = await this.read(policy.hlAddress);
-      this.deps.store.saveHealth(user, healthResponse(result, policy));
+      this.saveHealth(user, healthResponse(result, policy));
       if (result.status !== "ok") {
         this.deps.log(`${user}: health unknown (${result.reason})`);
         return;
@@ -150,14 +160,35 @@ export class Keeper {
 
       const { snapshot } = result;
       if (snapshot.health < policy.warn) this.warn(user, snapshot);
-      if (snapshot.health < policy.trigger && !this.active.has(user)) {
-        this.runExclusive(user, () => this.attemptRescue(policy, snapshot));
+      if (snapshot.health < policy.trigger) {
+        if (!this.firstBelowAt.has(user)) this.firstBelowAt.set(user, this.deps.now().getTime());
+        if (!this.active.has(user)) {
+          const known = policy;
+          this.runExclusive(user, () => this.attemptRescue(known, snapshot));
+        }
+      } else {
+        this.firstBelowAt.delete(user);
       }
     } catch (error) {
       this.deps.log(`${user}: tick failed: ${messageOf(error)}`);
     } finally {
       this.reading.delete(user);
     }
+  }
+
+  /** A failed save mustn't stop a rescue: an out-of-date API beats an unprotected user. */
+  private saveHealth(user: string, response: HealthResponse): void {
+    try {
+      this.deps.store.saveHealth(user, response);
+    } catch (error) {
+      this.deps.log(`${user}: couldn't save health: ${messageOf(error)}`);
+    }
+  }
+
+  /** The API must not keep saying "ok" from an old reading when nothing can be read now. */
+  private markUnknown(user: string): void {
+    const last = this.deps.store.health(user);
+    if (last !== null) this.saveHealth(user, { status: "unknown", snapshot: null, policy: last.policy });
   }
 
   private async read(hlAddress: string): Promise<HealthResult> {
@@ -229,7 +260,7 @@ export class Keeper {
     const { vault, intents, now, newId, dryQuotes } = this.deps;
     const { user, hlAddress } = policy;
     const token = ASSETS.NEAR_USDC.contractId;
-    const detectedAt = now().getTime();
+    const detectedAt = this.firstBelowAt.get(user) ?? now().getTime();
     const healthBefore = detected.health;
 
     let request: PolicyRequest;
@@ -244,6 +275,8 @@ export class Keeper {
       const draft = sized(0);
       const precheck = evaluate(this.draftRequest(policy, detected, draft, "draft"), policy, history, detected, now());
       if (precheck.verdict === "block") {
+        // Nothing was trying to get through, so the rescue clock shouldn't be running.
+        this.firstBelowAt.delete(user);
         this.recordBlock(user, healthBefore, precheck);
         return;
       }
@@ -256,7 +289,7 @@ export class Keeper {
 
       const id = newId();
       const depositAddress = quote.depositAddress ?? (dryQuotes ? `sim-${id}` : null);
-      if (depositAddress === null) throw new Error("1Click returned a quote with no deposit address");
+      if (depositAddress === null) throw new QuoteRefusedError("the quote has no deposit address");
 
       const fresh = await this.read(hlAddress);
       const snapshot = fresh.status === "ok" ? fresh.snapshot : detected;
@@ -270,7 +303,8 @@ export class Keeper {
         depositAddress,
         recipient: quote.recipient,
         quoteAt: quote.quotedAt,
-        snapshot,
+        // An account that just closed has infinite health, which JSON can't carry.
+        snapshot: Number.isFinite(snapshot.health) ? snapshot : detected,
         destinationAsset: quote.destinationAsset,
         minAmountOutUsd: Number(quote.minAmountOut) / HYPERLIQUID_UNITS,
         refundTo: quote.refundTo,
@@ -284,12 +318,21 @@ export class Keeper {
       }
     } catch (error) {
       this.quoteRetryAt.set(user, now().getTime() + QUOTE_RETRY_MS);
-      this.recordEarlyFailure(user, healthBefore, `The rescue couldn't start: ${messageOf(error)}`);
+      this.deps.log(`${user}: rescue couldn't start: ${messageOf(error)}`);
+      this.recordEarlyFailure(
+        user,
+        healthBefore,
+        // The ledger is public, so only 1Click's own reason goes there, never a raw error.
+        error instanceof QuoteRefusedError
+          ? `1Click couldn't give a usable quote: ${messageOf(error)}`
+          : "The keeper couldn't read what it needs for this rescue, so it didn't start. It will try again.",
+      );
       return;
     }
 
     this.quoteRetryAt.delete(user);
     await this.send(user, request, decision, healthBefore, detectedAt);
+    this.firstBelowAt.delete(user);
   }
 
   private async send(
@@ -299,7 +342,7 @@ export class Keeper {
     healthBefore: number,
     detectedAt: number,
   ): Promise<void> {
-    const { vault, intents, log } = this.deps;
+    const { vault, intents, log, now } = this.deps;
     const fields: RecordFields = { kind: "RESCUE_FAILED", request, decision, healthBefore };
     // Written first: if we crash mid-send, the restart knows a rescue may be out there.
     this.write(user, { ...fields, kind: "RESCUE_ALLOWED" });
@@ -316,63 +359,126 @@ export class Keeper {
       }));
     } catch (error) {
       if (error instanceof VaultRejectedError) {
-        this.write(user, { ...fields, explanation: `The vault refused this rescue: ${error.message}` });
+        // near-api-js re-signs after a nonce error, so a retry can be refused after the first landed.
+        if ((await this.onChain(user, request.quoteId)) === "yes") {
+          await this.settleSent(user, request, fields, detectedAt);
+          return;
+        }
+        this.quoteRetryAt.set(user, now().getTime() + REFUSED_RETRY_MS);
+        this.write(user, { ...fields, explanation: `The vault refused this rescue: ${messageOf(error)}` });
         return;
       }
-      // A timeout can hide a transaction that went through. Let 1Click settle it.
+      // A timeout can hide a transaction that went through.
       log(`${user}: unclear whether rescue ${request.id} was sent: ${messageOf(error)}`);
-      await this.follow(user, request, fields, detectedAt, UNSURE_TIMEOUT_MS);
+      await this.settleUnsure(user, request, fields, detectedAt);
       return;
     }
 
     intents
       .submitDeposit({ txHash, depositAddress: request.depositAddress })
       .catch((error) => log(`${user}: deposit hint failed: ${messageOf(error)}`));
-    await this.follow(user, request, { ...fields, nearTx: txHash }, detectedAt, RESCUE_TIMEOUT_MS);
+    await this.settleSent(user, request, { ...fields, nearTx: txHash }, detectedAt);
   }
 
-  /** Waits for the outcome and writes it. `fields` is whatever is already known. */
-  private async follow(
+  /** Does the vault's own history show this rescue? "unknown" must never be read as "no". */
+  private async onChain(user: string, quoteId: string): Promise<"yes" | "no" | "unknown"> {
+    try {
+      const rescues = await this.deps.vault.getRescues(user);
+      if (rescues.some((rescue) => rescue.quoteId === quoteId)) return "yes";
+      return rescues.some((rescue) => rescue.quoteId === undefined) ? "unknown" : "no";
+    } catch (error) {
+      this.deps.log(`${user}: couldn't check the vault's history: ${messageOf(error)}`);
+      return "unknown";
+    }
+  }
+
+  private async settleSent(user: string, request: RescueRequest, fields: RecordFields, detectedAt: number | null): Promise<void> {
+    const outcome = await this.pollStatus(request.depositAddress, SENT_TIMEOUT_MS, null);
+    await this.writeOutcome(user, request, fields, detectedAt, outcome);
+  }
+
+  /**
+   * We don't know if this rescue went out. Writing FAILED frees the user for another
+   * rescue, so it needs proof: only the chain saying no. Otherwise the lock stays on,
+   * because a false FAILED can send the money twice.
+   */
+  private async settleUnsure(user: string, request: RescueRequest, fields: RecordFields, detectedAt: number | null): Promise<void> {
+    const first = await this.pollStatus(request.depositAddress, UNSURE_GRACE_MS, null);
+    if (first.final) {
+      await this.writeOutcome(user, request, fields, detectedAt, first);
+      return;
+    }
+    if ((await this.onChain(user, request.quoteId)) === "no") {
+      this.write(user, {
+        ...fields,
+        kind: "RESCUE_FAILED",
+        ...(first.status === null ? {} : { oneClickStatus: first.status }),
+        explanation: "This rescue never reached the vault, so no money moved.",
+      });
+      return;
+    }
+    const outcome = await this.pollStatus(request.depositAddress, SENT_TIMEOUT_MS, first.status);
+    await this.writeOutcome(user, request, fields, detectedAt, outcome);
+  }
+
+  /** Writes what happened. `fields` is whatever was already known. */
+  private async writeOutcome(
     user: string,
     request: RescueRequest,
     fields: RecordFields,
-    detectedAt: number,
-    timeoutMs: number,
+    detectedAt: number | null,
+    outcome: { status: SwapStatus | null; final: boolean },
   ): Promise<void> {
     const { now } = this.deps;
-    const { status, final } = await this.pollStatus(request.depositAddress, timeoutMs);
+    const { status, final } = outcome;
+    const elapsed = () => (detectedAt === null ? {} : { latencyMs: now().getTime() - detectedAt });
+    const withHealth = (health: number | undefined) => {
+      const after = finiteOrUndefined(health);
+      return after === undefined ? {} : { healthAfter: after };
+    };
 
     if (status === "SUCCESS") {
-      const healthAfter = await this.waitForCredit(request);
-      const after = finiteOrUndefined(healthAfter);
+      const { credited, health } = await this.waitForCredit(request);
       this.write(user, {
         ...fields,
         kind: "RESCUE_DONE",
         oneClickStatus: status,
-        ...(after === undefined ? {} : { healthAfter: after }),
-        latencyMs: now().getTime() - detectedAt,
+        ...withHealth(health),
+        // Unconfirmed money gets no latency, which also keeps it out of the stats.
+        ...(credited
+          ? elapsed()
+          : { explanation: "1Click reports it delivered, but the money didn't show on Hyperliquid within a minute. Prices may have moved at the same time." }),
       });
       return;
     }
 
     const reread = await this.read(request.recipient);
-    const after = reread.status === "ok" ? finiteOrUndefined(reread.snapshot.health) : undefined;
+    const minutes = Math.round(SENT_TIMEOUT_MS / MIN);
+    let explanation = `1Click reported ${status}, so the money didn't reach Hyperliquid.`;
+    if (!final) {
+      explanation =
+        status === null
+          ? `1Click's status couldn't be read for ${minutes} minutes, so the outcome is unknown. The money may still arrive.`
+          : `1Click still not finished after ${minutes} minutes; last status ${status}. The money may still arrive.`;
+    }
     this.write(user, {
       ...fields,
       kind: "RESCUE_FAILED",
-      oneClickStatus: status,
-      ...(after === undefined ? {} : { healthAfter: after }),
-      latencyMs: now().getTime() - detectedAt,
-      explanation: final
-        ? `1Click reported ${status}, so the money didn't reach Hyperliquid.`
-        : `1Click still not finished after ${Math.round(timeoutMs / MIN)} minutes; last status ${status}.`,
+      ...(status === null ? {} : { oneClickStatus: status }),
+      ...withHealth(reread.status === "ok" ? reread.snapshot.health : undefined),
+      ...elapsed(),
+      explanation,
     });
   }
 
-  private async pollStatus(depositAddress: string, timeoutMs: number): Promise<{ status: SwapStatus; final: boolean }> {
+  private async pollStatus(
+    depositAddress: string,
+    timeoutMs: number,
+    lastSeen: SwapStatus | null,
+  ): Promise<{ status: SwapStatus | null; final: boolean }> {
     const { intents, now, sleep, log } = this.deps;
     const deadline = now().getTime() + timeoutMs;
-    let status: SwapStatus = "PENDING_DEPOSIT";
+    let status = lastSeen;
     for (;;) {
       try {
         status = await intents.getStatus(depositAddress);
@@ -389,18 +495,18 @@ export class Keeper {
    * Latency runs until the money shows on Hyperliquid, not until 1Click says done.
    * Half the expected amount counts as arrived, because prices move at the same time.
    */
-  private async waitForCredit(request: RescueRequest): Promise<number | undefined> {
+  private async waitForCredit(request: RescueRequest): Promise<{ credited: boolean; health: number | undefined }> {
     const { now, sleep } = this.deps;
-    const credited = request.snapshot.accountValue + request.usdNeeded / 2;
+    const expected = request.snapshot.accountValue + request.usdNeeded / 2;
     const deadline = now().getTime() + CREDIT_TIMEOUT_MS;
     let health: number | undefined;
     for (;;) {
       const result = await this.read(request.recipient);
       if (result.status === "ok") {
         health = result.snapshot.health;
-        if (result.snapshot.accountValue >= credited) return health;
+        if (result.snapshot.accountValue >= expected) return { credited: true, health };
       }
-      if (now().getTime() >= deadline) return health;
+      if (now().getTime() >= deadline) return { credited: false, health };
       await sleep(CREDIT_POLL_MS);
     }
   }

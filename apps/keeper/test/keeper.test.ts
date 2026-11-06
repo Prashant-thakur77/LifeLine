@@ -2,7 +2,7 @@ import { ASSETS } from "@lifeline/shared";
 import type { AuditRecord, Policy } from "@lifeline/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Keeper } from "../src/keeper";
-import { VaultRejectedError, type Intents, type Quote, type QuoteParams, type RescueArgs, type SwapStatus, type Vault } from "../src/ports";
+import { QuoteRefusedError, VaultRejectedError, type Intents, type Quote, type QuoteParams, type RescueArgs, type SwapStatus, type Vault } from "../src/ports";
 import { Store } from "../src/store";
 import { AT, HL, policy as basePolicy, snapshot, USER } from "./helpers";
 
@@ -17,7 +17,7 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
     healthDown: false,
     policy: basePolicy(options.policy),
     reserve: options.reserve ?? "100000000",
-    rescues: [] as { amount: string; at: string }[],
+    rescues: [] as { amount: string; at: string; quoteId?: string }[],
     quotes: [] as QuoteParams[],
     sent: [] as RescueArgs[],
     submitted: [] as string[],
@@ -34,6 +34,10 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
     rescueGate: null as Promise<void> | null,
     onSleep: null as (() => void) | null,
     listenerThrows: false,
+    rescueAttempts: 0,
+    landsDespiteError: false,
+    creditNever: false,
+    logs: [] as string[],
   };
 
   const credit = (args: RescueArgs) => {
@@ -65,7 +69,7 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
       if (next !== undefined && next !== "SUCCESS") return next;
       const status = next ?? w.finalStatus;
       const args = w.sent.at(-1);
-      if (status === "SUCCESS" && args && w.creditDelayPolls === 0) credit(args);
+      if (status === "SUCCESS" && args && w.creditDelayPolls === 0 && !w.creditNever) credit(args);
       return status;
     },
     async submitDeposit({ txHash }) {
@@ -79,9 +83,11 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
     getRescues: async () => w.rescues,
     async rescue(args) {
       if (w.rescueGate) await w.rescueGate;
-      if (w.vaultError) throw w.vaultError;
+      w.rescueAttempts += 1;
+      if (w.vaultError && !w.landsDespiteError) throw w.vaultError;
       w.sent.push(args);
-      w.rescues.push({ amount: args.amount, at: new Date(w.nowMs).toISOString() });
+      w.rescues.push({ amount: args.amount, at: new Date(w.nowMs).toISOString(), quoteId: args.quoteId });
+      if (w.vaultError) throw w.vaultError;
       return { txHash: `tx-${w.sent.length}` };
     },
   };
@@ -118,7 +124,7 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
       return () => `id-${++n}`;
     })(),
     dryQuotes: options.dryQuotes ?? false,
-    log: () => {},
+    log: (line) => w.logs.push(line),
     onRecord: (record) => {
       if (w.listenerThrows) throw new Error("listener broke");
       w.records.push(record);
@@ -154,6 +160,19 @@ describe("a safe account", () => {
     await step();
     expect(store.health(USER)?.status).toBe("ok");
     expect(store.health(USER)?.snapshot?.health).toBe(3);
+    expect(store.health(USER)?.policy.user).toBe(USER);
+  });
+
+  it("reports unknown, not its last good reading, when the vault can't be read", async () => {
+    const { w, step, store, vault } = makeWorld();
+    w.accountValue = 90;
+    await step();
+    expect(store.health(USER)?.status).toBe("ok");
+    vault.getPolicy = async () => {
+      throw new Error("rpc down");
+    };
+    await step();
+    expect(store.health(USER)).toMatchObject({ status: "unknown", snapshot: null });
     expect(store.health(USER)?.policy.user).toBe(USER);
   });
 
@@ -484,7 +503,7 @@ describe("when the rescue goes wrong", () => {
   it("records RESCUE_FAILED when 1Click won't quote, and moves no funds", async () => {
     const { w, step, last, kinds } = makeWorld();
     w.accountValue = TRIGGER_VALUE;
-    w.quoteError = new Error("Amount is too low for the destination chain");
+    w.quoteError = new QuoteRefusedError("Amount is too low for the destination chain");
     await step();
     expect(kinds()).toEqual(["WARN", "RESCUE_FAILED"]);
     expect(last("RESCUE_FAILED")?.explanation).toContain("Amount is too low");
@@ -524,30 +543,189 @@ describe("when the rescue goes wrong", () => {
     expect(last("RESCUE_FAILED")?.request?.id).toBeDefined();
   });
 
-  it("follows the deposit when a send times out, because it may have gone through", async () => {
+  describe("when a send times out, so nobody knows if it went through", () => {
+    it("follows the deposit if it did, and records the true outcome", async () => {
+      const { w, step, kinds } = makeWorld();
+      w.accountValue = TRIGGER_VALUE;
+      w.vaultError = new Error("RPC timeout");
+      w.landsDespiteError = true;
+      await step();
+      expect(kinds()).toEqual(["WARN", "RESCUE_ALLOWED", "RESCUE_DONE"]);
+    });
+
+    it("keeps waiting while 1Click works, instead of writing FAILED and sending a second", async () => {
+      const { w, step, keeper, kinds } = makeWorld();
+      w.accountValue = TRIGGER_VALUE;
+      w.vaultError = new Error("RPC timeout");
+      w.landsDespiteError = true;
+      w.statuses = [...Array<SwapStatus>(300).fill("PROCESSING"), "SUCCESS"]; // 10 minutes of polling
+      const running = step();
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+        await keeper.tick();
+      }
+      await running;
+      expect(w.rescueAttempts).toBe(1);
+      expect(kinds()).toEqual(["WARN", "RESCUE_ALLOWED", "RESCUE_DONE"]);
+    });
+
+    it("calls it failed soon if the chain shows it never landed, so the user isn't stuck", async () => {
+      const { w, step, last } = makeWorld();
+      w.accountValue = TRIGGER_VALUE;
+      w.vaultError = new Error("RPC timeout");
+      w.finalStatus = "PENDING_DEPOSIT";
+      const startedAt = w.nowMs;
+      await step();
+      expect(last("RESCUE_FAILED")?.explanation).toMatch(/never reached the vault/i);
+      expect(w.nowMs - startedAt).toBeLessThan(MIN);
+    });
+
+    it("waits it out if the chain can't be read either, because a false FAILED could send twice", async () => {
+      const { w, step, last, vault } = makeWorld();
+      w.accountValue = TRIGGER_VALUE;
+      w.vaultError = new Error("RPC timeout");
+      w.finalStatus = "PENDING_DEPOSIT";
+      const realGetRescues = vault.getRescues;
+      vault.getRescues = async (user) => {
+        if (w.rescueAttempts > 0) throw new Error("rpc down");
+        return realGetRescues(user);
+      };
+      const startedAt = w.nowMs;
+      await step();
+      expect(w.nowMs - startedAt).toBeGreaterThanOrEqual(30 * MIN);
+      expect(last("RESCUE_FAILED")?.explanation).toMatch(/may still arrive/i);
+    });
+
+    it("treats old vault records with no quote id as a maybe, not a no", async () => {
+      const { w, step, vault } = makeWorld();
+      w.accountValue = TRIGGER_VALUE;
+      w.vaultError = new Error("RPC timeout");
+      w.finalStatus = "PENDING_DEPOSIT";
+      const realGetRescues = vault.getRescues;
+      vault.getRescues = async (user) => {
+        const rescues = await realGetRescues(user);
+        return w.rescueAttempts > 0 ? [...rescues, { amount: "1", at: new Date(0).toISOString() }] : rescues;
+      };
+      const startedAt = w.nowMs;
+      await step();
+      expect(w.nowMs - startedAt).toBeGreaterThanOrEqual(30 * MIN);
+    });
+  });
+
+  it("follows the deposit if the vault says no but the chain shows the rescue landed", async () => {
+    // near-api-js re-signs after a nonce error, so the retry can be refused after the first landed.
     const { w, step, kinds } = makeWorld();
     w.accountValue = TRIGGER_VALUE;
-    w.vaultError = new Error("RPC timeout");
-    w.sent.push({
-      user: USER,
-      token: ASSETS.NEAR_USDC.contractId,
-      amount: "18498453",
-      depositAddress: "deposit-2",
-      recipient: HL,
-      quoteId: "corr-2",
-    });
+    w.vaultError = new VaultRejectedError("Smart contract panicked: cooldown not passed");
+    w.landsDespiteError = true;
     await step();
     expect(kinds()).toEqual(["WARN", "RESCUE_ALLOWED", "RESCUE_DONE"]);
   });
 
-  it("calls it failed when a timed-out send never reaches 1Click", async () => {
+  it("doesn't resend every 5 s after the vault refuses, which would burn the keeper's gas", async () => {
+    const { w, step } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.vaultError = new VaultRejectedError("Smart contract panicked: wrong keeper");
+    await step();
+    expect(w.rescueAttempts).toBe(1);
+    for (let i = 0; i < 12; i += 1) {
+      w.nowMs += 5000;
+      await step();
+    }
+    expect(w.rescueAttempts).toBe(1);
+    w.nowMs += 5 * MIN;
+    await step();
+    expect(w.rescueAttempts).toBe(2);
+  });
+
+  it("says the outcome is unknown when 1Click's status can't be read at all", async () => {
     const { w, step, last } = makeWorld();
     w.accountValue = TRIGGER_VALUE;
-    w.vaultError = new Error("RPC timeout");
-    w.finalStatus = "PENDING_DEPOSIT";
+    w.statuses = Array<Error>(1000).fill(new Error("status api down"));
     await step();
-    expect(last("RESCUE_FAILED")?.oneClickStatus).toBe("PENDING_DEPOSIT");
-    expect(last("RESCUE_FAILED")?.explanation).toMatch(/still not finished after 2 minutes/i);
+    const failed = last("RESCUE_FAILED");
+    expect(failed?.oneClickStatus).toBeUndefined();
+    expect(failed?.explanation).toMatch(/couldn't be read/i);
+    expect(failed?.explanation).toMatch(/may still arrive/i);
+    expect(failed?.nearTx).toBe("tx-1");
+  });
+
+  it("keeps a secret in a read error out of the public ledger and the logs", async () => {
+    const { w, step, last, vault } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    vault.getReserve = async () => {
+      throw new Error("http://rpc.example/?apiKey=SUPERSECRET Bad Gateway");
+    };
+    await step();
+    expect(last("RESCUE_FAILED")?.explanation).toBeDefined();
+    expect(JSON.stringify(last("RESCUE_FAILED"))).not.toContain("SUPERSECRET");
+    expect(w.logs.join("\n")).not.toContain("SUPERSECRET");
+  });
+
+  it("keeps a secret in a refused send out of the public ledger too", async () => {
+    const { w, step, last } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.vaultError = new VaultRejectedError("refused by https://rpc.example/?apiKey=SUPERSECRET");
+    await step();
+    expect(JSON.stringify(last("RESCUE_FAILED"))).not.toContain("SUPERSECRET");
+  });
+
+  it("doesn't claim a confirmed rescue when the money never shows on Hyperliquid", async () => {
+    const { w, step, last, store } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.creditNever = true;
+    await step();
+    const done = last("RESCUE_DONE");
+    expect(done?.oneClickStatus).toBe("SUCCESS");
+    expect(done?.latencyMs).toBeUndefined();
+    expect(done?.explanation).toMatch(/didn't show on Hyperliquid/i);
+    expect(store.stats().totalUsdRescued).toBe(0);
+    expect(store.stats().latencyP50Ms).toBeNull();
+  });
+
+  it("still rescues if saving the latest health fails, like on a full disk", async () => {
+    const { w, step, store } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    store.saveHealth = () => {
+      throw new Error("disk full");
+    };
+    await step();
+    expect(w.sent).toHaveLength(1);
+  });
+
+  it("stores a real number when the position closes mid-rescue", async () => {
+    const world = makeWorld();
+    world.w.accountValue = TRIGGER_VALUE;
+    const original = world.intents.getQuote;
+    world.intents.getQuote = async (params) => {
+      world.w.margin = 0; // the position closed, so health is now infinite
+      return original(params);
+    };
+    await world.step();
+    const blocked = world.last("RESCUE_BLOCKED");
+    expect(blocked?.decision?.reasons).toEqual(["NOT_BELOW_TRIGGER"]);
+    expect(blocked?.request?.snapshot.health).toBeCloseTo(1.4);
+  });
+
+  it("counts latency from the first time health fell, not the last failed attempt", async () => {
+    const { w, step, last } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.quoteError = new Error("1Click is down");
+    await step();
+    w.nowMs += 31_000;
+    w.quoteError = null;
+    await step();
+    expect(last("RESCUE_DONE")?.latencyMs).toBeGreaterThanOrEqual(31_000);
+  });
+
+  it("starts that clock again after a block it wasn't trying to get past", async () => {
+    const { w, step, last } = makeWorld({ policy: { paused: true } });
+    w.accountValue = TRIGGER_VALUE;
+    await step();
+    w.nowMs += 3 * 3_600_000;
+    w.policy = { ...w.policy, paused: false };
+    await step();
+    expect(last("RESCUE_DONE")?.latencyMs).toBeLessThan(MIN);
   });
 
   it.each(["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"] as const)("%s from 1Click is RESCUE_FAILED", async (status) => {
@@ -691,13 +869,33 @@ describe("after a crash", () => {
     expect(store.unfinishedRescues()).toEqual([]);
   });
 
-  it("marks it failed if the deposit never shows up, so the next rescue isn't stuck", async () => {
+  it("marks it failed soon if the chain shows it was never sent, so the next rescue isn't stuck", async () => {
     const { w, keeper, last, store } = await crashMidRescue();
     w.finalStatus = "PENDING_DEPOSIT";
+    const startedAt = w.nowMs;
     keeper.recover();
     await keeper.settled();
-    expect(last("RESCUE_FAILED")?.oneClickStatus).toBe("PENDING_DEPOSIT");
+    expect(last("RESCUE_FAILED")?.explanation).toMatch(/never reached the vault/i);
+    expect(w.nowMs - startedAt).toBeLessThan(MIN);
     expect(store.unfinishedRescues()).toEqual([]);
+  });
+
+  it("keeps waiting after a restart if the chain shows the rescue was sent", async () => {
+    const { w, keeper, last } = await crashMidRescue();
+    w.sent.push({ user: USER, token: ASSETS.NEAR_USDC.contractId, amount: "18498453", depositAddress: "deposit-old", recipient: HL, quoteId: "corr-old" });
+    w.rescues.push({ amount: "18498453", at: new Date(w.nowMs).toISOString(), quoteId: "corr-old" });
+    w.statuses = [...Array<SwapStatus>(100).fill("PROCESSING"), "SUCCESS"]; // 200 s, longer than the first check
+    keeper.recover();
+    await keeper.settled();
+    expect(last("RESCUE_DONE")?.request?.id).toBe("req-crashed");
+  });
+
+  it("leaves latency out of a resumed rescue, because downtime isn't rescue time", async () => {
+    const { w, keeper, last } = await crashMidRescue();
+    w.sent.push({ user: USER, token: ASSETS.NEAR_USDC.contractId, amount: "18498453", depositAddress: "deposit-old", recipient: HL, quoteId: "corr-old" });
+    keeper.recover();
+    await keeper.settled();
+    expect(last("RESCUE_DONE")?.latencyMs).toBeUndefined();
   });
 });
 

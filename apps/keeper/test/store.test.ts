@@ -115,8 +115,16 @@ describe("stats", () => {
 
 describe("stats money", () => {
   it("is rounded to the cent, so float noise never reaches the dashboard", () => {
-    store.append(record({ id: "a", kind: "RESCUE_DONE", request: rescueRequest({ id: "a", usdNeeded: 3.9999999999999996 }) }));
+    store.append(record({ id: "a", kind: "RESCUE_DONE", latencyMs: 1000, request: rescueRequest({ id: "a", usdNeeded: 3.9999999999999996 }) }));
     expect(store.stats().totalUsdRescued).toBe(4);
+  });
+});
+
+describe("stats and unconfirmed money", () => {
+  it("doesn't add a rescue to the money total until the money was seen on Hyperliquid", () => {
+    store.append(record({ id: "a", kind: "RESCUE_DONE", request: rescueRequest({ id: "a", usdNeeded: 10 }), latencyMs: 1000 }));
+    store.append(record({ id: "b", kind: "RESCUE_DONE", request: rescueRequest({ id: "b", usdNeeded: 99 }) }));
+    expect(store.stats()).toMatchObject({ totalRescues: 2, totalUsdRescued: 10 });
   });
 });
 
@@ -162,11 +170,24 @@ describe("telegram link codes", () => {
 
   it("issues a code that expires in 10 minutes", () => {
     const issued = store.createTelegramCode(USER, now);
-    expect(issued.code).toMatch(/^[A-Z2-9]{8}$/);
-    expect(issued.expiresAt).toBe("2026-11-08T15:10:00.000Z");
+    expect(issued?.code).toMatch(/^[A-Z2-9]{8}$/);
+    expect(issued?.expiresAt).toBe("2026-11-08T15:10:00.000Z");
   });
 
   it("issues a different code each time", () => {
-    expect(store.createTelegramCode(USER, now).code).not.toBe(store.createTelegramCode(USER, now).code);
+    expect(store.createTelegramCode(USER, now)?.code).not.toBe(store.createTelegramCode(USER, now)?.code);
+  });
+
+  it("purges expired codes, so the table can't grow forever", () => {
+    store.createTelegramCode(USER, now);
+    store.createTelegramCode(USER, new Date(now.getTime() + 11 * 60_000));
+    const { n } = store.db.prepare("SELECT COUNT(*) AS n FROM telegram_codes").get() as { n: number };
+    expect(n).toBe(1);
+  });
+
+  it("stops issuing at the cap, so nobody can fill the disk through the API", () => {
+    for (let i = 0; i < 1000; i += 1) expect(store.createTelegramCode(`user-${i}.near`, now)).not.toBeNull();
+    expect(store.createTelegramCode(USER, now)).toBeNull();
+    expect(store.createTelegramCode(USER, new Date(now.getTime() + 11 * 60_000))).not.toBeNull();
   });
 });

@@ -1,10 +1,12 @@
 import { POLICY_RANGES, type Policy } from "@lifeline/shared";
 import { Account, actions, JsonRpcProvider, teraToGas, type KeyPairString } from "near-api-js";
-import { InvalidTransactionError } from "near-api-js/rpc-errors";
-import { VaultRejectedError, type Vault } from "./ports";
+import { InvalidTransactionError, TransactionExecutionError } from "near-api-js/rpc-errors";
+import { VaultRejectedError, type RescueRecord, type Vault } from "./ports";
 
 const RESCUE_GAS_TGAS = "100";
 const RESCUES_PAGE = 100;
+const VIEW_TIMEOUT_MS = 5_000; // a stuck read would stop the watch loop for this user
+const CALL_TIMEOUT_MS = 60_000; // longer than the RPC's own wait, and a timeout here means "unknown"
 const UNITS = /^\d+$/;
 
 /** The two things the vault adapter needs from NEAR. */
@@ -69,10 +71,20 @@ function chainTimeToIso(value: unknown): string {
   return new Date(ms).toISOString();
 }
 
-function parseRescue(raw: Raw): { amount: string; at: string } {
+function parseRescue(raw: Raw): RescueRecord {
   const { amount } = raw;
   if (typeof amount !== "string" || !UNITS.test(amount)) throw new Error("unreadable rescue amount");
-  return { amount, at: chainTimeToIso(pick(raw, "at", "timestamp", "at_ns", "timestamp_ns")) };
+  const at = chainTimeToIso(pick(raw, "at", "timestamp", "at_ns", "timestamp_ns"));
+  const quoteId = pick(raw, "quote_id", "quoteId");
+  return typeof quoteId === "string" ? { amount, at, quoteId } : { amount, at };
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
 }
 
 /** The vault contract, as the shared method table describes it. */
@@ -88,7 +100,7 @@ export function createNearVault(client: NearClient): Vault {
     },
 
     async getRescues(user) {
-      const rescues: { amount: string; at: string }[] = [];
+      const rescues: RescueRecord[] = [];
       for (;;) {
         const page = (await client.view("get_rescues", { user, from: rescues.length, limit: RESCUES_PAGE })) as Raw[] | null;
         rescues.push(...(page ?? []).map(parseRescue));
@@ -120,29 +132,37 @@ export function connectNear(config: {
   vaultId: string;
   keeperAccountId: string;
   keeperKey: string;
+  viewTimeoutMs?: number;
+  callTimeoutMs?: number;
 }): NearClient {
-  const { rpcUrl, vaultId, keeperAccountId, keeperKey } = config;
+  const { rpcUrl, vaultId, keeperAccountId, keeperKey, viewTimeoutMs = VIEW_TIMEOUT_MS, callTimeoutMs = CALL_TIMEOUT_MS } = config;
   const provider = new JsonRpcProvider({ url: rpcUrl });
   const account = new Account(keeperAccountId, provider, keeperKey as KeyPairString);
 
   return {
-    view: (method, args) => provider.callFunction({ contractId: vaultId, method, args }),
+    view: (method, args) => withTimeout(provider.callFunction({ contractId: vaultId, method, args }), viewTimeoutMs, `NEAR ${method}`),
 
     async call(method, args) {
       try {
-        const result = await account.signAndSendTransaction({
-          receiverId: vaultId,
-          // No deposit: the keeper's function-call key couldn't attach one anyway.
-          actions: [actions.functionCall(method, args, teraToGas(RESCUE_GAS_TGAS), 0n)],
-          waitUntil: "EXECUTED_OPTIMISTIC",
-          throwOnFailure: false,
-        });
+        const result = await withTimeout(
+          account.signAndSendTransaction({
+            receiverId: vaultId,
+            // No deposit: the keeper's function-call key couldn't attach one anyway.
+            actions: [actions.functionCall(method, args, teraToGas(RESCUE_GAS_TGAS), 0n)],
+            waitUntil: "EXECUTED_OPTIMISTIC",
+            throwOnFailure: false,
+          }),
+          callTimeoutMs,
+          `NEAR ${method}`,
+        );
         const status = result.status as { Failure?: unknown } | string | undefined;
         const failure = typeof status === "object" && status?.Failure !== undefined ? JSON.stringify(status.Failure) : null;
         return { txHash: result.transaction.hash, failure };
       } catch (error) {
         // The chain refused the transaction outright, so it can't have landed.
-        if (error instanceof InvalidTransactionError) throw new VaultRejectedError(error.message);
+        if (error instanceof InvalidTransactionError || error instanceof TransactionExecutionError) {
+          throw new VaultRejectedError(error.message);
+        }
         throw error;
       }
     },

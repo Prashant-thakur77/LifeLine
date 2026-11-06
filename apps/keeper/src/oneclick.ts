@@ -1,6 +1,6 @@
 import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 import { ASSETS, MAX_QUOTE_SLIPPAGE_BPS } from "@lifeline/shared";
-import { SWAP_STATUSES, type Intents, type Quote, type SwapStatus } from "./ports";
+import { QuoteRefusedError, SWAP_STATUSES, type Intents, type Quote, type SwapStatus } from "./ports";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const QUOTE_DEADLINE_MS = 5 * 60 * 1000;
@@ -29,7 +29,7 @@ const isString = (value: unknown): value is string => typeof value === "string" 
 
 function parseQuote(raw: QuoteResponse): Quote {
   // Checked before anything is read, so a tampered field can never be used.
-  if (!verifyQuoteSignature(raw)) throw new Error("the quote's signature is invalid");
+  if (!verifyQuoteSignature(raw)) throw new QuoteRefusedError("the quote's signature is invalid");
 
   const { correlationId, timestamp, quote, quoteRequest } = raw;
   const fields = [
@@ -42,7 +42,7 @@ function parseQuote(raw: QuoteResponse): Quote {
     quoteRequest.refundTo,
     quoteRequest.destinationAsset,
   ];
-  if (!fields.every(isString)) throw new Error("the quote is missing a field");
+  if (!fields.every(isString)) throw new QuoteRefusedError("the quote is missing a field");
 
   return {
     quoteId: correlationId,
@@ -84,7 +84,7 @@ export function createOneClick(options: OneClickOptions): Intents {
     }
     if (!response.ok) {
       const message = (body as { message?: unknown } | null)?.message;
-      throw new Error(`1Click ${response.status}: ${isString(message) ? message : "request failed"}`);
+      throw new QuoteRefusedError(`1Click ${response.status}: ${isString(message) ? message : "request failed"}`);
     }
     return body;
   };

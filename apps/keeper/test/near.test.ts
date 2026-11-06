@@ -98,6 +98,11 @@ describe("getRescues", () => {
     ]);
   });
 
+  it("keeps the quote id, so the keeper can tell whether a rescue landed", async () => {
+    const { client } = fakeClient({ get_rescues: [{ amount: "1", at: "1794155400000000000", quote_id: "corr-7" }] });
+    expect((await createNearVault(client).getRescues(USER))[0]?.quoteId).toBe("corr-7");
+  });
+
   it("also accepts a field called timestamp, in numbers", async () => {
     const { client } = fakeClient({ get_rescues: [{ amount: "1", timestamp: 1794155400000000000 }] });
     expect((await createNearVault(client).getRescues(USER))[0]?.at).toBe(new Date(1794155400000).toISOString());
@@ -240,6 +245,43 @@ describe("connectNear, against a stand-in RPC node", () => {
     const { url, methods } = await startRpc(chainAnswers({ SuccessValue: "" }));
     expect(await client(url).call("rescue", { user: USER })).toEqual({ txHash: "real-tx-hash", failure: null });
     expect(methods).toContain("send_tx");
+  });
+
+  it("reports a transaction the chain refused outright as a refusal, not an unknown", async () => {
+    const refused = {
+      error: {
+        code: -32000,
+        message: "Server error",
+        name: "HANDLER_ERROR",
+        cause: { name: "INVALID_TRANSACTION", info: {} },
+        data: { TxExecutionError: { InvalidTxError: { ShardCongested: { shard_id: 0, congestion_level: 1 } } } },
+      },
+    };
+    const { url } = await startRpc((method, params) => (method === "send_tx" ? refused : chainAnswers({ SuccessValue: "" })(method, params)));
+    await expect(client(url).call("rescue", { user: USER })).rejects.toBeInstanceOf(VaultRejectedError);
+  });
+
+  async function startSilentRpc() {
+    server = createServer(() => {
+      // Never answers.
+    });
+    await new Promise<void>((resolve) => server?.listen(0, "127.0.0.1", resolve));
+    return `http://127.0.0.1:${(server?.address() as AddressInfo).port}`;
+  }
+
+  it("gives up on a silent node, so one stuck read can't stop the watch loop", async () => {
+    const url = await startSilentRpc();
+    const near = connectNear({
+      rpcUrl: url,
+      vaultId: "vault.team.testnet",
+      keeperAccountId: "keeper.team.testnet",
+      keeperKey: KeyPair.fromRandom("ed25519").toString(),
+      viewTimeoutMs: 50,
+      callTimeoutMs: 50,
+    });
+    await expect(near.view("get_policy", { user: USER })).rejects.toThrow(/timed out/i);
+    await expect(near.call("rescue", { user: USER })).rejects.toThrow(/timed out/i);
+    server?.closeAllConnections();
   });
 
   it("reports a contract panic as a failure, with the hash", async () => {

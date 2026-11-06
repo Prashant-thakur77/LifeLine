@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ASSETS, POLICY_DEFAULTS, type AuditRecord, type Policy } from "@lifeline/shared";
 import { Keeper } from "./keeper";
-import type { Intents, ReadHealth, RescueArgs, SwapStatus, Vault } from "./ports";
+import type { Intents, ReadHealth, RescueArgs, RescueRecord, SwapStatus, Vault } from "./ports";
 import type { Store } from "./store";
 
 /** A real mainnet account: 1Click refuses a quote whose refundTo doesn't exist. */
@@ -41,7 +41,7 @@ export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now
   let reserve = BigInt(START_RESERVE);
   let feeUsd = LAST_SEEN_FEE_USD;
   const sent: RescueArgs[] = [];
-  const rescues: { amount: string; at: string }[] = [];
+  const rescues: RescueRecord[] = [];
   const deposits = new Map<string, { amount: string; step: number }>();
 
   const policy: Policy = { user: SIM_USER, hlAddress: SIM_HL_ADDRESS, ...POLICY_DEFAULTS, paused: false };
@@ -79,7 +79,7 @@ export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now
       async rescue(args) {
         reserve -= BigInt(args.amount);
         sent.push(args);
-        rescues.push({ amount: args.amount, at: now().toISOString() });
+        rescues.push({ amount: args.amount, at: now().toISOString(), quoteId: args.quoteId });
         deposits.set(args.depositAddress, { amount: args.amount, step: 0 });
         return { txHash: `sim-tx-${sent.length}` };
       },
