@@ -14,7 +14,7 @@ import { nodeIntel } from "./intel-node";
 import { describeRecord } from "./format";
 import { Keeper } from "./keeper";
 import { connectNear, createNearVault } from "./near";
-import { createUserList } from "./users";
+import { canRescue, createUserList } from "./users";
 import { createOneClick } from "@lifeline/intents";
 import { createRecordPipeline } from "./pipeline";
 import { runSim, SIM_USER } from "./sim";
@@ -109,7 +109,7 @@ async function runLive(config: LiveConfig): Promise<void> {
     { sleep },
   );
   const vault = createNearVault(connectNear(config), { keeperAccountId: config.keeperAccountId });
-  const userList = createUserList({ fixed: config.users, load: () => vault.getUsers(), now: () => Date.now(), log });
+  const userList = createUserList({ fixed: config.users, load: () => vault.getUsers(), accept: canRescue(vault), now: () => Date.now(), log });
   const keeper = new Keeper({
     store,
     vault,

@@ -143,26 +143,40 @@ export type AttackProof = {
 };
 
 /**
- * The second layer: the keeper's own key calls rescue directly with the attacker as
- * recipient, skipping the engine. It sends a real mainnet transaction, so only a human
- * runs it. Should the contract ever accept it, 1 base unit goes to the team's own account.
+ * The second layer, the attack that matters: a hacked keeper skips the engine and calls
+ * rescue itself, with the user's real Hyperliquid address as recipient and a quote 1Click
+ * really signed, but with its own account as where the money goes. The vault reads the
+ * deposit address from the signed quote, so it refuses. This sends a real transaction, so
+ * only a human runs it. Should the vault ever accept it, the money goes to the team's own
+ * keeper account, not to anyone else.
  */
 export async function sendContractAttack(
   client: NearClient,
-  config: { vaultId: string; keeperAccountId: string; user: string; token: string },
+  config: {
+    network: AttackProof["network"];
+    vaultId: string;
+    keeperAccountId: string;
+    user: string;
+    token: string;
+    hlAddress: string;
+    amount: string;
+    quote: { payload: string; signature: string };
+  },
   now: () => Date,
 ): Promise<AttackProof> {
   const { txHash, failure } = await client.call("rescue", {
     user: config.user,
     token: config.token,
-    amount: "1",
+    amount: config.amount,
     deposit_address: config.keeperAccountId,
-    recipient: ATTACKER_HL,
+    recipient: config.hlAddress,
     quote_id: "attack-demo",
+    quote: config.quote.payload,
+    signature: config.quote.signature,
   });
   if (failure === null) throw new Error(`THE CONTRACT ACCEPTED THE ATTACK in ${txHash}. Stop and look at the vault.`);
   return {
-    network: "mainnet",
+    network: config.network,
     txHash,
     signer: config.keeperAccountId,
     vault: config.vaultId,

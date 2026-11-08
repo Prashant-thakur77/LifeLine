@@ -103,8 +103,8 @@ Both sides build against these at the same time. Neither side changes them witho
 | `set_policy(policy)` | The user | Saves their policy, with range checks. Includes `hl_address` and the keeper allowed to act |
 | `pause()` / `unpause()` | The user | Stops or restarts rescues for that user immediately |
 | `withdraw(token, amount)` | The user | Returns reserve funds to the user's own NEAR account, any time |
-| `rescue(user, token, amount, deposit_address, recipient, quote_id)` | The keeper account only | Checks `recipient == policy.hl_address`, not paused, amount ≤ per-rescue cap, 24 h total ≤ daily cap, cooldown passed, enough reserve. Then sends the tokens to `deposit_address` and emits an event |
-| `get_policy(user)`, `get_reserve(user)`, `get_rescues(user, from, limit)` | Anyone (view) | Read state for the dashboard and auditors |
+| `rescue(user, token, amount, deposit_address, recipient, quote_id, quote, signature)` | The keeper the user named | Checks 1Click's signature on `quote` (the exact text it signed) and that the quote pays `deposit_address`, for `amount`, to `policy.hl_address`, refunding the user, at most 2 minutes old. Also `recipient == policy.hl_address`, not paused, amount ≤ per-rescue cap, 24 h total ≤ daily cap, cooldown passed, enough reserve, deposit address never paid before. Then pays the deposit address's USDC storage, sends the tokens and emits an event. Resolves to `true`, or `false` if the transfer failed and was refunded |
+| `get_policy(user)`, `get_reserve(user)`, `get_rescues(user, from, limit)`, `get_rescue_count(user)`, `get_users(from, limit)`, `get_config()` | Anyone (view) | Read state for the dashboard, the keeper and auditors |
 
 The contract emits NEP-297 events (`EVENT_JSON:`) named `deposit`, `policy_set`, `paused`, `withdraw` and `rescue`. The `rescue` event carries `user`, `amount`, `recipient`, `quote_id` and `deposit_address`.
 
@@ -143,6 +143,8 @@ Checked on 2026-11-08 with the vault:
 - near-sdk 5.30.1, near-workspaces 0.24.0 and cargo-near 0.23.0 build and test the vault with Rust 1.98.1, and the wasm deploys and runs on the 2.14.0 sandbox and on testnet. `cargo near build` needs the Ledger feature off on this machine (`cargo install --no-default-features cargo-near`), because libudev's headers aren't installed.
 - near-workspaces downloads the sandbox node from S3 as one stream, which ran at about 30 KB/s here. `scripts/near-sandbox.mjs` fetches it in 16 ranges in about a minute and checks it against S3's multipart ETag.
 - In near-sdk unit tests, `#[private]` isn't enforced when a test calls the method directly, and the mocked chain keeps its storage between `testing_env!` calls. The vault's sandbox tests check the private callbacks.
+- 1Click signs the base58 SHA-256 of a stable (sorted-key) JSON text: the quote request's fields (not `appFees` or `correlationId`), the quote's fields, and `timestamp`. A live quote's text includes `depositAddress`. `packages/intents/src/signed.ts` rebuilds that text, and tests hold its hash equal to the SDK's `quoteHash` on real quotes. The vault verifies it on chain with `env::ed25519_verify` against 1Click's key `ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc`, and the real quote from 2026-11-06 passes in its unit tests.
+- A Durable Object's alarm made 80 outgoing fetches in one invocation (70 inside the handler, 10 after it returned) on the free plan, all of them answered, so the Workers free plan's 50-subrequest limit doesn't stop the keeper's minute-long alarm. Checked with a throwaway Worker, deleted afterwards.
 
 Checked on 2026-11-08 on Cloudflare, with the sim deployed at `lifeline-sim.prashantthakur.dev`:
 

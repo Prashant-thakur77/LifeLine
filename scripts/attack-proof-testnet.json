@@ -1,8 +1,8 @@
 {
   "network": "testnet",
-  "txHash": "BgX8yWQ8oRGeY24fJ9LfMfLwxjQmXyH2TySsUX6thmad",
+  "txHash": "5Hu2117RPYyzzaeNpP8LrqXTxBhf2bp3XENoSeZBhjBh",
   "signer": "keeper.lifeline-team.testnet",
   "vault": "vault.lifeline-team.testnet",
-  "failure": "Smart contract panicked: RECIPIENT_MISMATCH: the recipient isn't this user's Hyperliquid address",
-  "recordedAt": "2026-11-08T13:28:00.000Z"
+  "failure": "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: BAD_QUOTE: its deposit address isn't the one this rescue pays\"}}}}",
+  "recordedAt": "2026-11-08T14:18:33.471Z"
 }

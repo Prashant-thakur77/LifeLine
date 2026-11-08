@@ -19,7 +19,7 @@ To watch a hacked keeper try to steal a user's reserve, and get refused:
 pnpm demo:attack
 ```
 
-The vault contract is in [contracts/vault](contracts/vault), which lists every method with a NEAR CLI example. It's deployed on testnet at [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet), where the keeper's only key can call `rescue` and nothing else. There the contract refused a rescue to an attacker's address ([transaction](https://testnet.nearblocks.io/txns/BgX8yWQ8oRGeY24fJ9LfMfLwxjQmXyH2TySsUX6thmad)), and `pnpm demo:attack` checks that refusal on chain again each time it runs.
+The vault contract is in [contracts/vault](contracts/vault), which lists every method with a NEAR CLI example. It's deployed on testnet at [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet), where the keeper's only key can call `rescue` and nothing else. A rescue has to carry the quote 1Click signed, and the vault checks the signature and reads where the money goes from it. There it refused a rescue that named the user's real address and carried a validly signed quote, but pointed the money at the keeper's own account ([transaction](https://testnet.nearblocks.io/txns/5Hu2117RPYyzzaeNpP8LrqXTxBhf2bp3XENoSeZBhjBh)), and `pnpm demo:attack` checks that refusal on chain again each time it runs.
 
 To get a real dry quote from 1Click, NEAR USDC to Hyperliquid USDC, with no wallet or funds:
 

@@ -99,6 +99,7 @@ describe("getReserve", () => {
 describe("getRescues", () => {
   it("turns the chain's nanosecond times into ISO", async () => {
     const { client } = fakeClient({
+      get_rescue_count: 1,
       get_rescues: [{ amount: "5000000", at: "1794155400000000000" }],
     });
     expect(await createNearVault(client).getRescues(USER)).toEqual([
@@ -107,12 +108,13 @@ describe("getRescues", () => {
   });
 
   it("keeps the quote id, so the keeper can tell whether a rescue landed", async () => {
-    const { client } = fakeClient({ get_rescues: [{ amount: "1", at: "1794155400000000000", quote_id: "corr-7" }] });
+    const { client } = fakeClient({ get_rescue_count: 1, get_rescues: [{ amount: "1", at: "1794155400000000000", quote_id: "corr-7" }] });
     expect((await createNearVault(client).getRescues(USER))[0]?.quoteId).toBe("corr-7");
   });
 
   it("leaves out refunded rescues: no money moved, so they count for no cap and prove no delivery", async () => {
     const { client } = fakeClient({
+      get_rescue_count: 2,
       get_rescues: [
         { amount: "3000000", at: "1794155400000000000", quote_id: "corr-1", refunded: true },
         { amount: "4000000", at: "1794155500000000000", quote_id: "corr-2", refunded: false },
@@ -122,30 +124,60 @@ describe("getRescues", () => {
   });
 
   it("also accepts a field called timestamp, in numbers", async () => {
-    const { client } = fakeClient({ get_rescues: [{ amount: "1", timestamp: 1794155400000000000 }] });
+    const { client } = fakeClient({ get_rescue_count: 1, get_rescues: [{ amount: "1", timestamp: 1794155400000000000 }] });
     expect((await createNearVault(client).getRescues(USER))[0]?.at).toBe(new Date(1794155400000).toISOString());
   });
 
-  it("reads every page, so no rescue escapes the daily cap", async () => {
-    const page = Array.from({ length: 100 }, () => ({ amount: "1", at: "1794155400000000000" }));
-    const pages = [page, page.slice(0, 3)];
+  /** A vault holding `count` rescues, the ones from `oldFrom` on dated 2 days ago. */
+  const history = (count: number, recentFrom: number, nowMs: number) => {
     const asked: unknown[] = [];
     const client: NearClient = {
-      async view(_method, args) {
-        asked.push(args);
-        return pages.shift() ?? [];
+      async view(method, args) {
+        asked.push([method, args]);
+        if (method === "get_rescue_count") return count;
+        const { from, limit } = args as { from: number; limit: number };
+        return Array.from({ length: Math.min(limit, count - from) }, (_, i) => {
+          const index = from + i;
+          const atMs = index >= recentFrom ? nowMs - 60_000 : nowMs - 2 * 86_400_000;
+          return { amount: "1", at: String(BigInt(atMs) * 1_000_000n), quote_id: `q${index}` };
+        });
       },
       call: async () => ({ txHash: "tx", failure: null }),
     };
-    expect(await createNearVault(client).getRescues(USER)).toHaveLength(103);
+    return { client, asked };
+  };
+
+  it("reads back from the newest, every page within the last day, so no rescue escapes the daily cap", async () => {
+    const nowMs = Date.parse("2026-11-08T15:00:00.000Z");
+    const { client, asked } = history(203, 0, nowMs);
+    const rescues = await createNearVault(client, { now: () => new Date(nowMs) }).getRescues(USER);
+    expect(rescues).toHaveLength(203);
+    expect(rescues[0]?.quoteId).toBe("q0");
+    expect(rescues.at(-1)?.quoteId).toBe("q202");
     expect(asked).toEqual([
-      { user: USER, from: 0, limit: 100 },
-      { user: USER, from: 100, limit: 100 },
+      ["get_rescue_count", { user: USER }],
+      ["get_rescues", { user: USER, from: 103, limit: 100 }],
+      ["get_rescues", { user: USER, from: 3, limit: 100 }],
+      ["get_rescues", { user: USER, from: 0, limit: 3 }],
     ]);
   });
 
+  it("stops reading once it's past 25 hours back, so a long history doesn't slow every check", async () => {
+    const nowMs = Date.parse("2026-11-08T15:00:00.000Z");
+    const { client, asked } = history(1_000, 950, nowMs);
+    const rescues = await createNearVault(client, { now: () => new Date(nowMs) }).getRescues(USER);
+    expect(asked).toHaveLength(2);
+    expect(rescues.filter((r) => Date.parse(r.at) > nowMs - 86_400_000)).toHaveLength(50);
+  });
+
+  it("reads nothing more for a user with no rescues", async () => {
+    const { client, asked } = history(0, 0, Date.now());
+    expect(await createNearVault(client).getRescues(USER)).toEqual([]);
+    expect(asked).toHaveLength(1);
+  });
+
   it("refuses a rescue with an unreadable time, rather than letting it skip the cooldown", async () => {
-    const { client } = fakeClient({ get_rescues: [{ amount: "1", at: "soon" }] });
+    const { client } = fakeClient({ get_rescue_count: 1, get_rescues: [{ amount: "1", at: "soon" }] });
     await expect(createNearVault(client).getRescues(USER)).rejects.toThrow(/time/i);
   });
 });
@@ -180,6 +212,8 @@ describe("rescue", () => {
     depositAddress: "deposit-1",
     recipient: HL,
     quoteId: "corr-1",
+    quote: '{"depositAddress":"deposit-1"}',
+    signature: "ed25519:sig",
   };
 
   it("calls the contract with its own argument names and returns the tx hash", async () => {
@@ -199,6 +233,8 @@ describe("rescue", () => {
           deposit_address: "deposit-1",
           recipient: HL,
           quote_id: "corr-1",
+          quote: '{"depositAddress":"deposit-1"}',
+          signature: "ed25519:sig",
         },
       ],
     ]);

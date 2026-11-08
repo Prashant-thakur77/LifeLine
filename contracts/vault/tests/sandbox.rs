@@ -1,22 +1,28 @@
 //! The vault on a local NEAR sandbox node, with a real NEP-141 token: deposits through
-//! ft_transfer_call, rescues to a fresh 1Click-style deposit address, refunds of a
-//! failed transfer, and withdrawals. src/tests.rs covers each rule on its own.
+//! ft_transfer_call, rescues paid to the deposit address in a signed quote, attacks by a
+//! keeper that changes where the money goes, refunds of a failed transfer, and
+//! withdrawals. src/tests.rs covers each rule on its own, and a real 1Click quote.
 
+use ed25519_dalek::{Signer, SigningKey};
+use near_sdk::bs58;
 use near_workspaces::network::Sandbox;
 use near_workspaces::result::ExecutionFinalResult;
 use near_workspaces::types::{Gas, NearToken};
 use near_workspaces::{Account, Contract, Worker};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::OnceCell;
 
 const USDC_1: u128 = 1_000_000;
 const HL: &str = "0xabcdef0123456789abcdef0123456789abcdef01";
 const ATTACKER_HL: &str = "0x9999999999999999999999999999999999999999";
-/// A real 1Click deposit address from a mainnet quote: a fresh implicit account.
-const DEPOSIT_ADDRESS: &str = "ef0eeb5ba22b7da3ad34b9cf99c637dd4d81758b1d1e529125ab4f7240a16fbb";
+const PERPS_USDC: &str = "1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054";
 
 static VAULT_WASM: OnceCell<Vec<u8>> = OnceCell::const_new();
 static TOKEN_WASM: OnceCell<Vec<u8>> = OnceCell::const_new();
+static NEXT_ADDRESS: AtomicU64 = AtomicU64::new(1);
 
 async fn vault_wasm() -> &'static [u8] {
     VAULT_WASM.get_or_init(|| async { near_workspaces::compile_project("./").await.expect("vault builds") }).await
@@ -26,6 +32,50 @@ async fn token_wasm() -> &'static [u8] {
     TOKEN_WASM
         .get_or_init(|| async { near_workspaces::compile_project("./tests/mock-ft").await.expect("mock token builds") })
         .await
+}
+
+/// Stands in for 1Click's quote-signing key: the vault here is set up to trust it.
+fn quote_signer() -> SigningKey {
+    SigningKey::from_bytes(&[7u8; 32])
+}
+
+fn public_key(key: &SigningKey) -> String {
+    format!("ed25519:{}", bs58::encode(key.verifying_key().to_bytes()).into_string())
+}
+
+/// 1Click signs the base58 text of the quote's SHA-256.
+fn sign(key: &SigningKey, payload: &str) -> String {
+    let message = bs58::encode(Sha256::digest(payload.as_bytes())).into_string();
+    format!("ed25519:{}", bs58::encode(key.sign(message.as_bytes()).to_bytes()).into_string())
+}
+
+/// A fresh implicit account, as 1Click hands out for each quote.
+fn fresh_address() -> String {
+    let n = NEXT_ADDRESS.fetch_add(1, Ordering::SeqCst);
+    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    format!("{:x}", Sha256::digest(format!("{n}-{nanos}")))
+}
+
+fn iso_now_minus(seconds: u64) -> String {
+    let ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64 - seconds * 1000;
+    let days = (ms / 86_400_000) as i64;
+    let rest = ms % 86_400_000;
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z", rest / 3_600_000, rest / 60_000 % 60, rest / 1000 % 60, rest % 1000)
+}
+
+struct Quote {
+    payload: String,
+    signature: String,
+    deposit: String,
 }
 
 struct Setup {
@@ -43,7 +93,12 @@ impl Setup {
         let usdc = worker.dev_deploy(token_wasm().await).await?;
         usdc.call("new").transact().await?.into_result()?;
         let vault = worker.dev_deploy(vault_wasm().await).await?;
-        vault.call("new").args_json(json!({ "tokens": [usdc.id()] })).transact().await?.into_result()?;
+        vault
+            .call("new")
+            .args_json(json!({ "tokens": [usdc.id()], "quote_signer": public_key(&quote_signer()) }))
+            .transact()
+            .await?
+            .into_result()?;
         let alice = worker.dev_create_account().await?;
         let keeper = worker.dev_create_account().await?;
 
@@ -81,20 +136,54 @@ impl Setup {
             .await?)
     }
 
-    async fn rescue(&self, caller: &Account, amount: u128, recipient: &str, quote_id: &str) -> anyhow::Result<ExecutionFinalResult> {
+    /// What 1Click would sign for a rescue of Alice's: `amount` to `recipient` via a fresh deposit address.
+    fn quote(&self, key: &SigningKey, amount: u128, recipient: &str) -> Quote {
+        let deposit = fresh_address();
+        let payload = json!({
+            "amount": amount.to_string(),
+            "amountIn": amount.to_string(),
+            "depositAddress": deposit,
+            "depositType": "ORIGIN_CHAIN",
+            "destinationAsset": PERPS_USDC,
+            "dry": false,
+            "originAsset": format!("nep141:{}", self.usdc.id()),
+            "recipient": recipient,
+            "recipientType": "DESTINATION_CHAIN",
+            "refundTo": self.alice.id(),
+            "refundType": "ORIGIN_CHAIN",
+            "slippageTolerance": 100,
+            "swapType": "EXACT_INPUT",
+            "timestamp": iso_now_minus(2),
+        })
+        .to_string();
+        let signature = sign(key, &payload);
+        Quote { payload, signature, deposit }
+    }
+
+    /// Calls rescue as `caller`, paying `deposit_address`, with the quote `quote`.
+    async fn rescue_with(&self, caller: &Account, amount: u128, recipient: &str, deposit_address: &str, quote: &Quote) -> anyhow::Result<ExecutionFinalResult> {
         Ok(caller
             .call(self.vault.id(), "rescue")
             .args_json(json!({
                 "user": self.alice.id(),
                 "token": self.usdc.id(),
                 "amount": amount.to_string(),
-                "deposit_address": DEPOSIT_ADDRESS,
+                "deposit_address": deposit_address,
                 "recipient": recipient,
-                "quote_id": quote_id,
+                "quote_id": "corr-1",
+                "quote": quote.payload,
+                "signature": quote.signature,
             }))
             .gas(Gas::from_tgas(100))
             .transact()
             .await?)
+    }
+
+    /// An honest rescue: a genuine quote for Alice's address, paid to its own deposit address.
+    async fn rescue(&self, amount: u128) -> anyhow::Result<(ExecutionFinalResult, String)> {
+        let quote = self.quote(&quote_signer(), amount, HL);
+        let result = self.rescue_with(&self.keeper, amount, HL, &quote.deposit, &quote).await?;
+        Ok((result, quote.deposit))
     }
 
     async fn balance(&self, account: &str) -> anyhow::Result<u128> {
@@ -163,15 +252,14 @@ async fn a_token_not_on_the_list_goes_straight_back() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn a_rescue_pays_a_fresh_deposit_address_and_says_so() -> anyhow::Result<()> {
+async fn a_rescue_pays_the_quotes_fresh_deposit_address_and_says_so() -> anyhow::Result<()> {
     let s = Setup::new().await?;
-    let result = s.rescue(&s.keeper, 3 * USDC_1, HL, "corr-1").await?;
+    let (result, deposit) = s.rescue(3 * USDC_1).await?;
     assert!(result.is_success(), "{:?}", result.failures());
     let rescue = event(&result, "rescue").expect("a rescue event");
     assert!(result.json::<bool>()?, "rescue must resolve to true once the transfer lands");
-    assert_eq!(s.balance(DEPOSIT_ADDRESS).await?, 3 * USDC_1);
+    assert_eq!(s.balance(&deposit).await?, 3 * USDC_1);
     assert_eq!(s.reserve().await?, 27 * USDC_1);
-
     assert_eq!(
         rescue["data"][0],
         json!({
@@ -180,7 +268,7 @@ async fn a_rescue_pays_a_fresh_deposit_address_and_says_so() -> anyhow::Result<(
             "amount": "3000000",
             "recipient": HL,
             "quote_id": "corr-1",
-            "deposit_address": DEPOSIT_ADDRESS,
+            "deposit_address": deposit,
         })
     );
     assert_eq!(s.rescues().await?[0]["refunded"], false);
@@ -188,13 +276,35 @@ async fn a_rescue_pays_a_fresh_deposit_address_and_says_so() -> anyhow::Result<(
 }
 
 #[tokio::test]
-async fn a_rescue_to_the_attackers_address_fails_on_chain() -> anyhow::Result<()> {
+async fn a_rescue_naming_the_attackers_address_fails_on_chain() -> anyhow::Result<()> {
     let s = Setup::new().await?;
-    let result = s.rescue(&s.keeper, 3 * USDC_1, ATTACKER_HL, "corr-1").await?;
-    let text = failure_text(result);
+    let quote = s.quote(&quote_signer(), 3 * USDC_1, ATTACKER_HL);
+    let text = failure_text(s.rescue_with(&s.keeper, 3 * USDC_1, ATTACKER_HL, &quote.deposit, &quote).await?);
     assert!(text.contains("RECIPIENT_MISMATCH"), "{text}");
     assert_eq!(s.reserve().await?, 30 * USDC_1);
-    assert_eq!(s.balance(DEPOSIT_ADDRESS).await?, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_genuine_quote_cant_be_redirected_to_the_attackers_account() -> anyhow::Result<()> {
+    // The right recipient and a quote 1Click really signed, but the money pointed elsewhere.
+    let s = Setup::new().await?;
+    let attacker = s.worker.dev_create_account().await?;
+    let quote = s.quote(&quote_signer(), 3 * USDC_1, HL);
+    let text = failure_text(s.rescue_with(&s.keeper, 3 * USDC_1, HL, attacker.id().as_str(), &quote).await?);
+    assert!(text.contains("BAD_QUOTE") && text.contains("deposit address"), "{text}");
+    assert_eq!(s.balance(attacker.id().as_str()).await?, 0);
+    assert_eq!(s.reserve().await?, 30 * USDC_1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_quote_the_keeper_wrote_itself_is_refused() -> anyhow::Result<()> {
+    let s = Setup::new().await?;
+    let forged = s.quote(&SigningKey::from_bytes(&[9u8; 32]), 3 * USDC_1, HL);
+    let text = failure_text(s.rescue_with(&s.keeper, 3 * USDC_1, HL, &forged.deposit, &forged).await?);
+    assert!(text.contains("1Click didn't sign this quote"), "{text}");
+    assert_eq!(s.balance(&forged.deposit).await?, 0);
     Ok(())
 }
 
@@ -202,10 +312,11 @@ async fn a_rescue_to_the_attackers_address_fails_on_chain() -> anyhow::Result<()
 async fn only_the_named_keeper_can_rescue() -> anyhow::Result<()> {
     let s = Setup::new().await?;
     let stranger = s.worker.dev_create_account().await?;
-    let text = failure_text(s.rescue(&stranger, 3 * USDC_1, HL, "corr-1").await?);
-    assert!(text.contains("NOT_KEEPER"), "{text}");
-    let text = failure_text(s.rescue(&s.alice, 3 * USDC_1, HL, "corr-1").await?);
-    assert!(text.contains("NOT_KEEPER"), "{text}");
+    for caller in [&stranger, &s.alice] {
+        let quote = s.quote(&quote_signer(), 3 * USDC_1, HL);
+        let text = failure_text(s.rescue_with(caller, 3 * USDC_1, HL, &quote.deposit, &quote).await?);
+        assert!(text.contains("NOT_KEEPER"), "{text}");
+    }
     assert_eq!(s.reserve().await?, 30 * USDC_1);
     Ok(())
 }
@@ -215,25 +326,25 @@ async fn a_failed_transfer_is_refunded_and_reported_as_false() -> anyhow::Result
     let s = Setup::new().await?;
     s.usdc.call("set_fail_transfers").args_json(json!({ "fail": true })).transact().await?.into_result()?;
 
-    let result = s.rescue(&s.keeper, 3 * USDC_1, HL, "corr-1").await?;
+    let (result, _) = s.rescue(3 * USDC_1).await?;
     assert!(event(&result, "rescue_refunded").is_some());
     assert!(!result.json::<bool>()?, "a refunded rescue must resolve to false");
     assert_eq!(s.reserve().await?, 30 * USDC_1);
     assert_eq!(s.balance(s.vault.id().as_str()).await?, 30 * USDC_1);
     assert_eq!(s.rescues().await?[0]["refunded"], true);
 
-    // Nothing moved, so the cooldown doesn't hold the retry back.
+    // Nothing moved, so the cooldown doesn't hold back a retry with a new quote.
     s.usdc.call("set_fail_transfers").args_json(json!({ "fail": false })).transact().await?.into_result()?;
-    let retry = s.rescue(&s.keeper, 3 * USDC_1, HL, "corr-2").await?;
+    let (retry, deposit) = s.rescue(3 * USDC_1).await?;
     assert!(retry.json::<bool>()?);
-    assert_eq!(s.balance(DEPOSIT_ADDRESS).await?, 3 * USDC_1);
+    assert_eq!(s.balance(&deposit).await?, 3 * USDC_1);
     Ok(())
 }
 
 #[tokio::test]
 async fn nobody_can_call_the_refund_callback_to_inflate_a_reserve() -> anyhow::Result<()> {
     let s = Setup::new().await?;
-    s.rescue(&s.keeper, 3 * USDC_1, HL, "corr-1").await?.into_result()?;
+    s.rescue(3 * USDC_1).await?.0.into_result()?;
     for caller in [&s.keeper, &s.alice] {
         let result = caller
             .call(s.vault.id(), "on_rescue_transfer")
@@ -266,9 +377,8 @@ async fn withdraw_returns_the_reserve_to_the_user() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn a_keeper_key_limited_to_rescue_cant_withdraw() -> anyhow::Result<()> {
+async fn the_keeper_cant_withdraw_and_nobody_can_set_the_vault_up_again() -> anyhow::Result<()> {
     let s = Setup::new().await?;
-    // The keeper has no reserve of its own, and withdraw only ever pays the caller.
     let result = s
         .keeper
         .call(s.vault.id(), "withdraw")
@@ -279,6 +389,15 @@ async fn a_keeper_key_limited_to_rescue_cant_withdraw() -> anyhow::Result<()> {
         .await?;
     let text = failure_text(result);
     assert!(text.contains("INSUFFICIENT_RESERVE"), "{text}");
+
+    let attacker_key = SigningKey::from_bytes(&[9u8; 32]);
+    let again = s
+        .keeper
+        .call(s.vault.id(), "new")
+        .args_json(json!({ "tokens": [s.usdc.id()], "quote_signer": public_key(&attacker_key) }))
+        .transact()
+        .await?;
+    assert!(again.is_failure(), "re-initialising must fail");
     assert_eq!(s.reserve().await?, 30 * USDC_1);
     Ok(())
 }

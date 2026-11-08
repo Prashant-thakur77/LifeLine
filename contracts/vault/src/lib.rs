@@ -1,9 +1,9 @@
 //! Lifeline's reserve vault. README.md describes every method.
 //!
 //! Each user keeps a reserve here and names one keeper. That keeper can move reserve
-//! funds only through `rescue`, which checks every limit that protects the money: the
-//! recipient, the caps, the cooldown and the pause. The keeper's own policy engine runs
-//! the same checks first, and this contract doesn't rely on it having done so.
+//! funds only through `rescue`, and only to a deposit address in a quote 1Click signed for
+//! this user's own Hyperliquid account, within the user's caps and cooldown. The keeper's
+//! own policy engine runs the same checks first, and this contract doesn't rely on it.
 
 use near_sdk::json_types::{U128, U64};
 use near_sdk::serde_json::{json, Value};
@@ -14,6 +14,7 @@ use near_sdk::{
 };
 use std::collections::BTreeMap;
 
+pub mod quote;
 #[cfg(test)]
 mod tests;
 
@@ -30,10 +31,11 @@ pub const COOLDOWN_RANGE: (u32, u32) = (30, 3_600);
 
 const SEC_NS: u64 = 1_000_000_000;
 const DAY_NS: u64 = 24 * 60 * 60 * SEC_NS;
-/// The most rescues the 24-hour check reads. More than this in a day is refused, not skipped.
+/// The most rescues a user can have in 24 hours, so the check that reads them stays cheap.
 pub const MAX_WINDOW_SCAN: u32 = 200;
 pub const MAX_PAGE: u32 = 100;
 const MAX_QUOTE_ID_LEN: usize = 128;
+const MAX_QUOTE_LEN: usize = 4_096;
 
 const GAS_STORAGE_DEPOSIT: Gas = Gas::from_tgas(10);
 const GAS_FT_TRANSFER: Gas = Gas::from_tgas(15);
@@ -56,7 +58,7 @@ enum StorageKey {
     Accounts,
     Reserves,
     Rescues,
-    UsedQuotes,
+    UsedDeposits,
     Users,
 }
 
@@ -134,22 +136,44 @@ struct Rescue {
     refunded: bool,
 }
 
+/// What the vault was set up with, for anyone checking it.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Config {
+    pub tokens: Vec<AccountId>,
+    /// The only token rescues pay in. Caps are in its base units.
+    pub rescue_token: AccountId,
+    /// The key whose signature a rescue's quote needs: 1Click's on mainnet.
+    pub quote_signer: String,
+    pub destination_asset: String,
+    pub max_quote_age_sec: u64,
+}
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct Vault {
+    /// The first is the rescue token; the rest can be deposited and withdrawn.
     tokens: Vec<AccountId>,
+    quote_signer: [u8; 32],
     accounts: LookupMap<AccountId, UserAccount>,
     reserves: LookupMap<(AccountId, AccountId), u128>,
     rescues: LookupMap<(AccountId, u32), Rescue>,
-    used_quotes: LookupSet<(AccountId, String)>,
+    /// Every deposit address ever paid, so no quote can be used twice, by anyone.
+    used_deposits: LookupSet<AccountId>,
     users: Vector<AccountId>,
 }
 
 #[near]
 impl Vault {
+    /// `tokens[0]` is the token rescues pay in. `quote_signer` is the key 1Click signs
+    /// quotes with (`ed25519:…`); `get_config` shows it so anyone can compare.
     #[init]
-    pub fn new(tokens: Vec<AccountId>) -> Self {
+    #[private]
+    pub fn new(tokens: Vec<AccountId>, quote_signer: String) -> Self {
         require!(!tokens.is_empty(), "the token list is empty");
+        let Some(signer) = quote::parse_public_key(&quote_signer) else {
+            env::panic_str("quote_signer must be an ed25519 public key");
+        };
         let mut unique: Vec<AccountId> = Vec::with_capacity(tokens.len());
         for token in tokens {
             if !unique.contains(&token) {
@@ -158,10 +182,11 @@ impl Vault {
         }
         Self {
             tokens: unique,
+            quote_signer: signer,
             accounts: LookupMap::new(StorageKey::Accounts),
             reserves: LookupMap::new(StorageKey::Reserves),
             rescues: LookupMap::new(StorageKey::Rescues),
-            used_quotes: LookupSet::new(StorageKey::UsedQuotes),
+            used_deposits: LookupSet::new(StorageKey::UsedDeposits),
             users: Vector::new(StorageKey::Users),
         }
     }
@@ -251,7 +276,11 @@ impl Vault {
     }
 
     /// Sends `amount` of the user's reserve to a 1Click deposit address, if every rule holds.
+    /// `quote` is the text 1Click signed and `signature` its signature: the deposit
+    /// address, recipient, amount and refund account are all read from it, so a keeper
+    /// can only pay a deposit 1Click quoted for this user's own Hyperliquid account.
     /// Resolves to `true` once the transfer lands, or `false` if it failed and was refunded.
+    #[allow(clippy::too_many_arguments)]
     pub fn rescue(
         &mut self,
         user: AccountId,
@@ -260,6 +289,8 @@ impl Vault {
         deposit_address: AccountId,
         recipient: String,
         quote_id: String,
+        quote: String,
+        signature: String,
     ) -> Promise {
         require!(env::prepaid_gas() >= MIN_RESCUE_GAS, "attach at least 60 Tgas, so a failed transfer can be refunded");
         let (policy, paused, count) = match self.accounts.get(&user) {
@@ -268,7 +299,7 @@ impl Vault {
         };
         require!(env::predecessor_account_id() == policy.keeper, "NOT_KEEPER: only the keeper this user chose can rescue");
         require!(!paused, "PAUSED: this user has paused rescues");
-        require!(self.tokens.contains(&token), "UNKNOWN_TOKEN: this vault doesn't hold that token");
+        require!(token == self.tokens[0], "UNKNOWN_TOKEN: rescues pay in the vault's first token only");
         require!(
             recipient.to_ascii_lowercase() == policy.hl_address,
             "RECIPIENT_MISMATCH: the recipient isn't this user's Hyperliquid address"
@@ -279,8 +310,20 @@ impl Vault {
             !quote_id.is_empty() && quote_id.len() <= MAX_QUOTE_ID_LEN,
             "BAD_QUOTE_ID: the quote id must be 1 to 128 characters"
         );
-        let quote_key = (user.clone(), quote_id.clone());
-        require!(!self.used_quotes.contains(&quote_key), "QUOTE_REUSED: this quote was already used for this user");
+        require!(!self.used_deposits.contains(&deposit_address), "DEPOSIT_REUSED: this deposit address was already paid");
+        require!(quote.len() <= MAX_QUOTE_LEN, "BAD_QUOTE: the quote is too long");
+        require!(quote::is_signed(&quote, &signature, &self.quote_signer), "BAD_QUOTE: 1Click didn't sign this quote");
+        let expected = quote::Expected {
+            user: user.as_str(),
+            token: token.as_str(),
+            amount: amount.0,
+            deposit_address: deposit_address.as_str(),
+            hl_address: &policy.hl_address,
+            now_ms: env::block_timestamp_ms(),
+        };
+        if let Err(problems) = quote::check(&quote, &expected) {
+            env::panic_str(&format!("BAD_QUOTE: {problems}"));
+        }
 
         let now = env::block_timestamp();
         let (spent, last_at) = self.window(&user, count, now);
@@ -313,7 +356,7 @@ impl Vault {
         if let Some(account) = self.accounts.get_mut(&user) {
             account.rescue_count = count + 1;
         }
-        self.used_quotes.insert(quote_key);
+        self.used_deposits.insert(deposit_address.clone());
         emit(
             "rescue",
             json!({
@@ -430,6 +473,21 @@ impl Vault {
     pub fn get_tokens(&self) -> Vec<AccountId> {
         self.tokens.clone()
     }
+
+    /// How many rescues the user has had, so a reader can start from the newest.
+    pub fn get_rescue_count(&self, user: AccountId) -> u32 {
+        self.accounts.get(&user).map_or(0, |account| account.rescue_count)
+    }
+
+    pub fn get_config(&self) -> Config {
+        Config {
+            tokens: self.tokens.clone(),
+            rescue_token: self.tokens[0].clone(),
+            quote_signer: format!("ed25519:{}", near_sdk::bs58::encode(self.quote_signer).into_string()),
+            destination_asset: quote::HYPERLIQUID_USDC.to_string(),
+            max_quote_age_sec: quote::MAX_QUOTE_AGE_MS / 1000,
+        }
+    }
 }
 
 impl Vault {
@@ -460,7 +518,7 @@ impl Vault {
                 break;
             }
             scanned += 1;
-            require!(scanned <= MAX_WINDOW_SCAN, "OVER_DAILY: too many rescues in the last 24 hours");
+            require!(scanned < MAX_WINDOW_SCAN, "OVER_DAILY: too many rescues in the last 24 hours");
             if !rescue.refunded {
                 spent = spent.saturating_add(rescue.amount);
                 last_at = last_at.or(Some(rescue.at));
