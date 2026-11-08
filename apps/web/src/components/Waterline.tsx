@@ -116,13 +116,35 @@ export function Waterline({
     s.wake();
   }, [health, tone, reduced, scaleTop, scaleMax, quietLeft]);
 
+  /** Where the line starts (the reserve square) and lands (beside the readout), from the layout as it is now. */
+  const measure = () => {
+    const el = box.current;
+    if (!el) return;
+    const s = live.current;
+    const rect = el.getBoundingClientRect();
+    const readout = rider.current?.firstElementChild?.getBoundingClientRect();
+    s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 18) : rect.width * 0.6;
+    const square = anchorSquare.current?.getBoundingClientRect();
+    const spine = ladder.current?.getBoundingClientRect();
+    s.anchor = square
+      ? { x: square.left + square.width / 2 - rect.left, y: square.top + square.height / 2 - rect.top }
+      : spine
+        ? { x: spine.left - rect.left, y: spine.top - rect.top - 30 }
+        : { x: rect.width * 0.95, y: 12 };
+  };
+  const measureRef = useRef(measure);
+  measureRef.current = measure;
+
+  // A change of scale moves the ladder without resizing the box, so measure again.
+  useEffect(() => {
+    measureRef.current();
+  }, [scaleTop, scaleMax, anchorLabel, size]);
+
   const lastThrow = useRef(throwSignal);
   useEffect(() => {
     if (throwSignal === lastThrow.current) return;
     lastThrow.current = throwSignal;
-    const rect = box.current?.getBoundingClientRect();
-    const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-    if (rect && readout && readout.width > 0) live.current.focusX = Math.min(rect.width - 24, readout.right - rect.left + 18);
+    measureRef.current();
     live.current.throwAt = performance.now();
     live.current.wake();
   }, [throwSignal]);
@@ -149,15 +171,7 @@ export function Waterline({
       cv.width = Math.round(rect.width * dpr);
       cv.height = Math.round(rect.height * dpr);
       rope.current?.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
-      const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-      s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 18) : rect.width * 0.6;
-      const square = anchorSquare.current?.getBoundingClientRect();
-      const spine = ladder.current?.getBoundingClientRect();
-      s.anchor = square
-        ? { x: square.left + square.width / 2 - rect.left, y: square.top + square.height / 2 - rect.top }
-        : spine
-          ? { x: spine.left - rect.left, y: spine.top - rect.top - 30 }
-          : { x: rect.width * 0.95, y: 12 };
+      measureRef.current();
       s.wake();
     };
     const observer = new ResizeObserver(resize);
