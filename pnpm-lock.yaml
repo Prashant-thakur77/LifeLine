@@ -230,6 +230,9 @@ importers:
       '@phala/dcap-qvl-node':
         specifier: 0.3.3
         version: 0.3.3
+      '@phala/dcap-qvl-web':
+        specifier: 0.3.3
+        version: 0.3.3
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
@@ -572,6 +575,9 @@ packages:
 
   '@phala/dcap-qvl-node@0.3.3':
     resolution: {integrity: sha512-Iakz7N6VfWXWfgDkgJ5PFr414UV8BD3mk9ssEd0sFFiGNgiAwzD/wE2zwsGRya7qYYC+R8rvg4uEHXQfu1ArAQ==}
+
+  '@phala/dcap-qvl-web@0.3.3':
+    resolution: {integrity: sha512-pCSZVCMT13K5dAU+Cb5TURT0GXZ6MKvHfgQxUbELAMY8OiQglztpVN42WOjUt17z2iQjBHUWhpwodPgGO+D+CQ==}
 
   '@rolldown/binding-android-arm-eabi@1.2.16':
     resolution: {integrity: sha512-ia3DwAs0OsMGS7+IConptSiyk9pEXkOx/AbJ2n/lAGxH3QkWQus1t8d7gnAT38FCU2sQu8lUbeR6AiZFv4JxaA==}
@@ -1544,6 +1550,8 @@ snapshots:
   '@oxc-project/types@0.156.0': {}
 
   '@phala/dcap-qvl-node@0.3.3': {}
+
+  '@phala/dcap-qvl-web@0.3.3': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.16':
     optional: true

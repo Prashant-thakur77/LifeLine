@@ -1,4 +1,3 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AttestationResponse, TelegramLinkResponse } from "@lifeline/shared";
 import type { Store } from "./store";
 
@@ -31,6 +30,15 @@ class HttpError extends Error {
   }
 }
 
+export const corsHeaders = (origin: string): Record<string, string> => ({
+  "access-control-allow-origin": origin,
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-headers": "content-type",
+});
+
+export const jsonResponse = (status: number, body: unknown, origin: string): Response =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders(origin), "content-type": "application/json" } });
+
 function parseLimit(params: URLSearchParams): number {
   const raw = params.get("limit");
   if (raw === null) return DEFAULT_LIMIT;
@@ -38,15 +46,29 @@ function parseLimit(params: URLSearchParams): number {
   return Math.min(Number(raw), MAX_LIMIT);
 }
 
-async function readBody(request: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
+/** Counts bytes as they arrive, so a body with no length, or a false one, can't run past the limit. */
+async function readBody(request: Request): Promise<string> {
+  if (request.body === null) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
   let size = 0;
-  for await (const chunk of request) {
-    size += (chunk as Buffer).length;
-    if (size > MAX_BODY_BYTES) throw new HttpError(413, "body too large");
-    chunks.push(chunk as Buffer);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new HttpError(413, "body too large");
+    }
+    chunks.push(value);
   }
-  return Buffer.concat(chunks).toString("utf8");
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 function parseLinkUser(body: string): string {
@@ -63,15 +85,6 @@ function parseLinkUser(body: string): string {
   return user;
 }
 
-/** Any client can send any path, and a throw outside the promise chain would kill the keeper. */
-function parseUrl(raw: string | undefined): URL {
-  try {
-    return new URL(raw ?? "/", "http://keeper");
-  } catch {
-    throw new HttpError(400, "badly formed path");
-  }
-}
-
 function decodeSegment(segment: string): string {
   try {
     return decodeURIComponent(segment);
@@ -80,75 +93,62 @@ function decodeSegment(segment: string): string {
   }
 }
 
-/** Serves the REST API from the plan's Shared interfaces. It only reads the store. */
-export function createApi(deps: ApiDeps): Server {
-  const { store, now, botUsername, attestation, corsOrigin } = deps;
+async function route(request: Request, deps: ApiDeps): Promise<unknown> {
+  const { store, now, botUsername, attestation } = deps;
+  const { pathname, searchParams } = new URL(request.url);
+  const expect = (allowed: string) => {
+    if (request.method !== allowed) throw new HttpError(405, `use ${allowed}`);
+  };
 
-  const route = async (request: IncomingMessage, method: string): Promise<unknown> => {
-    const { pathname, searchParams } = parseUrl(request.url);
-    const expect = (allowed: string) => {
-      if (method !== allowed) throw new HttpError(405, `use ${allowed}`);
-    };
+  if (pathname.startsWith("/api/health/")) {
+    expect("GET");
+    const user = decodeSegment(pathname.slice("/api/health/".length));
+    const health = store.health(user);
+    if (health === null) throw new HttpError(404, "this user isn't being watched");
+    return health;
+  }
 
-    if (pathname.startsWith("/api/health/")) {
+  switch (pathname) {
+    case "/api/audit": {
       expect("GET");
-      const user = decodeSegment(pathname.slice("/api/health/".length));
-      const health = store.health(user);
-      if (health === null) throw new HttpError(404, "this user isn't being watched");
-      return health;
+      const user = searchParams.get("user");
+      if (!user) throw new HttpError(400, "user is required");
+      return store.audit(user, parseLimit(searchParams));
     }
-
-    switch (pathname) {
-      case "/api/audit": {
-        expect("GET");
-        const user = searchParams.get("user");
-        if (!user) throw new HttpError(400, "user is required");
-        return store.audit(user, parseLimit(searchParams));
-      }
-      case "/api/ledger":
-        expect("GET");
-        return store.ledger(parseLimit(searchParams));
-      case "/api/stats":
-        expect("GET");
-        return store.stats();
-      case "/api/attestation":
-        expect("GET");
-        return attestation();
-      case "/api/telegram/link": {
-        expect("POST");
-        const user = parseLinkUser(await readBody(request));
-        if (botUsername === null) throw new HttpError(503, "the Telegram bot isn't set up");
-        if (store.health(user) === null) throw new HttpError(404, "this user isn't being watched");
-        const response: TelegramLinkResponse = { ...store.createTelegramCode(user, now()), botUsername };
-        return response;
-      }
-      default:
-        throw new HttpError(404, "not found");
+    case "/api/ledger":
+      expect("GET");
+      return store.ledger(parseLimit(searchParams));
+    case "/api/stats":
+      expect("GET");
+      return store.stats();
+    case "/api/attestation":
+      expect("GET");
+      return attestation();
+    case "/api/telegram/link": {
+      expect("POST");
+      const user = parseLinkUser(await readBody(request));
+      if (botUsername === null) throw new HttpError(503, "the Telegram bot isn't set up");
+      if (store.health(user) === null) throw new HttpError(404, "this user isn't being watched");
+      const response: TelegramLinkResponse = { ...store.createTelegramCode(user, now()), botUsername };
+      return response;
     }
-  };
+    default:
+      throw new HttpError(404, "not found");
+  }
+}
 
-  const respond = (response: ServerResponse, status: number, body?: unknown) => {
-    response.writeHead(status, {
-      "access-control-allow-origin": corsOrigin,
-      "access-control-allow-methods": "GET, POST, OPTIONS",
-      "access-control-allow-headers": "content-type",
-      ...(body === undefined ? {} : { "content-type": "application/json" }),
-    });
-    response.end(body === undefined ? undefined : JSON.stringify(body));
-  };
-
-  return createServer((request, response) => {
-    const method = request.method ?? "GET";
-    if (method === "OPTIONS") {
-      respond(response, 204);
-      return;
-    }
-    route(request, method).then(
-      (body) => respond(response, 200, body),
-      (error: unknown) => {
-        if (error instanceof HttpError) respond(response, error.status, { error: error.message });
-        else respond(response, 500, { error: "internal error" });
-      },
-    );
-  });
+/**
+ * The REST API from the plan's Shared interfaces, as a plain Request-to-Response
+ * function: the Cloudflare Worker calls it directly, and api-node.ts serves it in
+ * Node. It only reads the store, apart from issuing link codes. It never throws.
+ */
+export async function handleApi(request: Request, deps: ApiDeps): Promise<Response> {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(deps.corsOrigin) });
+  try {
+    return jsonResponse(200, await route(request, deps), deps.corsOrigin);
+  } catch (error) {
+    return error instanceof HttpError
+      ? jsonResponse(error.status, { error: error.message }, deps.corsOrigin)
+      : jsonResponse(500, { error: "internal error" }, deps.corsOrigin);
+  }
 }

@@ -3,7 +3,7 @@ import type { AuditRecord, Policy } from "@lifeline/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Keeper } from "../src/keeper";
 import { QuoteRefusedError, VaultRejectedError, type Intents, type Quote, type QuoteParams, type RescueArgs, type SwapStatus, type Vault } from "../src/ports";
-import { Store } from "../src/store";
+import { openStore } from "../src/sql-node";
 import { AT, HL, policy as basePolicy, snapshot, USER } from "./helpers";
 
 const MIN = 60 * 1000;
@@ -92,7 +92,7 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
     },
   };
 
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const keeper = new Keeper({
     store,
     vault,

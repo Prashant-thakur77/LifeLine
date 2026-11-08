@@ -3,7 +3,7 @@ import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import type { Intents } from "../src/ports";
 import { runSim, SIM_USER } from "../src/sim";
-import { Store } from "../src/store";
+import { openStore } from "../src/sql-node";
 
 const AT_MS = Date.parse("2026-11-08T15:00:00.000Z");
 const BOT_INFO = {
@@ -43,7 +43,7 @@ describe("the keeper and the bot together", () => {
   it("links a chat through the real store, then messages it through a whole rescue", async () => {
     let nowMs = AT_MS;
     const now = () => new Date(nowMs);
-    const store = new Store(":memory:");
+    const store = openStore(":memory:");
     const telegram = createLifelineBot({
       token: "1:fake",
       botInfo: BOT_INFO,

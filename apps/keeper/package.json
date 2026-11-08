@@ -21,6 +21,7 @@
     "@lifeline/policy": "workspace:*",
     "@lifeline/shared": "workspace:*",
     "@phala/dcap-qvl-node": "0.3.3",
+    "@phala/dcap-qvl-web": "0.3.3",
     "better-sqlite3": "13.0.3",
     "jose": "6.2.15",
     "near-api-js": "7.4.0"

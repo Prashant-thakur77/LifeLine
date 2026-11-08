@@ -6,9 +6,9 @@ import {
   DEFAULT_NEAR_AI_MODEL,
   DEFAULT_NEAR_AI_URL,
   describeRecord,
+  openStore,
   runSim,
   SIM_USER,
-  Store,
 } from "@lifeline/keeper";
 import { describeAudit, describeQuote } from "./demo-format";
 
@@ -28,7 +28,7 @@ async function main() {
   console.log("Policy: warn at health 1.8, rescue below 1.5, back up to 2.0, at most 25 USDC per rescue.\n");
   console.log("Now the price is shocked down, one step a second:\n");
 
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const log = (line: string) => console.log(`  (${line})`);
   const explainer = createExplainer({
     baseUrl: process.env.NEAR_AI_BASE_URL?.trim() || DEFAULT_NEAR_AI_URL,

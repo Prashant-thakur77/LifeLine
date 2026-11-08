@@ -2,7 +2,7 @@ import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import type { Intents, QuoteParams } from "../src/ports";
 import { createSimWorld, PRICE_DROP, runSim, SIM_USER } from "../src/sim";
-import { Store } from "../src/store";
+import { openStore } from "../src/sql-node";
 
 const AT_MS = Date.parse("2026-11-08T15:00:00.000Z");
 
@@ -29,7 +29,7 @@ function fakeQuotes(seen: QuoteParams[] = []): Pick<Intents, "getQuote"> {
 
 const run = async (seen: QuoteParams[] = []) => {
   let nowMs = AT_MS;
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const result = await runSim({
     store,
     quotes: fakeQuotes(seen),
@@ -92,7 +92,7 @@ describe("the scripted price drop", () => {
 describe("starting from a live price", () => {
   it("gives the same story at any price, because the position scales with it", async () => {
     let nowMs = AT_MS;
-    const store = new Store(":memory:");
+    const store = openStore(":memory:");
     const ticks: { price: number; health: number }[] = [];
     await runSim({
       store,
