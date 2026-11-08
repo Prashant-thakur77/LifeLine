@@ -454,6 +454,17 @@ body::after {
   transform: translateX(22px);
 }
 
+/* A new ledger entry slides into the feed. */
+.feed-in {
+  animation: feed-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes feed-in {
+  from {
+    transform: translateY(-10px);
+    background-color: rgb(255 247 234 / 0.6);
+  }
+}
+
 /* Lenis, on the landing page only. */
 html.lenis,
 html.lenis body {

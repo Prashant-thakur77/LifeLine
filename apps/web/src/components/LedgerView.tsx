@@ -8,6 +8,7 @@ import { config } from "../lib/env";
 import { keeper } from "../lib/keeper";
 import { groupRecords, matchesFilter, type LedgerFilter } from "../lib/records";
 import { EventList } from "./EventList";
+import { RefusalReceipt } from "./RefusalReceipt";
 import { FilterBar } from "./HistoryView";
 import { SimBanner } from "./Viewing";
 import { Notice, PageHeader, Skeleton, cx } from "./ui";
@@ -55,6 +56,21 @@ export function LedgerView() {
           {events.length} events across {users} {users === 1 ? "account" : "accounts"}, from the latest 200 records. Refreshes every 15 s.
         </p>
       ) : null}
+
+      <section aria-labelledby="pinned-title" className="mb-8 grid grid-cols-1 items-start gap-5 rounded-xl border-2 border-ink bg-sea p-5 text-paper sm:p-6 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <p className="font-readout text-[11px] uppercase tracking-[0.1em] text-paper">Pinned · on chain</p>
+          <h2 id="pinned-title" className="mt-2 text-[clamp(26px,3vw,38px)] font-extrabold uppercase leading-[0.92] [font-variation-settings:'wdth'_72]">
+            The vault refusing a hacked keeper
+          </h2>
+          <p className="mt-3 text-[14.5px] leading-relaxed text-paper/90">
+            The keeper&apos;s own restricted key called rescue with the user&apos;s real address and a correctly signed quote, but pointed the money at itself. The
+            contract refused. On testnet the vault trusts a team key in place of 1Click&apos;s, because 1Click has no testnet; <code className="font-readout text-[12.5px]">pnpm demo:attack</code> re-checks this
+            transaction on a public node.
+          </p>
+        </div>
+        <RefusalReceipt className="lg:col-span-7" />
+      </section>
 
       <FilterBar filter={filter} onChange={setFilter} events={events} />
 

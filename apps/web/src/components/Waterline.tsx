@@ -381,6 +381,13 @@ export function Waterline({
         </div>
       </div>
 
+      {size === "hero" ? (
+        /* A paper shoreline, so the sea ends in a cut edge rather than a ruled line. */
+        <svg viewBox="0 0 1200 28" preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 bottom-[-1px] h-7 w-full" aria-hidden>
+          <path d="M0 18 C 100 4, 200 4, 300 16 S 500 30, 600 16 S 800 2, 900 14 S 1100 28, 1200 12 L 1200 28 L 0 28 Z" fill="var(--color-paper)" />
+        </svg>
+      ) : null}
+
       <svg ref={rope} className="pointer-events-none absolute inset-0 size-full opacity-0" aria-hidden>
         <path ref={ropePath} fill="none" stroke="var(--color-ink)" strokeWidth="4" strokeLinecap="round" />
         <path ref={ropeTwist} fill="none" stroke="var(--color-rescue)" strokeWidth="2" strokeDasharray="3 6" strokeLinecap="round" />
