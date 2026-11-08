@@ -1,8 +1,8 @@
 {
   "network": "testnet",
-  "txHash": "5Hu2117RPYyzzaeNpP8LrqXTxBhf2bp3XENoSeZBhjBh",
+  "txHash": "A9QZC5bVA1iQUo2CEhksRNFvj77951GrmmJq835joKCn",
   "signer": "keeper.lifeline-team.testnet",
   "vault": "vault.lifeline-team.testnet",
   "failure": "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: BAD_QUOTE: its deposit address isn't the one this rescue pays\"}}}}",
-  "recordedAt": "2026-11-08T14:18:33.471Z"
+  "recordedAt": "2026-11-08T14:35:50.734Z"
 }

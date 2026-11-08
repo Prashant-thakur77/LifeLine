@@ -37,8 +37,8 @@ What happened there on 8 November 2026, all signed by the keeper's restricted ke
 | Step | Transaction | Result |
 | --- | --- | --- |
 | The keeper's full-access key is deleted | [4uXrSTGv…](https://testnet.nearblocks.io/txns/4uXrSTGvcrEX48y1nkmW4c44ztSgbDdT1ERfmCnHaKR8) | Only the `rescue` key is left |
-| A rescue of 1 USDC with a signed quote, paid to its fresh deposit address | [8awWAs84…](https://testnet.nearblocks.io/txns/8awWAs84NnMWxqGeBX6YZ55dE2UxxJKB5P3aXZYjvhnz) | `true`, and the address holds 1 USDC |
-| A rescue with Alice's real address as recipient and a signed quote, but the money pointed at the keeper's own account | [5Hu2117R…](https://testnet.nearblocks.io/txns/5Hu2117RPYyzzaeNpP8LrqXTxBhf2bp3XENoSeZBhjBh) | Refused: `BAD_QUOTE: its deposit address isn't the one this rescue pays` |
+| A rescue of 2 USDC with a signed quote, paid to its fresh deposit address | [A7P6pJz3…](https://testnet.nearblocks.io/txns/A7P6pJz3VxEGt6hPxgMHkk9meSFLbxmsFD6TvEhL9mDE) | `true`, and the address holds 2 USDC |
+| A rescue with Alice's real address as recipient and a signed quote, but the money pointed at the keeper's own account | [A9QZC5bV…](https://testnet.nearblocks.io/txns/A9QZC5bVA1iQUo2CEhksRNFvj77951GrmmJq835joKCn) | Refused: `BAD_QUOTE: its deposit address isn't the one this rescue pays` |
 | The keeper's key tries `withdraw` | not sent | NEAR refuses to sign it: a function-call key can't attach a deposit |
 
 ## Methods

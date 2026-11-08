@@ -23,7 +23,7 @@ The steps for Gate 2: the vault and keeper on mainnet, then the first real rescu
 
 ```sh
 # Sub-accounts
-near account create-account fund-myself vault.$TEAM '3 NEAR' autogenerate-new-keypair save-to-legacy-keychain sign-as $TEAM network-config mainnet sign-with-legacy-keychain send
+near account create-account fund-myself vault.$TEAM '3.5 NEAR' autogenerate-new-keypair save-to-legacy-keychain sign-as $TEAM network-config mainnet sign-with-legacy-keychain send
 near account create-account fund-myself keeper.$TEAM '0.5 NEAR' autogenerate-new-keypair save-to-legacy-keychain sign-as $TEAM network-config mainnet sign-with-legacy-keychain send
 
 # The contract: USDC for rescues, wNEAR for deposits, and 1Click's quote-signing key (from its SDK)
