@@ -1,0 +1,29 @@
+// The keeper on Cloudflare. One Durable Object runs everything: the watch loop on its
+// alarm every 5 s, the audit log in its own SQLite, the REST API and the Telegram webhook.
+//
+//   pnpm --filter keeper cf:dev           the sim, locally, on Cloudflare's runtime
+//   pnpm --filter keeper cf:deploy:sim    the public demo at lifeline-sim.prashantthakur.dev
+//
+// The top level is the real keeper. It needs its secrets set first (see README), and
+// mainnet still needs KEEPER_ALLOW_MAINNET=yes, so deploying it unset only serves a 503.
+{
+  "name": "lifeline-keeper",
+  "main": "src/cloudflare/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "KEEPER", "class_name": "KeeperObject" }] },
+  "exports": { "KeeperObject": { "type": "durable-object", "storage": "sqlite" } },
+  // Wakes the object after a deploy, and re-arms its alarm if the loop ever stopped.
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true },
+  "vars": { "KEEPER_MODE": "live", "PUBLIC_URL": "https://lifeline-keeper.prashantthakur.dev" },
+  "routes": [{ "pattern": "lifeline-keeper.prashantthakur.dev", "custom_domain": true }],
+  "env": {
+    "sim": {
+      "name": "lifeline-sim",
+      "durable_objects": { "bindings": [{ "name": "KEEPER", "class_name": "KeeperObject" }] },
+      "vars": { "KEEPER_MODE": "sim", "PUBLIC_URL": "https://lifeline-sim.prashantthakur.dev" },
+      "routes": [{ "pattern": "lifeline-sim.prashantthakur.dev", "custom_domain": true }]
+    }
+  }
+}

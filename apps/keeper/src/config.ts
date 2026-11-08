@@ -38,6 +38,33 @@ export function parseMode(argv: string[]): Mode {
 
 const optional = (value: string | undefined) => (value?.trim() ? value.trim() : undefined);
 
+export type ServiceSettings = Pick<
+  LiveConfig,
+  "oneClickUrl" | "oneClickJwt" | "corsOrigin" | "dashboardUrl" | "botUsername" | "botToken" | "nearAiUrl" | "nearAiModel" | "nearAiKey"
+>;
+
+/** What --live and the hosted sim both use: 1Click, the dashboard, the Telegram bot and NEAR AI. */
+export function readServiceSettings(env: Env): ServiceSettings {
+  const botToken = optional(env.TELEGRAM_BOT_TOKEN) ?? null;
+  // No token means no bot, so the API mustn't hand out codes for one.
+  const botUsername = botToken === null ? null : (optional(env.TELEGRAM_BOT_USERNAME) ?? null);
+  if (botToken !== null && botUsername === null) throw new Error("TELEGRAM_BOT_TOKEN also needs TELEGRAM_BOT_USERNAME");
+  if (botToken !== null && optional(env.DASHBOARD_URL) === undefined) {
+    throw new Error("TELEGRAM_BOT_TOKEN also needs DASHBOARD_URL, or /pause would link people to localhost");
+  }
+  return {
+    oneClickUrl: optional(env.ONECLICK_API_URL) ?? "https://1click.chaindefuser.com",
+    oneClickJwt: optional(env.ONECLICK_JWT),
+    corsOrigin: optional(env.DASHBOARD_URL) ?? "*",
+    dashboardUrl: optional(env.DASHBOARD_URL) ?? "http://localhost:3000",
+    botUsername,
+    botToken,
+    nearAiUrl: optional(env.NEAR_AI_BASE_URL) ?? DEFAULT_NEAR_AI_URL,
+    nearAiModel: optional(env.NEAR_AI_MODEL) ?? DEFAULT_NEAR_AI_MODEL,
+    nearAiKey: optional(env.NEAR_AI_API_KEY) ?? null,
+  };
+}
+
 /**
  * Reads --live's settings. Mainnet moves real money, so it needs its own explicit
  * yes, and every account must belong to the network named. Errors name settings,
@@ -64,14 +91,7 @@ export function readLiveConfig(env: Env): LiveConfig {
     if (!account.endsWith(suffix)) throw new Error(`${account} isn't a ${network} account: it must end in ${suffix}`);
   }
 
-  const botToken = optional(env.TELEGRAM_BOT_TOKEN) ?? null;
-  // No token means no bot, so the API mustn't hand out codes for one.
-  const botUsername = botToken === null ? null : (optional(env.TELEGRAM_BOT_USERNAME) ?? null);
-  if (botToken !== null && botUsername === null) throw new Error("TELEGRAM_BOT_TOKEN also needs TELEGRAM_BOT_USERNAME");
-  if (botToken !== null && optional(env.DASHBOARD_URL) === undefined) {
-    throw new Error("TELEGRAM_BOT_TOKEN also needs DASHBOARD_URL, or /pause would link people to localhost");
-  }
-
+  const service = readServiceSettings(env);
   const rawPort = optional(env.KEEPER_PORT) ?? "8787";
   if (!/^\d+$/.test(rawPort)) throw new Error("KEEPER_PORT must be a number");
 
@@ -82,16 +102,8 @@ export function readLiveConfig(env: Env): LiveConfig {
     keeperAccountId,
     keeperKey: env.KEEPER_PRIVATE_KEY as string,
     users,
-    oneClickUrl: optional(env.ONECLICK_API_URL) ?? "https://1click.chaindefuser.com",
-    oneClickJwt: optional(env.ONECLICK_JWT),
     port: Number(rawPort),
     dbPath: optional(env.KEEPER_DB_PATH) ?? "./data/keeper.sqlite",
-    corsOrigin: optional(env.DASHBOARD_URL) ?? "*",
-    dashboardUrl: optional(env.DASHBOARD_URL) ?? "http://localhost:3000",
-    botUsername,
-    botToken,
-    nearAiUrl: optional(env.NEAR_AI_BASE_URL) ?? DEFAULT_NEAR_AI_URL,
-    nearAiModel: optional(env.NEAR_AI_MODEL) ?? DEFAULT_NEAR_AI_MODEL,
-    nearAiKey: optional(env.NEAR_AI_API_KEY) ?? null,
+    ...service,
   };
 }

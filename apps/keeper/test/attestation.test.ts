@@ -15,6 +15,7 @@ import {
   type AttestationOptions,
   type IntelDcap,
 } from "../src/attestation";
+import { NOT_AVAILABLE_ATTESTATION } from "../src/api";
 import { nodeIntel } from "../src/intel-node";
 import { webIntel } from "../src/intel-web";
 import collateral from "./recorded/attestation-collateral.json";
@@ -619,5 +620,69 @@ describe.each(ENGINES)("Intel's quote verifier, %s", (_engine, intel) => {
     const at = quote.length - 200;
     const tampered = quote.slice(0, at) + (quote[at] === "0" ? "1" : "0") + quote.slice(at + 1);
     expect(() => verifyQuoteOffline(tampered, collateral.model, BigInt(meta.recordedAtSec), intel)).toThrow();
+  });
+});
+
+describe("AttestationMonitor on a host that ticks, like a Durable Object", () => {
+  const verified: AttestationResponse = { status: "verified", checkedAt: "t", model: "m", checks: [] };
+  const HOUR = 3_600_000;
+
+  const counting = (result: () => Promise<AttestationResponse>) => {
+    let checks = 0;
+    const monitor = new AttestationMonitor(
+      () => {
+        checks += 1;
+        return result();
+      },
+      { sleep: async () => {} },
+    );
+    return { monitor, checks: () => checks };
+  };
+
+  it("checks on the first tick, and serves the result", async () => {
+    const t = counting(async () => verified);
+    await t.monitor.refreshIfDue(0);
+    expect(t.checks()).toBe(1);
+    expect(t.monitor.latest().status).toBe("verified");
+  });
+
+  it("doesn't start a second check while one is running", async () => {
+    let finish: (value: AttestationResponse) => void = () => {};
+    const t = counting(() => new Promise((resolve) => (finish = resolve)));
+    const first = t.monitor.refreshIfDue(0);
+    void t.monitor.refreshIfDue(5_000);
+    expect(t.checks()).toBe(1);
+    finish(verified);
+    await first;
+  });
+
+  it("rechecks a verified result after 6 hours, not before", async () => {
+    const t = counting(async () => verified);
+    await t.monitor.refreshIfDue(0);
+    await t.monitor.refreshIfDue(6 * HOUR - 1);
+    expect(t.checks()).toBe(1);
+    await t.monitor.refreshIfDue(6 * HOUR);
+    expect(t.checks()).toBe(2);
+  });
+
+  it("rechecks after 10 minutes when the last check couldn't run, so an outage doesn't stick", async () => {
+    const t = counting(async () => NOT_AVAILABLE_ATTESTATION);
+    await t.monitor.refreshIfDue(0);
+    await t.monitor.refreshIfDue(10 * 60_000 - 1);
+    expect(t.checks()).toBe(1);
+    await t.monitor.refreshIfDue(10 * 60_000);
+    expect(t.checks()).toBe(2);
+  });
+
+  it("says not available when a check throws, and drops an old verified", async () => {
+    let fail = false;
+    const t = counting(async () => {
+      if (fail) throw new Error("boom");
+      return verified;
+    });
+    await t.monitor.refreshIfDue(0);
+    fail = true;
+    await t.monitor.refreshIfDue(6 * HOUR);
+    expect(t.monitor.latest().status).toBe("not available");
   });
 });

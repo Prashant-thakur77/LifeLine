@@ -1,4 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  // These two load Cloudflare's runtime, so tsconfig.worker.json checks them with its types.
+  "exclude": ["src/cloudflare/keeper-object.ts", "src/cloudflare/worker.ts", "src/cloudflare/wasm.d.ts"]
 }

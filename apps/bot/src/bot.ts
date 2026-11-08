@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import type { AuditRecord, HealthResponse } from "@lifeline/shared";
-import { Bot, GrammyError, type Context } from "grammy";
+import { Bot, GrammyError, webhookCallback, type Context } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
 import { formatRecord, formatStatus, type Network } from "./messages";
 
@@ -45,6 +46,8 @@ export function createLifelineBot(options: BotOptions) {
   const { token, store, dashboardUrl, network, now, log, botInfo, sendTimeoutMs = SEND_TIMEOUT_MS } = options;
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const bot = new Bot(token, botInfo ? { botInfo } : {});
+  // Telegram sends this back on every webhook call. Made from the token, so there's no second secret to keep.
+  const webhookSecret = createHash("sha256").update(`lifeline telegram webhook:${token}`).digest("hex");
   const queues = new Map<number, Promise<void>>();
   let stopped = false;
 
@@ -120,8 +123,19 @@ export function createLifelineBot(options: BotOptions) {
     }
   };
 
+  const onWebhook = webhookCallback(bot, "std/http", { secretToken: webhookSecret });
+
   return {
     bot,
+    webhookSecret,
+
+    /** Webhook mode, for a host that can't long-poll, like a Cloudflare Worker. A wrong or missing secret gets a 401. */
+    handleWebhook: (request: Request): Promise<Response> => onWebhook(request),
+
+    /** Points Telegram at the webhook. Old updates are dropped: a link code in them may have expired anyway. */
+    async registerWebhook(url: string): Promise<void> {
+      await bot.api.setWebhook(url, { secret_token: webhookSecret, allowed_updates: ["message"], drop_pending_updates: true });
+    },
 
     /** Never throws: a rescue can't depend on the bot. A chat's messages stay in order. */
     async notify(record: AuditRecord): Promise<void> {
@@ -157,3 +171,5 @@ export function createLifelineBot(options: BotOptions) {
     },
   };
 }
+
+export type LifelineBot = ReturnType<typeof createLifelineBot>;

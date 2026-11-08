@@ -44,6 +44,15 @@ describe("formatRecord", () => {
     expect(text).toContain("https://testnet.nearblocks.io/txns/HASH");
   });
 
+  it("marks a simulated rescue as one, with no links to transactions that don't exist", () => {
+    const sim = { ...request, depositAddress: "sim-7f3a" } as RescueRequest;
+    for (const kind of ["RESCUE_DONE", "RESCUE_FAILED"] as const) {
+      const text = formatRecord(record({ kind, healthBefore: 1.43, healthAfter: 2.01, nearTx: "sim-tx-1", request: sim }), "mainnet");
+      expect(text).toMatch(/simulation/i);
+      expect(text).not.toContain("http");
+    }
+  });
+
   it("doesn't claim a time or a health it doesn't have", () => {
     const text = formatRecord(record({ kind: "RESCUE_DONE", explanation: "It didn't show on Hyperliquid." }), "mainnet");
     expect(text).not.toMatch(/undefined|NaN/);

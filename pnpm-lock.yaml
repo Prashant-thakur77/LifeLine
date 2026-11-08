@@ -227,12 +227,18 @@ importers:
       '@lifeline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@noble/curves':
+        specifier: 2.2.0
+        version: 2.2.0
       '@phala/dcap-qvl-node':
         specifier: 0.3.3
         version: 0.3.3
       '@phala/dcap-qvl-web':
         specifier: 0.3.3
         version: 0.3.3
+      '@scure/base':
+        specifier: 2.2.0
+        version: 2.2.0
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
@@ -243,6 +249,9 @@ importers:
         specifier: 7.4.0
         version: 7.4.0
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261025.1
+        version: 5.20261025.1
       '@types/better-sqlite3':
         specifier: 9.6.0
         version: 9.6.0
@@ -376,6 +385,9 @@ importers:
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
 
 packages:
+
+  '@cloudflare/workers-types@5.20261025.1':
+    resolution: {integrity: sha512-tMRFCIZKRRieDIdAe38rpszuInDpG6ugnT8mHgJrBj8zR0EbdWeTkg8NunLhVfX3tpBatD0UXVbDuZfgZxe9Fg==}
 
   '@defuse-protocol/one-click-sdk-typescript@0.1.26':
     resolution: {integrity: sha512-vYoBgEbppergtYd/H1IaJW9Jm5mPrX+jAwuuhMvDFstirJB53KFe2HnGLTg0KNyg6qztbOeDK0sA/oEAee+EAw==}
@@ -1429,6 +1441,8 @@ packages:
     engines: {node: '>=0.4'}
 
 snapshots:
+
+  '@cloudflare/workers-types@5.20261025.1': {}
 
   '@defuse-protocol/one-click-sdk-typescript@0.1.26(debug@4.4.3)':
     dependencies:

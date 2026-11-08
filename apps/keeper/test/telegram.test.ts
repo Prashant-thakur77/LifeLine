@@ -92,7 +92,9 @@ describe("the keeper and the bot together", () => {
     expect(rescue[0]).toMatch(/warning/i);
     expect(rescue[1]).toMatch(/rescue started/i);
     expect(rescue[2]).toMatch(/rescue done/i);
-    expect(rescue[2]).toContain("https://nearblocks.io/txns/sim-tx-1");
+    // A sim rescue has no transaction to link to, so the message says so instead.
+    expect(rescue[2]).toMatch(/simulation/i);
+    expect(rescue[2]).not.toContain("nearblocks.io");
     store.close();
   });
 });

@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { ASSETS, POLICY_DEFAULTS, type AuditRecord, type Policy } from "@lifeline/shared";
 import { Keeper } from "./keeper";
 import type { Intents, ReadHealth, RescueArgs, RescueRecord, SwapStatus, Vault } from "./ports";
@@ -132,7 +131,7 @@ export async function runSim(options: {
     users: () => [SIM_USER],
     now,
     sleep,
-    newId: randomUUID,
+    newId: () => crypto.randomUUID(),
     dryQuotes: true,
     log,
     ...(onRecord ? { onRecord } : {}),
@@ -149,4 +148,82 @@ export async function runSim(options: {
   }
   await keeper.settled();
   return { sent: world.sent, reserveBefore, reserveAfter: world.reserve() };
+}
+
+export type SimLoop = {
+  /** One alarm's worth: moves the script on a step, or holds, then runs one keeper tick. */
+  tick(): Promise<void>;
+  /** Resolves once the current drop's rescue, if any, has finished. */
+  settled(): Promise<void>;
+};
+
+type Cycle = { world: SimWorld; keeper: Keeper; scale: number; step: number; heldSince: number | null; done: boolean };
+
+/**
+ * The scripted drop on repeat, for a hosted demo. Each tick moves the price one step;
+ * at the end the price holds while the keeper keeps watching, so the API shows the
+ * health after the rescue. After a rest, a new drop starts from the live price. Each
+ * drop gets a fresh pretend account and vault, so one drop's rescue can't count
+ * against the next one's caps or cooldown. Like runSim, only the quotes are real,
+ * and they're always dry.
+ */
+export function createSimLoop(options: {
+  store: Store;
+  quotes: Pick<Intents, "getQuote">;
+  now: () => Date;
+  sleep: (ms: number) => Promise<void>;
+  log: (line: string) => void;
+  restMs: number;
+  startPrice?: () => Promise<number>;
+  onRecord?: (record: AuditRecord) => void;
+}): SimLoop {
+  const { store, quotes, now, sleep, log, restMs, startPrice, onRecord } = options;
+  let cycle: Cycle | null = null;
+
+  const begin = async (): Promise<Cycle> => {
+    let entry = BASE_PRICE;
+    try {
+      const live = await startPrice?.();
+      if (live !== undefined && Number.isFinite(live) && live > 0) entry = live;
+    } catch (error) {
+      log(`sim: live price unavailable, starting at ${BASE_PRICE}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const world = createSimWorld({ quotes, now, entryPrice: entry });
+    const keeper = new Keeper({
+      store,
+      vault: world.vault,
+      intents: world.intents,
+      readHealth: world.readHealth,
+      users: () => [SIM_USER],
+      now,
+      sleep,
+      newId: () => crypto.randomUUID(),
+      dryQuotes: true,
+      log,
+      ...(onRecord ? { onRecord } : {}),
+    });
+    return { world, keeper, scale: entry / BASE_PRICE, step: 0, heldSince: null, done: false };
+  };
+
+  return {
+    async tick() {
+      const rested = cycle !== null && cycle.done && cycle.heldSince !== null && now().getTime() - cycle.heldSince >= restMs;
+      if (cycle === null || rested) cycle = await begin();
+      const current = cycle;
+      const scripted = PRICE_DROP[current.step];
+      if (scripted !== undefined) {
+        current.world.setPrice(scripted * current.scale);
+        current.step += 1;
+        if (current.step === PRICE_DROP.length) {
+          current.heldSince = now().getTime();
+          // The rest only counts once this drop's rescue has finished.
+          void current.keeper.settled().then(() => {
+            current.done = true;
+          });
+        }
+      }
+      await current.keeper.tick();
+    },
+    settled: () => cycle?.keeper.settled() ?? Promise.resolve(),
+  };
 }

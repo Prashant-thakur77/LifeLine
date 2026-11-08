@@ -382,4 +382,24 @@ export class AttestationMonitor {
   stop(): void {
     this.stopped = true;
   }
+
+  private checking = false;
+  private nextCheckAt = 0;
+
+  /**
+   * For a host that ticks, like a Durable Object, instead of run()'s own loop: starts a
+   * check when one is due, and resolves when that check is done. Same schedule as run().
+   */
+  async refreshIfDue(nowMs: number): Promise<void> {
+    if (this.checking || nowMs < this.nextCheckAt) return;
+    this.checking = true;
+    try {
+      this.current = await withTimeout(this.check(), this.options.checkTimeoutMs ?? CHECK_TIMEOUT_MS);
+    } catch {
+      this.current = NOT_AVAILABLE_ATTESTATION;
+    } finally {
+      this.checking = false;
+    }
+    this.nextCheckAt = nowMs + (this.current.status === "verified" ? VERIFIED_RECHECK_MS : UNVERIFIED_RECHECK_MS);
+  }
 }
