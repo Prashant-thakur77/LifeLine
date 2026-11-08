@@ -108,7 +108,7 @@ To watch it work, run `pnpm demo:attack`. It uses real signed 1Click quotes and 
 | Rescue a healthy account, to burn its reserve | Policy engine: `NOT_BELOW_TRIGGER` |
 | Reuse a stale quote | Policy engine: `QUOTE_STALE` |
 | Change a quote's recipient after 1Click signed it | Quote signature check |
-| Call `rescue` itself, with the user's real address, a genuinely signed quote and its own account as the destination | Vault contract, on chain: `BAD_QUOTE` (testnet now, mainnet at Gate 2) |
+| Call `rescue` itself, with the user's real address, a correctly signed quote and its own account as the destination | Vault contract, on chain: `BAD_QUOTE`. Shown on testnet, where the vault trusts a team key in place of 1Click's (1Click has no testnet); the mainnet vault trusts 1Click's key |
 
 The same run allows an honest rescue as a control, so it's clear the engine isn't just refusing everything. The last row is a real failed transaction, signed with the keeper's own restricted key, and the demo asks a public NEAR node about it each time rather than trusting a saved result.
 

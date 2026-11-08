@@ -144,8 +144,9 @@ export type AttackProof = {
 
 /**
  * The second layer, the attack that matters: a hacked keeper skips the engine and calls
- * rescue itself, with the user's real Hyperliquid address as recipient and a quote 1Click
- * really signed, but with its own account as where the money goes. The vault reads the
+ * rescue itself, with the user's real Hyperliquid address as recipient and a correctly signed
+ * quote (on testnet, signed by the team key that stands in for 1Click's), but with its own
+ * account as where the money goes. The vault reads the
  * deposit address from the signed quote, so it refuses. This sends a real transaction, so
  * only a human runs it. Should the vault ever accept it, the money goes to the team's own
  * keeper account, not to anyone else.
@@ -210,18 +211,30 @@ export async function checkProof(
   proof: AttackProof,
   rpcUrl: string,
   fetchFn: typeof fetch = fetch,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 ): Promise<{ refused: boolean; detail: string }> {
-  const response = await fetchFn(rpcUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "lifeline",
-      method: "tx",
-      params: { tx_hash: proof.txHash, sender_account_id: proof.signer, wait_until: "FINAL" },
-    }),
-    signal: AbortSignal.timeout(20_000),
-  });
+  const ask = () =>
+    fetchFn(rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "lifeline",
+        method: "tx",
+        params: { tx_hash: proof.txHash, sender_account_id: proof.signer, wait_until: "FINAL" },
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  // Public nodes drop the odd connection: ask up to three times, 1 s then 2 s apart.
+  let response: Response | undefined;
+  for (let attempt = 1; response === undefined; attempt++) {
+    try {
+      response = await ask();
+    } catch (error) {
+      if (attempt >= 3) throw error;
+      await sleep(attempt * 1000);
+    }
+  }
   const body = (await response.json()) as {
     result?: { status?: { Failure?: unknown }; transaction?: { receiver_id?: string; signer_id?: string } };
   };

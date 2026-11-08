@@ -13,7 +13,7 @@ The unit tests check every rule on a mocked chain, including a real quote 1Click
 - a deposit, and a token that isn't on the list going straight back,
 - a rescue paid to its quote's fresh deposit address,
 - a rescue naming an attacker's Hyperliquid address,
-- a genuine quote with the money pointed at the attacker's account,
+- a correctly signed quote with the money pointed at the attacker's account,
 - a quote the keeper wrote itself,
 - a failed transfer that gets refunded,
 - a withdrawal,

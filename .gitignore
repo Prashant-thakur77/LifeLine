@@ -38,3 +38,6 @@ skills-lock.json
 .idea/
 *.log
 .superpowers/
+
+# Design reference captures (local only)
+.design-refs/

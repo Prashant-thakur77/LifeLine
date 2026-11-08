@@ -239,6 +239,27 @@ describe("checkProof, which lets anyone re-check the refusal on chain with no ke
     expect(result.refused).toBe(false);
   });
 
+  it("tries a dropped connection again, since public nodes drop the odd request", async () => {
+    let calls = 0;
+    const flaky = (async (url: string, init: RequestInit) => {
+      calls += 1;
+      if (calls < 3) throw new TypeError("fetch failed");
+      return answering(failedOnChain)(url, init);
+    }) as typeof fetch;
+    const waits: number[] = [];
+    const result = await checkProof(proof, "https://rpc.test", flaky, async (ms) => void waits.push(ms));
+    expect(result.refused).toBe(true);
+    expect(calls).toBe(3);
+    expect(waits).toEqual([1000, 2000]);
+  });
+
+  it("gives up after three dropped connections and says why", async () => {
+    const down = (async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+    await expect(checkProof(proof, "https://rpc.test", down, async () => {})).rejects.toThrow(/fetch failed/);
+  });
+
   it("says it couldn't check when the node has no answer", async () => {
     const empty = (async () => new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, error: { message: "unknown tx" } }))) as unknown as typeof fetch;
     const result = await checkProof(proof, "https://rpc.test", empty);

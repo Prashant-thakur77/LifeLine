@@ -1,6 +1,6 @@
 # Going live on mainnet
 
-The steps for Gate 2: the vault and keeper on mainnet, then the first real rescue. Each step that sends a transaction or spends money needs a human's yes first.
+The steps to go live: the vault and keeper on mainnet, then the first real rescue. Each step that sends a transaction or spends money needs a human's yes first.
 
 `$TEAM` is the team's mainnet account (for example `lifeline-team.near`). Keys stay in `~/.near-credentials` and the password manager, never in git or chat.
 
@@ -68,7 +68,7 @@ pnpm --filter keeper cf:deploy
 
 `https://lifeline-keeper.prashantthakur.dev/` then shows `mode: live`, and `/api/health/<user>` shows the real health.
 
-## 5. Gate 2: the first rescue
+## 5. The first rescue
 
 Set the user's trigger just above their current health (the vault allows triggers up to 2.5), so the next tick fires on purpose. The keeper warns, rescues, and the USDC lands in the Hyperliquid perps balance. The audit record at `/api/audit?user=<user>` carries the NEAR transaction and the measured latency, and `/api/stats` starts reporting p50 and p95.
 
