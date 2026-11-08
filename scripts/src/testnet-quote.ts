@@ -20,9 +20,15 @@ export function signTestnetQuote(options: {
 }): { payload: string; signature: string } {
   const { key, user, token, amount, recipient, depositAddress } = options;
   const now = options.now ?? new Date();
+  // Priced as 1Click prices it: 8-decimal value, less its flat fee and 1 bp, with a 1% slippage floor.
+  const fee = 31_530_000n;
+  const out = BigInt(amount) * 100n - fee - BigInt(amount) / 100n;
   const fields = {
     amount,
     amountIn: amount,
+    amountOut: out.toString(),
+    minAmountOut: (out - BigInt(amount)).toString(),
+    withdrawFee: fee.toString(),
     depositAddress,
     depositType: "ORIGIN_CHAIN",
     destinationAsset: ASSETS.HYPERLIQUID_USDC.assetId,

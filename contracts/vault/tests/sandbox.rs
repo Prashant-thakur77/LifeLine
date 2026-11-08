@@ -139,9 +139,15 @@ impl Setup {
     /// What 1Click would sign for a rescue of Alice's: `amount` to `recipient` via a fresh deposit address.
     fn quote(&self, key: &SigningKey, amount: u128, recipient: &str) -> Quote {
         let deposit = fresh_address();
+        // Priced as 1Click prices it: 8-decimal value, less its flat and 1 bp fees, 1% slippage floor.
+        let fee: u128 = 31_530_000;
+        let out = amount * 100 - fee - amount / 100;
         let payload = json!({
             "amount": amount.to_string(),
             "amountIn": amount.to_string(),
+            "amountOut": out.to_string(),
+            "minAmountOut": (out - amount).to_string(),
+            "withdrawFee": fee.to_string(),
             "depositAddress": deposit,
             "depositType": "ORIGIN_CHAIN",
             "destinationAsset": PERPS_USDC,
@@ -269,8 +275,10 @@ async fn a_rescue_pays_the_quotes_fresh_deposit_address_and_says_so() -> anyhow:
             "recipient": HL,
             "quote_id": "corr-1",
             "deposit_address": deposit,
+            "quote_hash": rescue["data"][0]["quote_hash"],
         })
     );
+    assert_eq!(rescue["data"][0]["quote_hash"].as_str().map(str::len).unwrap_or(0) > 40, true);
     assert_eq!(s.rescues().await?[0]["refunded"], false);
     Ok(())
 }

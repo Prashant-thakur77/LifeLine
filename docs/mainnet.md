@@ -8,7 +8,7 @@ The steps for Gate 2: the vault and keeper on mainnet, then the first real rescu
 
 | Item | Amount |
 | --- | --- |
-| Vault account: contract storage (212 KB) and USDC registrations for deposit addresses | about 3 NEAR |
+| Vault account: contract storage (240 KB), and about 0.005 NEAR per rescue for its record and the deposit address's USDC registration | about 3.5 NEAR |
 | Keeper account: gas for rescues | 0.5 NEAR |
 | Alice's (the demo user's) registration in the vault | 0.05 NEAR |
 | Reserve to rescue from | 10 to 20 USDC on NEAR |

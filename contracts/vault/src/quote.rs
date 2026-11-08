@@ -15,6 +15,15 @@ pub const MAX_SLIPPAGE_BPS: u64 = 100;
 pub const MAX_QUOTE_AGE_MS: u64 = 120_000;
 /// 1Click's clock and NEAR's block time may disagree a little.
 pub const MAX_CLOCK_SKEW_MS: u64 = 30_000;
+/// The rescue token has 6 decimals and Hyperliquid USDC 8, so 1 unit in is worth 100 out.
+pub const OUT_UNITS_PER_IN: u128 = 100;
+/// 1Click's flat fee for delivering to Hyperliquid is about 0.32 USDC; more than 1 USDC is refused.
+pub const MAX_WITHDRAW_FEE: u128 = 100_000_000;
+/// Beyond the flat fee, what's delivered may be at most this far below what's sent. App fees
+/// aren't in the signed text, but they lower amountOut, which is, so a keeper can't skim one.
+pub const MAX_PRICE_LOSS_BPS: u128 = 30;
+/// Fields that send money or refunds somewhere a quote's recipient and refundTo don't say.
+const REDIRECTING_FIELDS: [&str; 4] = ["virtualChainRecipient", "virtualChainRefundRecipient", "customRecipientMsg", "depositMemo"];
 
 /// What the quote must say for this rescue.
 pub struct Expected<'a> {
@@ -92,6 +101,11 @@ fn text<'a>(fields: &'a Map<String, Value>, name: &str) -> Option<&'a str> {
     fields.get(name).and_then(Value::as_str)
 }
 
+/// A base-unit amount: digits only.
+fn units(fields: &Map<String, Value>, name: &str) -> Option<u128> {
+    text(fields, name).filter(|t| !t.is_empty() && t.bytes().all(|b| b.is_ascii_digit())).and_then(|t| t.parse().ok())
+}
+
 /// Every reason the quote doesn't fit the rescue, as one message, or Ok.
 pub fn check(payload: &str, expected: &Expected) -> Result<(), String> {
     let value: Value = serde_json::from_str(payload).map_err(|_| "the quote isn't JSON".to_string())?;
@@ -121,6 +135,30 @@ pub fn check(payload: &str, expected: &Expected) -> Result<(), String> {
     }
     if text(fields, "refundTo") != Some(expected.user) {
         problems.push("a failed swap wouldn't refund this user");
+    }
+    if text(fields, "refundType") != Some("ORIGIN_CHAIN") {
+        problems.push("it refunds somewhere other than the user's own NEAR account");
+    }
+    if REDIRECTING_FIELDS.iter().any(|name| fields.contains_key(*name)) {
+        problems.push("it carries a field that could redirect the money");
+    }
+    let value = expected.amount.saturating_mul(OUT_UNITS_PER_IN);
+    match (units(fields, "amountOut"), units(fields, "minAmountOut"), units(fields, "withdrawFee")) {
+        (Some(out), Some(min), Some(fee)) => {
+            if fee > MAX_WITHDRAW_FEE {
+                problems.push("its flat fee is over 1 USDC");
+            }
+            if fee.saturating_mul(5) > value {
+                problems.push("its flat fee would eat more than a fifth of the rescue");
+            }
+            if out.saturating_add(fee) < value / 10_000 * (10_000 - MAX_PRICE_LOSS_BPS) {
+                problems.push("it delivers too little for the amount sent");
+            }
+            if out.saturating_sub(min) > value / 10_000 * MAX_SLIPPAGE_BPS as u128 {
+                problems.push("its slippage floor is more than 1% below its price");
+            }
+        }
+        _ => problems.push("its amounts can't be read"),
     }
     if text(fields, "recipient").map(str::to_ascii_lowercase).as_deref() != Some(expected.hl_address) {
         problems.push("it pays someone other than this user's Hyperliquid address");

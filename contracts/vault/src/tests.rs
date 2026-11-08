@@ -74,17 +74,25 @@ fn iso(ms: u64) -> String {
     )
 }
 
-/// What 1Click would sign for Alice's rescue: the fields the vault reads, quoted 5 s before `now`.
+/// 1Click's flat fee for delivering to Hyperliquid, in 8-decimal units: 0.3153 USDC.
+const WITHDRAW_FEE: u128 = 31_530_000;
+
+/// What 1Click would sign for Alice's rescue, priced as 1Click prices it: the input in
+/// 8 decimals, less the flat fee and a 1 bp fee, with a 1% slippage floor. Quoted 5 s before `now`.
 fn quote_json(now: u64, token: &str, amount: u128, recipient: &str, deposit: &str) -> Value {
+    let value = amount * 100;
+    let amount_out = value.saturating_sub(WITHDRAW_FEE).saturating_sub(value / 10_000);
     json!({
         "amount": amount.to_string(),
         "amountIn": amount.to_string(),
+        "amountOut": amount_out.to_string(),
+        "withdrawFee": WITHDRAW_FEE.to_string(),
         "deadline": iso(now / 1_000_000 + 300_000),
         "depositAddress": deposit,
         "depositType": "ORIGIN_CHAIN",
         "destinationAsset": quote::HYPERLIQUID_USDC,
         "dry": false,
-        "minAmountOut": "1",
+        "minAmountOut": amount_out.saturating_sub(amount).to_string(),
         "originAsset": format!("nep141:{token}"),
         "recipient": recipient,
         "recipientType": "DESTINATION_CHAIN",
@@ -391,6 +399,7 @@ fn rescue_logs_every_field_an_auditor_needs() {
             "recipient": HL.to_ascii_lowercase(),
             "quote_id": "corr-1",
             "deposit_address": deposit_for("corr-1"),
+            "quote_hash": quote::signed_message(&quote_json(START, USDC, 3 * USDC_1, HL, &deposit_for("corr-1")).to_string()),
         })
     );
 }
@@ -431,7 +440,7 @@ fn refuses_more_than_the_daily_cap() {
     let mut vault = vault_with(100 * USDC_1);
     rescue(&mut vault, START, 25 * USDC_1, "corr-1");
     rescue(&mut vault, START + 3 * MINUTE_NS, 25 * USDC_1, "corr-2");
-    let message = refusal(|| rescue(&mut vault, START + 6 * MINUTE_NS, 1, "corr-3")).unwrap();
+    let message = refusal(|| rescue(&mut vault, START + 6 * MINUTE_NS, 2 * USDC_1, "corr-3")).unwrap();
     assert!(message.contains("OVER_DAILY"), "{message}");
     assert_eq!(reserve(&vault), 50 * USDC_1);
 }
@@ -759,6 +768,20 @@ fn refuses_a_quote_that_doesnt_fit_the_rescue() {
         ("slippage", Box::new(|q| drop(q.as_object_mut().unwrap().remove("slippageTolerance")))),
         ("time can't be read", Box::new(|q| q["timestamp"] = json!("yesterday"))),
         ("future", Box::new(|q| q["timestamp"] = json!(iso(START / 1_000_000 + 31_000)))),
+        // An app fee isn't in the signed text, but it lowers amountOut, which is.
+        ("delivers too little", Box::new(|q| q["amountOut"] = json!("255000000"))),
+        ("slippage floor", Box::new(|q| q["minAmountOut"] = json!("200000000"))),
+        ("flat fee", Box::new(|q| {
+            q["withdrawFee"] = json!("100000001");
+            q["amountOut"] = json!("199969999");
+        })),
+        ("amounts can't be read", Box::new(|q| q["amountOut"] = json!("lots"))),
+        ("amounts can't be read", Box::new(|q| drop(q.as_object_mut().unwrap().remove("withdrawFee")))),
+        ("refunds", Box::new(|q| q["refundType"] = json!("INTENTS"))),
+        ("redirect", Box::new(|q| q["virtualChainRecipient"] = json!(ATTACKER))),
+        ("redirect", Box::new(|q| q["virtualChainRefundRecipient"] = json!(ATTACKER))),
+        ("redirect", Box::new(|q| q["customRecipientMsg"] = json!("send to attacker"))),
+        ("redirect", Box::new(|q| q["depositMemo"] = json!("123"))),
     ];
     for (reason, change) in cases {
         let mut vault = vault_with(30 * USDC_1);
@@ -769,6 +792,24 @@ fn refuses_a_quote_that_doesnt_fit_the_rescue() {
         assert!(message.contains("BAD_QUOTE") && message.contains(reason), "expected {reason}: {message}");
         assert_eq!(reserve(&vault), 30 * USDC_1);
     }
+}
+
+#[test]
+fn refuses_a_rescue_so_small_the_flat_fee_eats_a_fifth_of_it() {
+    let mut vault = vault_with(30 * USDC_1);
+    let message = refusal(|| rescue(&mut vault, START, 1_500_000, "small")).unwrap();
+    assert!(message.contains("BAD_QUOTE") && message.contains("a fifth"), "{message}");
+    rescue(&mut vault, START, 2 * USDC_1, "big-enough");
+    assert_eq!(reserve(&vault), 28 * USDC_1);
+}
+
+#[test]
+fn logs_the_hash_of_the_signed_quote_so_auditors_can_match_it() {
+    let mut vault = vault_with(30 * USDC_1);
+    rescue(&mut vault, START, 3 * USDC_1, "corr-1");
+    let deposit = deposit_for("corr-1");
+    let payload = quote_json(START, USDC, 3 * USDC_1, HL, &deposit).to_string();
+    assert_eq!(events()[0]["data"][0]["quote_hash"], quote::signed_message(&payload));
 }
 
 #[test]
@@ -805,15 +846,15 @@ fn allows_at_most_200_rescues_in_24_hours() {
     fresh_chain();
     let mut vault = Vault::new(vec![acc(USDC)], test_signer_key());
     as_(ALICE, REGISTRATION_DEPOSIT, START);
-    vault.set_policy(PolicyInput { max_per_rescue: U128(1), max_per_day: U128(1_000), cooldown_sec: 30, ..policy() });
+    vault.set_policy(PolicyInput { max_per_rescue: U128(2 * USDC_1), max_per_day: U128(1_000 * USDC_1), cooldown_sec: 30, ..policy() });
     as_(USDC, ZERO, START);
-    let _ = vault.ft_on_transfer(acc(ALICE), U128(1_000), String::new());
+    let _ = vault.ft_on_transfer(acc(ALICE), U128(1_000 * USDC_1), String::new());
     for i in 0..MAX_WINDOW_SCAN as u64 {
-        rescue(&mut vault, START + i * 30 * SEC_NS, 1, &format!("n{i}"));
+        rescue(&mut vault, START + i * 30 * SEC_NS, 2 * USDC_1, &format!("n{i}"));
     }
     assert_eq!(vault.get_rescue_count(acc(ALICE)), MAX_WINDOW_SCAN);
     let next = START + u64::from(MAX_WINDOW_SCAN) * 30 * SEC_NS;
-    let message = refusal(|| rescue(&mut vault, next, 1, "one-too-many")).unwrap();
+    let message = refusal(|| rescue(&mut vault, next, 2 * USDC_1, "one-too-many")).unwrap();
     assert!(message.contains("too many rescues"), "{message}");
 }
 

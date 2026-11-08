@@ -9,7 +9,7 @@ import { signTestnetQuote } from "./testnet-quote";
  * Measures what can be measured without moving real money, and writes research/latency/.
  *   pnpm latency                      20 keeper-decision samples on mainnet APIs
  *   pnpm latency 30 --near-testnet 10 also 10 real rescue transactions on the testnet vault
- * --near-testnet reads .env, which must point at testnet, and sends 1 test USDC per sample.
+ * --near-testnet reads .env, which must point at testnet, and sends 2 test USDC per sample.
  */
 
 /** Live Hyperliquid accounts with open cross positions, seen in ETH trades on 2026-11-08. */
@@ -88,12 +88,12 @@ async function nearSamples(count: number): Promise<NearSample[]> {
   for (let i = 0; i < count; i++) {
     if (i > 0) await sleep((policy.cooldownSec + 2) * 1000);
     const depositAddress = randomBytes(32).toString("hex");
-    const quote = signTestnetQuote({ key: signer, user, token, amount: "1000000", recipient: policy.hlAddress, depositAddress });
+    const quote = signTestnetQuote({ key: signer, user, token, amount: "2000000", recipient: policy.hlAddress, depositAddress });
     const start = performance.now();
     const { txHash } = await vault.rescue({
       user,
       token,
-      amount: "1000000",
+      amount: "2000000",
       depositAddress,
       recipient: policy.hlAddress,
       quoteId: `latency-${Date.now()}`,

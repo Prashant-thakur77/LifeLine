@@ -3,14 +3,15 @@ import type { Vault } from "./ports";
 import { MIN_RESCUE_UNITS } from "./sizing";
 
 const REFRESH_MS = 60_000;
-const VERDICT_MS = 10 * 60_000;
+const YES_MS = 10 * 60_000;
+const NO_MS = 60_000; // a user who just deposited shouldn't wait 10 minutes to be watched
 const DEFAULT_MAX = 50;
 
 /**
  * Who the keeper watches: the users configured by hand, plus everyone registered in the
  * vault that `accept` approves (their policy names this keeper, and their reserve can pay
- * a rescue). The vault list is read again at most once a minute and each user's verdict is
- * kept for 10 minutes, so watching costs little however many accounts sign up. At most
+ * a rescue). The vault list is read again at most once a minute; a yes is kept for 10
+ * minutes and a no for one, so watching costs little however many accounts sign up. At most
  * `max` users are watched, the configured ones first: anyone can register for 0.05 NEAR,
  * and fake sign-ups mustn't use up the keeper's daily storage writes. users() never waits
  * for the vault; it answers from the last list it read.
@@ -29,6 +30,7 @@ export function createUserList(options: {
   let nextLoadAt = 0;
   let loading = false;
   const verdicts = new Map<string, { ok: boolean; until: number }>();
+  let cutWarnedAt = -1;
 
   const judge = async (users: string[]): Promise<string[]> => {
     if (accept === undefined) return users;
@@ -38,10 +40,11 @@ export function createUserList(options: {
       const known = verdicts.get(user);
       if (known === undefined || known.until <= now()) {
         try {
-          verdicts.set(user, { ok: await accept(user), until: now() + VERDICT_MS });
+          const ok = await accept(user);
+          verdicts.set(user, { ok, until: now() + (ok ? YES_MS : NO_MS) });
         } catch {
-          verdicts.delete(user); // asked again next time
-          continue;
+          // Keep the last answer, if any: one failed RPC call mustn't drop a watched user.
+          if (known === undefined) continue;
         }
       }
       if (verdicts.get(user)?.ok) kept.push(user);
@@ -64,7 +67,13 @@ export function createUserList(options: {
             loading = false;
           });
       }
-      return [...new Set([...fixed, ...loaded])].slice(0, Math.max(max, fixed.length));
+      const all = [...new Set([...fixed, ...loaded])];
+      const limit = Math.max(max, fixed.length);
+      if (all.length > limit && cutWarnedAt !== all.length) {
+        cutWarnedAt = all.length;
+        log(`watching ${limit} of ${all.length} users; raise the limit or run a second keeper for the rest`);
+      }
+      return all.slice(0, limit);
     },
   };
 }

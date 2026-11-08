@@ -69,6 +69,7 @@ describe("choosing whom to watch from the vault", () => {
   const setup = (vaultUsers: string[], accept: (user: string) => Promise<boolean>, max?: number) => {
     let nowMs = 0;
     const asked: string[] = [];
+    const logs: string[] = [];
     const list = createUserList({
       fixed: ["alice.near"],
       load: async () => vaultUsers,
@@ -77,10 +78,14 @@ describe("choosing whom to watch from the vault", () => {
         return accept(user);
       },
       now: () => nowMs,
-      log: () => {},
+      log: (line) => logs.push(line),
       ...(max === undefined ? {} : { max }),
     });
-    return { list, asked, advance: (ms: number) => (nowMs += ms) };
+    return { list, asked, logs, advance: (ms: number) => (nowMs += ms) };
+  };
+  const refresh = async (list: { users(): string[] }) => {
+    list.users();
+    for (let i = 0; i < 4; i += 1) await settle();
   };
 
   it("watches only users the check accepts: ours, with a reserve that can pay a rescue", async () => {
@@ -91,21 +96,40 @@ describe("choosing whom to watch from the vault", () => {
     expect(list.users()).toEqual(["alice.near", "bob.near"]);
   });
 
-  it("remembers each answer for 10 minutes instead of asking about everyone every minute", async () => {
-    const { list, asked, advance } = setup(["bob.near", "sybil.near"], async (user) => user === "bob.near");
-    list.users();
-    await settle();
-    await settle();
+  it("remembers a yes for 10 minutes, and a no for only a minute, so a new deposit is picked up soon", async () => {
+    let bobFunded = false;
+    const { list, asked, advance } = setup(["alice2.near", "bob.near"], async (user) => user === "alice2.near" || bobFunded);
+    await refresh(list);
+    expect(list.users()).toEqual(["alice.near", "alice2.near"]);
+    bobFunded = true;
     advance(60_000);
-    list.users();
-    await settle();
-    await settle();
-    expect(asked.filter((u) => u === "sybil.near")).toHaveLength(1);
+    await refresh(list);
+    expect(list.users()).toEqual(["alice.near", "alice2.near", "bob.near"]);
+    expect(asked.filter((u) => u === "alice2.near")).toHaveLength(1);
     advance(10 * 60_000);
-    list.users();
-    await settle();
-    await settle();
-    expect(asked.filter((u) => u === "sybil.near")).toHaveLength(2);
+    await refresh(list);
+    expect(asked.filter((u) => u === "alice2.near")).toHaveLength(2);
+  });
+
+  it("keeps watching a user it already accepted when a re-check fails", async () => {
+    let down = false;
+    const { list, advance } = setup(["bob.near"], async () => {
+      if (down) throw new Error("rpc down");
+      return true;
+    });
+    await refresh(list);
+    down = true;
+    advance(11 * 60_000);
+    await refresh(list);
+    expect(list.users()).toEqual(["alice.near", "bob.near"]);
+  });
+
+  it("says so when it can't watch everyone", async () => {
+    const many = Array.from({ length: 60 }, (_, i) => `user${i}.near`);
+    const { list, logs } = setup(many, async () => true, 50);
+    await refresh(list);
+    expect(list.users()).toHaveLength(50);
+    expect(logs.join("\n")).toMatch(/watching 50 of 61 users/);
   });
 
   it("watches at most `max`, the configured users first, so fake sign-ups can't exhaust the keeper", async () => {

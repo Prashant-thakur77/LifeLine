@@ -366,6 +366,8 @@ impl Vault {
                 "recipient": policy.hl_address,
                 "quote_id": quote_id,
                 "deposit_address": deposit_address,
+                // quote_id is only the keeper's label; this hash ties the rescue to what 1Click signed.
+                "quote_hash": quote::signed_message(&quote),
             }),
         );
 

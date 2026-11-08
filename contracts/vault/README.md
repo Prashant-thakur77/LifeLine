@@ -5,7 +5,7 @@ The NEAR contract that holds each user's rescue reserve. A user deposits USDC, s
 There are no admin methods: nobody but the user can withdraw, change a policy or unpause. The vault account itself still has a full-access key, though, so whoever holds it could deploy different code. See the README's Limitations.
 
 ```sh
-cargo test                                  # 49 unit tests, then 11 sandbox tests (they build the wasm first)
+cargo test                                  # 51 unit tests, then 11 sandbox tests (they build the wasm first)
 cargo near build non-reproducible-wasm      # target/near/lifeline_vault.wasm
 ```
 
@@ -81,7 +81,10 @@ Changing a policy, unpausing and withdrawing need 1 yoctoNEAR because only a ful
    - exact input, deposited on NEAR, paid out on the destination chain,
    - from this token, to Hyperliquid perps USDC,
    - for exactly `amount`,
-   - refunds to the user,
+   - refunds to the user, to their own NEAR account (`refundType` `ORIGIN_CHAIN`),
+   - no field that could send the money or a refund elsewhere (`virtualChainRecipient`, `virtualChainRefundRecipient`, `customRecipientMsg`, `depositMemo`),
+   - delivers, after a flat fee of at most 1 USDC and at most a fifth of the rescue, at least 99.7% of what's sent, so nobody can skim an app fee (app fees aren't in the signed text, but they lower `amountOut`, which is),
+   - a slippage floor (`minAmountOut`) at most 1% of the amount below that,
    - pays the user's Hyperliquid address,
    - through `deposit_address`,
    - at most 1% slippage,
@@ -91,11 +94,13 @@ Changing a policy, unpausing and withdrawing need 1 yoctoNEAR because only a ful
 10. the reserve holds less than `amount`,
 11. `quote_id`, the keeper's own label, is empty or over 128 characters.
 
+`quote_id` is only the keeper's label for the quote. To tie a rescue to the swap 1Click signed, match its `deposit_address`, or its `quote_hash`: the base58 SHA-256 of the signed text, which is the message 1Click signed.
+
 A rescue whose transfer failed was refunded. It doesn't count towards the 24-hour cap or the cooldown, and `get_rescues` shows it with `refunded: true`.
 
 The vault can't see Hyperliquid, so it doesn't check that health really is below the trigger. A hacked keeper could still move reserve money into the user's own Hyperliquid account when no rescue is needed, within the caps.
 
-The keeper calls with no deposit, because its function-call key can't attach one, and 100 Tgas. The vault pays the 0.00125 NEAR USDC storage for each new deposit address out of its own balance, so the vault account needs a little NEAR beyond its storage. A 1Click deposit address is a fresh implicit account that USDC doesn't know yet, and a plain transfer to it would fail.
+The keeper calls with no deposit, because its function-call key can't attach one, and 100 Tgas. The vault pays for each rescue's storage out of its own balance: 0.00125 NEAR to register the deposit address with USDC, and about 0.004 NEAR for the record and the used-address entry. A user's 0.05 NEAR registration covers about ten rescues, so keep the vault account topped up beyond its contract storage and watch its balance. A 1Click deposit address is a fresh implicit account that USDC doesn't know yet, and a plain transfer to it would fail.
 
 ### Policy
 
@@ -136,7 +141,7 @@ Every change logs a [NEP-297](https://github.com/near/NEPs/blob/master/neps/nep-
 | `paused` | `user`, `paused` (`true` or `false`) |
 | `withdraw` | `user`, `token`, `amount` |
 | `withdraw_refunded` | `user`, `token`, `amount` |
-| `rescue` | `user`, `token`, `amount`, `recipient`, `quote_id`, `deposit_address` |
+| `rescue` | `user`, `token`, `amount`, `recipient`, `quote_id`, `deposit_address`, `quote_hash` |
 | `rescue_refunded` | `user`, `token`, `amount`, `quote_id` |
 
 ## Calling it with the NEAR CLI
