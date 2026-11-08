@@ -18,6 +18,15 @@ jobs:
           cache: pnpm
       # The vault's tests build the contract to wasm and run it on a local NEAR sandbox node.
       - run: rustup target add wasm32-unknown-unknown
+      # near-workspaces builds each contract by running `cargo near`. The release binary,
+      # checked against the hash published with cargo-near v0.23.0.
+      - name: Install cargo-near 0.23.0
+        run: |
+          curl -sSfL -o /tmp/cargo-near.tar.gz https://github.com/near/cargo-near/releases/download/cargo-near-v0.23.0/cargo-near-x86_64-unknown-linux-gnu.tar.gz
+          echo "94008b827a457750257eced4b571c33736062cc3bd1ffda3e7af70e2bc9a4073  /tmp/cargo-near.tar.gz" | sha256sum -c -
+          tar xzf /tmp/cargo-near.tar.gz -C /tmp
+          install /tmp/cargo-near-x86_64-unknown-linux-gnu/cargo-near ~/.cargo/bin/
+          cargo near --version
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
