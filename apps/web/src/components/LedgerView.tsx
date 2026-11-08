@@ -30,7 +30,7 @@ export function LedgerView() {
 
   return (
     <>
-      {simulation ? <SimBanner compact /> : null}
+      {simulation ? <SimBanner compact /> : info.loading && !separateSim ? <div className="mb-6 h-[49px]" aria-hidden /> : null}
       <PageHeader
         eyebrow="Public ledger"
         title="Every rescue and every refusal"
@@ -51,11 +51,6 @@ export function LedgerView() {
         Anyone can check it. Nothing in it can be changed afterwards.
       </PageHeader>
 
-      {ledger.data ? (
-        <p className="mb-4 text-[13px] text-muted">
-          {events.length} events across {users} {users === 1 ? "account" : "accounts"}, from the latest 200 records. Refreshes every 15 s.
-        </p>
-      ) : null}
 
       <section aria-labelledby="pinned-title" className="mb-8 grid grid-cols-1 items-start gap-5 rounded-xl border-2 border-ink bg-sea p-5 text-paper sm:p-6 lg:grid-cols-12">
         <div className="lg:col-span-5">
@@ -73,6 +68,16 @@ export function LedgerView() {
       </section>
 
       <FilterBar filter={filter} onChange={setFilter} events={events} />
+
+      <p className="mb-4 min-h-[20px] text-[13px] text-muted">
+        {ledger.data ? (
+          <>
+          {events.length} events across {users} {users === 1 ? "account" : "accounts"}, from the latest 200 records. Refreshes every 15 s.
+          </>
+        ) : (
+          "Loading the ledger…"
+        )}
+      </p>
 
       {ledger.loading ? (
         <div className="space-y-3">

@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </a>
         <WalletProvider>
           <Header />
-          <main id="main" className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">
+          <main id="main" className="mx-auto min-h-[calc(100svh-64px)] w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">
             {children}
           </main>
           <Footer />

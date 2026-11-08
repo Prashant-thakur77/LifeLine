@@ -52,6 +52,17 @@ Reduced motion: every animation and transition is cut to its end state; no smoot
 
 The hero's paper sea (`components/Waterline.tsx`, `components/HeroWater.tsx`): health sets the level of four drifting paper sheets against a load line printed on an orange hull, under a printed sun. On load the last rescue replays from the audit log: warning level, trigger level, the line thrown from "Reserve · vault (simulated)" to a lifebuoy tagged with the amount and the Hyperliquid address, a paper splash, the refill level; the ink log ticket steps through the same records. Mobile: the scale stops at 2.4 so the panel has no empty deep water; labels shorten.
 
+## Features (each runs on real data or real maths, and says which)
+
+| Feature | Where | Source |
+| --- | --- | --- |
+| Live replay of the last rescue | Landing hero | The sim keeper's audit log |
+| Latest on the ledger | Landing, in the stats band | The sim keeper's `/api/ledger`, every 15 s |
+| Price playground | Landing | `lib/playground.ts`: Lifeline's rules (health, rescue sizing, caps, 1Click's flat fee), live ETH mid from Hyperliquid; labelled "maths only" |
+| Check any address | `/check?address=` | Hyperliquid `clearinghouseState`, read in the browser with the keeper's own parser; refreshes every 10 s; "unknown" is never shown as safe |
+| Backtest explorer | Landing | `lib/backtest.ts`, held equal to `research/backtest/RESULTS.md` by a test |
+| Proof table | `/ledger`, `/history`, position | One row per event, 25 at a time, details on demand; the testnet on-chain refusal pinned on `/ledger` |
+
 ## Components
 
 - Header: lifebuoy mark and condensed wordmark; nav items as ink tabs (active filled ink, hover sunshine); primary "Connect wallet".
