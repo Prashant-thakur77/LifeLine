@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/*
+ * Lifeline's look: deep night-water ink, warm paper text, and one signal colour.
+ * Signal orange is where Lifeline acts (the rescue zone, the main buttons). Sea green,
+ * amber and red carry health. Violet only ever marks the simulation, so it can't be
+ * confused with a health colour.
+ */
+@theme {
+  --color-ink-950: #060b10;
+  --color-ink-900: #0a1117;
+  --color-ink-850: #0d161e;
+  --color-ink-800: #111c26;
+  --color-ink-750: #15222e;
+  --color-ink-700: #1a2936;
+  --color-ink-600: #243645;
+  --color-ink-500: #34495a;
+  --color-mist-400: #6c8090;
+  --color-mist-300: #93a5b3;
+  --color-mist-200: #bccad4;
+  --color-mist-100: #e3eaef;
+  --color-paper: #f5f1e8;
+
+  --color-safe: #3ed3a2;
+  --color-warn: #f4b63f;
+  --color-rescue: #ff7a3d;
+  --color-danger: #ff5266;
+  --color-sim: #a99bff;
+
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-ink-900);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1100px 520px at 78% -8%, rgb(255 122 61 / 0.07), transparent 60%),
+    radial-gradient(900px 600px at 0% 0%, rgb(62 211 162 / 0.05), transparent 55%),
+    var(--color-ink-900);
+  color: var(--color-mist-100);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv01";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgb(255 122 61 / 0.35);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-rescue);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Hatching for readings that can't be trusted: it reads as "not this", never as a colour. */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, rgb(244 182 63 / 0.16) 0 6px, transparent 6px 12px);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

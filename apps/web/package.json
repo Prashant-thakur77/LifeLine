@@ -1,0 +1,30 @@
+{
+  "name": "web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "cf:dev": "next build && pnpm dlx wrangler@4.158.0 dev",
+    "cf:deploy": "next build && pnpm dlx wrangler@4.158.0 deploy"
+  },
+  "dependencies": {
+    "@hot-labs/near-connect": "0.12.0",
+    "@lifeline/shared": "workspace:*",
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "catalog:",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
