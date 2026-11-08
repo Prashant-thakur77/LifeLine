@@ -1,5 +1,6 @@
-// The keeper on Cloudflare. One Durable Object runs everything: the watch loop on its
-// alarm every 5 s, the audit log in its own SQLite, the REST API and the Telegram webhook.
+// The keeper on Cloudflare. One Durable Object runs everything: the watch loop (an alarm
+// a minute, a tick every 5 s inside it), the audit log in its own SQLite, the REST API
+// and the Telegram webhook.
 //
 //   pnpm --filter keeper cf:dev           the sim, locally, on Cloudflare's runtime
 //   pnpm --filter keeper cf:deploy:sim    the public demo at lifeline-sim.prashantthakur.dev
