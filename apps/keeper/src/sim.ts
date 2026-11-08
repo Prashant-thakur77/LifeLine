@@ -108,6 +108,9 @@ export function createSimWorld(options: { quotes: Pick<Intents, "getQuote">; now
 
 export type SimResult = { sent: RescueArgs[]; reserveBefore: string; reserveAfter: string };
 
+/** Long enough for two of the keeper's 30 s quote retries, short enough for a 2-minute demo. */
+const RETRY_HOLD_MS = 65_000;
+
 /** Runs the real keeper through the scripted price drop. */
 export async function runSim(options: {
   store: Store;
@@ -144,6 +147,13 @@ export async function runSim(options: {
     await keeper.tick();
     const read = await world.readHealth(world.hlAddress);
     if (read.status === "ok") onTick?.(price, read.snapshot.health);
+    await sleep(tickMs);
+  }
+  // The keeper retries a failed quote 30 s later, which is after the script ends. So a
+  // single 1Click timeout would end the demo with no rescue: hold the last price a while.
+  const holdUntil = now().getTime() + RETRY_HOLD_MS;
+  while (world.sent.length === 0 && now().getTime() < holdUntil) {
+    await keeper.tick();
     await sleep(tickMs);
   }
   await keeper.settled();

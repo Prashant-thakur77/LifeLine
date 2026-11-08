@@ -1,10 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { connectNear, createOneClick, readLiveConfig, type Quote } from "@lifeline/keeper";
 import { ASSETS, POLICY_DEFAULTS } from "@lifeline/shared";
-import { ATTACKER_HL, checkProof, formatAttempt, parseProof, runEngineAttacks, sendContractAttack } from "./attack";
+import { ATTACKER_HL, checkProof, explorerFor, formatAttempt, parseProof, rpcFor, runEngineAttacks, sendContractAttack } from "./attack";
 
 const PROOF_FILE = new URL("../attack-proof.json", import.meta.url);
-const PUBLIC_MAINNET_RPC = "https://free.rpc.fastnear.com";
+/** The same attack on the testnet vault, until a human agrees to the mainnet one. */
+const TESTNET_PROOF_FILE = new URL("../attack-proof-testnet.json", import.meta.url);
 const SEND_FLAG = "--send-mainnet";
 const ONECLICK_URL = "https://1click.chaindefuser.com";
 const now = () => new Date();
@@ -46,17 +47,19 @@ async function main() {
   for (const attempt of attempts) console.log(formatAttempt(attempt));
   const layer1Held = attempts.every((attempt) => attempt.outcome === attempt.expected);
 
-  console.log("\nLayer 2: the vault contract on mainnet. A hacked keeper could skip layer 1, so its key calls rescue directly with the attacker as recipient.\n");
+  console.log("\nLayer 2: the vault contract. A hacked keeper could skip layer 1, so its key calls rescue directly with the attacker as recipient.\n");
   let layer2Failed = false;
-  const proof = existsSync(PROOF_FILE) ? parseProof(readFileSync(PROOF_FILE, "utf8")) : null;
+  const read = (file: URL) => (existsSync(file) ? parseProof(readFileSync(file, "utf8")) : null);
+  const proof = read(PROOF_FILE) ?? read(TESTNET_PROOF_FILE);
   if (proof === null) {
-    console.log("NOT RUN YET. It needs the mainnet vault and a human's go-ahead, because it sends a real transaction.");
+    console.log("NOT RUN YET. It needs a deployed vault, and on mainnet a human's go-ahead, because it sends a real transaction.");
   } else {
-    const result = await checkProof(proof, PUBLIC_MAINNET_RPC);
+    const result = await checkProof(proof, rpcFor(proof.network));
     layer2Failed = !result.refused;
-    console.log(result.refused ? `REFUSED      by the vault contract, re-checked on chain just now` : `NOT CONFIRMED  ${result.detail}`);
-    console.log(`             transaction: https://nearblocks.io/txns/${proof.txHash}`);
+    console.log(result.refused ? `REFUSED      by the vault contract on ${proof.network}, re-checked on chain just now` : `NOT CONFIRMED  ${result.detail}`);
+    console.log(`             transaction: ${explorerFor(proof)}`);
     if (result.refused) console.log(`             ${result.detail}`);
+    if (proof.network === "testnet") console.log("             The mainnet run waits for the mainnet vault and a human's go-ahead.");
   }
 
   console.log(`\nWhat this doesn't stop: the contract can't read a quote, so a hacked keeper could get a quote that pays itself and still name the user as recipient. The caps limit that loss to ${money(POLICY_DEFAULTS.maxPerRescue)} USDC per rescue and ${money(POLICY_DEFAULTS.maxPerDay)} USDC per day, and the user can pause or withdraw at any time. It's listed under Limitations in the README.`);

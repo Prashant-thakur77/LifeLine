@@ -2,7 +2,7 @@ import { quoteHash, type verifyQuoteSignature } from "@defuse-protocol/one-click
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58 } from "@scure/base";
 import { ASSETS, MAX_QUOTE_SLIPPAGE_BPS } from "@lifeline/shared";
-import { QuoteRefusedError, SWAP_STATUSES, type Intents, type Quote, type SwapStatus } from "./ports";
+import { QuoteRefusedError, SWAP_STATUSES, type Intents, type Quote, type SwapStatus } from "./types";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const QUOTE_DEADLINE_MS = 5 * 60 * 1000;
@@ -95,8 +95,8 @@ function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>): Quote {
 }
 
 /**
- * The keeper's 1Click calls: NEAR USDC to Hyperliquid USDC, nothing else. Written
- * here so the keeper can run before packages/intents lands; swap it in then.
+ * The keeper's 1Click calls: NEAR USDC to Hyperliquid USDC, nothing else. Every quote's
+ * signature and echoed request are checked before any field of it is read.
  */
 export function createOneClick(options: OneClickOptions): Intents {
   const { apiUrl, jwt, nearSenderAccount } = options;

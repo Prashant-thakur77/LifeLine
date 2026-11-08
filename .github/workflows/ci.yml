@@ -16,6 +16,17 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # The vault's tests build the contract to wasm and run it on a local NEAR sandbox node.
+      - run: rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            contracts/vault
+            contracts/vault/tests/mock-ft
+      - uses: actions/cache@v6
+        with:
+          path: ~/.near-sandbox
+          key: near-sandbox-2.14.0-${{ runner.os }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test

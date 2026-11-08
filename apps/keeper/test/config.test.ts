@@ -51,10 +51,16 @@ describe("readLiveConfig", () => {
     } catch (error) {
       message = (error as Error).message;
     }
-    for (const name of ["NEAR_RPC_URL", "VAULT_CONTRACT_ID", "KEEPER_ACCOUNT_ID", "KEEPER_USERS"]) {
+    for (const name of ["NEAR_RPC_URL", "VAULT_CONTRACT_ID", "KEEPER_ACCOUNT_ID"]) {
       expect(message).toContain(name);
     }
     expect(message).not.toContain("secret-value");
+  });
+
+  it("needs no KEEPER_USERS, because the vault lists everyone who signed up", () => {
+    const { KEEPER_USERS: _, ...withoutUsers } = env;
+    expect(readLiveConfig(withoutUsers).users).toEqual([]);
+    expect(readLiveConfig({ ...env, KEEPER_USERS: " " }).users).toEqual([]);
   });
 
   it("refuses mainnet unless a human has explicitly allowed it", () => {

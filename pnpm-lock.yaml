@@ -221,6 +221,9 @@ importers:
       '@lifeline/hyperliquid':
         specifier: workspace:*
         version: link:../../packages/hyperliquid
+      '@lifeline/intents':
+        specifier: workspace:*
+        version: link:../../packages/intents
       '@lifeline/policy':
         specifier: workspace:*
         version: link:../../packages/policy
@@ -289,13 +292,25 @@ importers:
 
   packages/intents:
     dependencies:
+      '@defuse-protocol/one-click-sdk-typescript':
+        specifier: 0.1.26
+        version: 0.1.26(debug@4.4.3)
       '@lifeline/shared':
         specifier: workspace:*
         version: link:../shared
+      '@noble/curves':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@scure/base':
+        specifier: 2.2.0
+        version: 2.2.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.5
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.15
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

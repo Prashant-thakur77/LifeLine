@@ -83,6 +83,56 @@ describe("the scripted price drop", () => {
     expect(store.stats().totalRescues).toBe(1);
   });
 
+  it("holds the price after a failed quote until the keeper's retry rescues, so one 1Click error can't end the demo empty", async () => {
+    let nowMs = AT_MS;
+    const now = () => new Date(nowMs);
+    const working = fakeQuotes([], now);
+    let calls = 0;
+    const store = openStore(":memory:");
+    const result = await runSim({
+      store,
+      quotes: {
+        async getQuote(params) {
+          calls += 1;
+          if (calls === 1) throw new Error("1Click timed out");
+          return working.getQuote(params);
+        },
+      },
+      now,
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+    });
+    const kinds = store.ledger(100).map((r) => r.kind).reverse();
+    expect(kinds.filter((k) => k === "RESCUE_FAILED")).toHaveLength(1);
+    expect(kinds.filter((k) => k === "RESCUE_DONE")).toHaveLength(1);
+    expect(result.sent).toHaveLength(1);
+    expect(nowMs - AT_MS).toBeLessThan(120_000);
+  });
+
+  it("gives up holding after a bounded time when 1Click never answers", async () => {
+    let nowMs = AT_MS;
+    const store = openStore(":memory:");
+    const result = await runSim({
+      store,
+      quotes: {
+        async getQuote() {
+          throw new Error("1Click is down");
+        },
+      },
+      now: () => new Date(nowMs),
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+    });
+    expect(result.sent).toHaveLength(0);
+    expect(nowMs - AT_MS).toBeLessThan(120_000);
+  });
+
   it("drops the price steadily through warn and trigger", () => {
     expect(PRICE_DROP.length).toBeGreaterThan(5);
     expect(PRICE_DROP.every((price, i) => i === 0 || price <= (PRICE_DROP[i - 1] ?? price))).toBe(true);
