@@ -101,7 +101,7 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
         {event.explanation ? (
           <blockquote className="mt-3 border-l-2 border-rescue/50 pl-3 text-[14.5px] leading-relaxed text-mist-100">
             {event.explanation}
-            <footer className="mt-1 text-[12px] text-mist-400">Written by a model running in attested secure hardware (NEAR AI Cloud).</footer>
+            <footer className="mt-1 text-[12px] text-mist-400">The facts are from the record; any words beyond them come from a model in attested hardware on NEAR AI Cloud.</footer>
           </blockquote>
         ) : null}
 
