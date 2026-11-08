@@ -22,7 +22,7 @@ const RAIL: Record<Outcome, string> = {
   "in-progress": "bg-rescue",
   failed: "bg-danger",
   blocked: "bg-warn",
-  warn: "bg-mist-400",
+  warn: "bg-muted",
 };
 
 const STEP_LABEL: Record<string, string> = {
@@ -39,15 +39,15 @@ const clock = (iso: string) =>
 function HealthChange({ before, after }: { before: number | null; after: number | null }) {
   if (before === null && after === null) return null;
   return (
-    <span className="num inline-flex items-center gap-1.5 rounded-lg border border-ink-600 bg-ink-850 px-2 py-0.5 text-[13px]">
-      <span className="text-mist-400">health</span>
-      <span className="text-rescue">{formatHealth(before)}</span>
+    <span className="num inline-flex items-center gap-1.5 rounded-lg border border-line bg-card px-2 py-0.5 text-[13px]">
+      <span className="text-muted">health</span>
+      <span className="text-rescue-ink">{formatHealth(before)}</span>
       {after !== null ? (
         <>
-          <span className="text-mist-400" aria-label="to">
+          <span className="text-muted" aria-label="to">
             →
           </span>
-          <span className="text-safe">{formatHealth(after)}</span>
+          <span className="text-safe-ink">{formatHealth(after)}</span>
         </>
       ) : null}
     </span>
@@ -59,18 +59,18 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
   const links = eventLinks(event, config.network);
   return (
     <li className="relative pl-7">
-      <span className={cx("absolute left-[7px] top-[9px] size-[11px] rounded-full ring-4 ring-ink-900", RAIL[event.outcome])} aria-hidden />
-      <article className="rounded-2xl border border-ink-600/70 bg-ink-800/70 p-4 sm:p-5">
+      <span className={cx("absolute left-[7px] top-[9px] size-[11px] rounded-full ring-4 ring-paper", RAIL[event.outcome])} aria-hidden />
+      <article className="rounded-xl border-2 border-ink bg-card shadow-[3px_3px_0_var(--color-ink)] p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={OUTCOME_TONE[event.outcome]}>{OUTCOME_LABEL[event.outcome]}</Badge>
           {event.simulated ? <Badge tone="sim">Sim</Badge> : null}
-          <time dateTime={event.at} title={clock(event.at)} className="ml-auto text-[12.5px] text-mist-400">
+          <time dateTime={event.at} title={clock(event.at)} className="ml-auto text-[12.5px] text-muted">
             {timeAgo(event.at, now)}
           </time>
         </div>
-        <h3 className="mt-2.5 text-[16px] font-semibold leading-snug text-paper">{eventTitle(event, config.usdcContractId)}</h3>
+        <h3 className="mt-2.5 text-[16px] font-semibold leading-snug text-ink">{eventTitle(event, config.usdcContractId)}</h3>
         {showUser ? (
-          <Link href={pageHref("/history", event.user)} className="mt-0.5 inline-block text-[13px] text-mist-300 hover:text-paper">
+          <Link href={pageHref("/history", event.user)} className="mt-0.5 inline-block text-[13px] text-body hover:text-ink">
             {event.user}
           </Link>
         ) : null}
@@ -78,20 +78,20 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <HealthChange before={event.healthBefore} after={event.outcome === "done" || event.outcome === "failed" ? event.healthAfter : null} />
           {event.latencyMs !== null && event.outcome === "done" ? (
-            <span className="num rounded-lg border border-ink-600 bg-ink-850 px-2 py-0.5 text-[13px] text-mist-200">
+            <span className="num rounded-lg border border-line bg-card px-2 py-0.5 text-[13px] text-ink-2">
               {formatLatency(event.latencyMs)} {event.simulated ? "(simulated)" : "end to end"}
             </span>
           ) : null}
           {event.oneClickStatus && event.oneClickStatus !== "SUCCESS" ? (
-            <span className="num rounded-lg border border-ink-600 bg-ink-850 px-2 py-0.5 text-[13px] text-mist-200">1Click: {event.oneClickStatus}</span>
+            <span className="num rounded-lg border border-line bg-card px-2 py-0.5 text-[13px] text-ink-2">1Click: {event.oneClickStatus}</span>
           ) : null}
         </div>
 
         {event.outcome === "blocked" && event.reasons.length > 0 ? (
-          <ul className="mt-3 space-y-1.5 text-[14px] text-mist-200">
+          <ul className="mt-3 space-y-1.5 text-[14px] text-ink-2">
             {event.reasons.map((reason) => (
               <li key={reason} className="flex gap-2">
-                <span className="num mt-[3px] shrink-0 rounded bg-warn/10 px-1.5 text-[11px] text-warn">{reason}</span>
+                <span className="num mt-[3px] shrink-0 rounded bg-warn/10 px-1.5 text-[11px] text-warn-ink">{reason}</span>
                 <span>{describeReason(reason)}</span>
               </li>
             ))}
@@ -99,48 +99,48 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
         ) : null}
 
         {event.explanation ? (
-          <blockquote className="mt-3 border-l-2 border-rescue/50 pl-3 text-[14.5px] leading-relaxed text-mist-100">
+          <blockquote className="mt-3 border-l-2 border-rescue/50 pl-3 text-[14.5px] leading-relaxed text-ink">
             {event.explanation}
-            <footer className="mt-1 text-[12px] text-mist-400">Written from the record. A keeper with a NEAR AI key adds a sentence from a model in attested hardware.</footer>
+            <footer className="mt-1 text-[12px] text-muted">Written from the record. A keeper with a NEAR AI key adds a sentence from a model in attested hardware.</footer>
           </blockquote>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-mist-300">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-body">
           {links.map((link) => (
             <ExternalLink key={link.label} href={link.href}>
               {link.label}
             </ExternalLink>
           ))}
-          {event.simulated && event.outcome !== "warn" ? <span className="text-mist-400">Simulated: nothing on chain to link to.</span> : null}
+          {event.simulated && event.outcome !== "warn" ? <span className="text-muted">Simulated: nothing on chain to link to.</span> : null}
           {event.records.length > 1 || event.request ? (
-            <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="ml-auto text-mist-300 underline decoration-ink-500 underline-offset-[3px] hover:text-paper">
+            <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="ml-auto text-body underline decoration-line-strong underline-offset-[3px] hover:text-ink">
               {open ? "Hide steps" : "Steps"}
             </button>
           ) : null}
         </div>
 
         {open ? (
-          <div className="mt-3 rounded-xl border border-ink-600/70 bg-ink-850/80 p-3 text-[13px]">
+          <div className="mt-3 rounded-lg border-2 border-ink bg-card p-3 text-[13px]">
             <ol className="space-y-1.5">
               {event.records.map((record) => (
                 <li key={record.id} className="flex flex-wrap justify-between gap-x-3">
-                  <span className="text-mist-200">{STEP_LABEL[record.kind] ?? record.kind}</span>
-                  <time className="num text-mist-400" dateTime={record.at}>
+                  <span className="text-ink-2">{STEP_LABEL[record.kind] ?? record.kind}</span>
+                  <time className="num text-muted" dateTime={record.at}>
                     {clock(record.at)}
                   </time>
                 </li>
               ))}
             </ol>
             {event.request ? (
-              <dl className="mt-3 grid gap-1.5 border-t border-ink-600/70 pt-3 sm:grid-cols-[auto_1fr] sm:gap-x-4">
-                <dt className="text-mist-400">Recipient</dt>
-                <dd className="num break-all text-mist-200">{event.request.recipient}</dd>
-                <dt className="text-mist-400">Deposit address</dt>
-                <dd className="num break-all text-mist-200">{event.request.depositAddress}</dd>
-                <dt className="text-mist-400">Quote</dt>
-                <dd className="num break-all text-mist-200">{event.request.quoteId}</dd>
-                <dt className="text-mist-400">Needed</dt>
-                <dd className="num text-mist-200">${event.request.usdNeeded.toFixed(2)}</dd>
+              <dl className="mt-3 grid gap-1.5 border-t-2 border-ink/10 pt-3 sm:grid-cols-[auto_1fr] sm:gap-x-4">
+                <dt className="text-muted">Recipient</dt>
+                <dd className="num break-all text-ink-2">{event.request.recipient}</dd>
+                <dt className="text-muted">Deposit address</dt>
+                <dd className="num break-all text-ink-2">{event.request.depositAddress}</dd>
+                <dt className="text-muted">Quote</dt>
+                <dd className="num break-all text-ink-2">{event.request.quoteId}</dd>
+                <dt className="text-muted">Needed</dt>
+                <dd className="num text-ink-2">${event.request.usdNeeded.toFixed(2)}</dd>
               </dl>
             ) : null}
           </div>
@@ -153,7 +153,7 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
 export function EventList({ events, showUser = false }: { events: LedgerEvent[]; showUser?: boolean }) {
   const now = useNow(5000);
   return (
-    <ol className="relative space-y-3 before:absolute before:bottom-4 before:left-[12px] before:top-4 before:w-px before:bg-ink-600">
+    <ol className="relative space-y-3 before:absolute before:bottom-4 before:left-[12px] before:top-4 before:w-px before:bg-shade">
       {events.map((event) => (
         <EventItem key={event.key} event={event} showUser={showUser} now={now} />
       ))}

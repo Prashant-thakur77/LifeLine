@@ -8,25 +8,27 @@ import { config } from "../lib/env";
 import { shortMiddle } from "../lib/format";
 import { pageHref } from "../lib/links";
 import { describeTxError } from "../lib/tx";
-import { Button, cx, Spinner } from "./ui";
+import { Button, cx, PaperRule, Spinner } from "./ui";
 import { useWallet } from "./WalletProvider";
 
-/** A lifebuoy: the mark. Paper ring, four signal-orange quarters. */
+/** A lifebuoy: the mark. A white ring with four signal-orange quarters, outlined in ink like a printed object. */
 export function Mark({ className }: { className?: string }) {
   const c = 2 * Math.PI * 8.5;
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#f5f1e8" strokeWidth="5" />
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#fffcf5" strokeWidth="5" />
       <circle
         cx="12"
         cy="12"
         r="8.5"
         fill="none"
-        stroke="#ff7a3d"
+        stroke="#ff5a1f"
         strokeWidth="5"
         strokeDasharray={`${c / 8} ${c / 8}`}
         transform="rotate(-22.5 12 12)"
       />
+      <circle cx="12" cy="12" r="11.1" fill="none" stroke="#0b1533" strokeWidth="1.1" />
+      <circle cx="12" cy="12" r="5.9" fill="none" stroke="#0b1533" strokeWidth="1.1" />
     </svg>
   );
 }
@@ -54,8 +56,8 @@ function NavLinks({ className }: { className?: string }) {
             href={item.keepsUser ? pageHref(item.href, user) : item.href}
             aria-current={active ? "page" : undefined}
             className={cx(
-              "shrink-0 px-3 py-1.5 text-[14px] font-medium transition-colors",
-              active ? "text-paper shadow-[inset_0_-3px_0_var(--color-rescue)]" : "text-mist-300 hover:text-paper hover:shadow-[inset_0_-3px_0_var(--color-ink-500)]",
+              "shrink-0 rounded-md px-3 py-1.5 text-[15px] font-semibold transition-colors",
+              active ? "bg-ink text-paper" : "text-ink-2 hover:bg-sun hover:text-ink",
             )}
           >
             {item.label}
@@ -118,7 +120,7 @@ function WalletButton() {
           Connect wallet
         </Button>
         {error ? (
-          <p role="alert" className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-danger/40 bg-ink-800 p-3 text-[13px] text-mist-200 shadow-xl">
+          <p role="alert" className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-danger/40 bg-card p-3 text-[13px] text-ink-2 shadow-xl">
             {error}
           </p>
         ) : null}
@@ -131,20 +133,20 @@ function WalletButton() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex h-8 max-w-[170px] items-center gap-2 rounded-xl border border-ink-500 bg-ink-750 px-3 text-[13px] font-medium text-paper hover:border-mist-400"
+        className="flex h-8 max-w-[170px] items-center gap-2 rounded-lg border-2 border-ink bg-card px-3 text-[13px] font-medium text-ink hover:border-line-strong"
       >
         <span className="size-2 shrink-0 rounded-full bg-safe" aria-hidden />
         <span className="truncate">{shortMiddle(accountId, 10, 6)}</span>
       </button>
       {open ? (
-        <div className="absolute right-0 top-10 z-30 w-56 overflow-hidden rounded-xl border border-ink-500 bg-ink-800 shadow-2xl">
-          <p className="truncate border-b border-ink-600 px-4 py-3 text-[12px] text-mist-400">
-            Signed in as <span className="text-mist-100">{accountId}</span>
+        <div className="absolute right-0 top-10 z-30 w-56 overflow-hidden rounded-lg border-2 border-ink bg-card shadow-[4px_4px_0_var(--color-ink)]">
+          <p className="truncate border-b border-line px-4 py-3 text-[12px] text-muted">
+            Signed in as <span className="text-ink">{accountId}</span>
           </p>
-          <Link href={pageHref("/position", accountId)} onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[14px] text-mist-100 hover:bg-ink-700">
+          <Link href={pageHref("/position", accountId)} onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[14px] text-ink hover:bg-shade">
             My position
           </Link>
-          <Link href={pageHref("/history", accountId)} onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[14px] text-mist-100 hover:bg-ink-700">
+          <Link href={pageHref("/history", accountId)} onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[14px] text-ink hover:bg-shade">
             My history
           </Link>
           <button
@@ -153,7 +155,7 @@ function WalletButton() {
               setOpen(false);
               await disconnect();
             }}
-            className="block w-full px-4 py-2.5 text-left text-[14px] text-[#ff8a98] hover:bg-ink-700"
+            className="block w-full px-4 py-2.5 text-left text-[14px] text-danger-ink hover:bg-shade"
           >
             Disconnect
           </button>
@@ -165,11 +167,11 @@ function WalletButton() {
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-20 border-b border-ink-700/80 bg-ink-900/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Lifeline home">
-          <Mark className="size-6" />
-          <span className="font-stencil text-[21px] font-bold uppercase leading-none tracking-[0.02em] text-paper">Lifeline</span>
+    <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-5 px-4 sm:px-6">
+        <Link href="/" className="group flex shrink-0 items-center gap-2.5" aria-label="Lifeline home">
+          <Mark className="size-8 transition-transform duration-500 group-hover:rotate-[90deg]" />
+          <span className="text-[24px] font-black uppercase leading-none tracking-[-0.01em] text-ink [font-variation-settings:'wdth'_72]">Lifeline</span>
         </Link>
         <Suspense fallback={<div className="hidden flex-1 md:block" />}>
           <NavLinks className="hidden flex-1 items-center gap-1 md:flex" />
@@ -179,7 +181,7 @@ export function Header() {
         </div>
       </div>
       <Suspense fallback={<div className="h-11 md:hidden" />}>
-        <NavLinks className="scrollbar-none flex h-11 items-center gap-1 overflow-x-auto border-t border-ink-700/60 px-3 [mask-image:linear-gradient(to_right,black_88%,transparent)] md:hidden" />
+        <NavLinks className="scrollbar-none flex h-11 items-center gap-1 overflow-x-auto border-t-2 border-ink/10 px-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] md:hidden" />
       </Suspense>
     </header>
   );
@@ -187,38 +189,53 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="mt-20 border-t border-ink-700/70">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-[13px] text-mist-400 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <Mark className="size-4" />
-          <span>Lifeline: auto top-up for onchain perps, funded from any chain.</span>
+    <footer className="mt-28">
+      <PaperRule className="h-8" />
+      <div className="bg-sea-deep text-paper">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 pb-10 pt-12 sm:px-6 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <div className="flex items-center gap-3">
+              <Mark className="size-10" />
+              <span className="text-[clamp(44px,7vw,96px)] font-black uppercase leading-none tracking-[-0.01em] [font-variation-settings:'wdth'_72]">Lifeline</span>
+            </div>
+            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-paper/85">Auto top-up for onchain perps, funded from any chain. The vault only ever pays your own Hyperliquid address.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-8 lg:col-span-5">
+            <nav aria-label="Footer" className="flex flex-col gap-2 text-[15px]">
+              {NAV.map((item) => (
+                <Link key={item.href} href={item.keepsUser ? pageHref(item.href, DEMO_USER) : item.href} className="w-fit font-semibold hover:text-sun">
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <dl className="flex flex-col gap-3 font-readout text-[12px]">
+              <div>
+                <dt className="text-paper/60">Network</dt>
+                <dd>{config.network}</dd>
+              </div>
+              <div>
+                <dt className="text-paper/60">Vault</dt>
+                <dd className="break-all">{config.vaultId ?? "not deployed yet"}</dd>
+              </div>
+              <div>
+                <dt className="text-paper/60">Demo</dt>
+                <dd>
+                  <Link href={pageHref("/position", DEMO_USER)} className="underline decoration-sun underline-offset-4 hover:text-sun">
+                    {DEMO_USER}
+                  </Link>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-paper/60">Source</dt>
+                <dd>
+                  <a href="https://github.com/Prashant-thakur77/LifeLine" className="underline decoration-sun underline-offset-4 hover:text-sun" target="_blank" rel="noreferrer noopener">
+                    GitHub (MIT)
+                  </a>
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
-        <dl className="flex flex-wrap gap-x-5 gap-y-1">
-          <div className="flex gap-1.5">
-            <dt>Network</dt>
-            <dd className="text-mist-200">{config.network}</dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt>Vault</dt>
-            <dd className="text-mist-200">{config.vaultId ?? "not deployed yet"}</dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt>Demo</dt>
-            <dd>
-              <Link href={pageHref("/position", DEMO_USER)} className="text-mist-200 hover:text-paper">
-                {DEMO_USER}
-              </Link>
-            </dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt>Source</dt>
-            <dd>
-              <a href="https://github.com/Prashant-thakur77/LifeLine" className="text-mist-200 hover:text-paper" target="_blank" rel="noreferrer noopener">
-                GitHub (MIT)
-              </a>
-            </dd>
-          </div>
-        </dl>
       </div>
     </footer>
   );

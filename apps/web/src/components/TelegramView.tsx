@@ -49,30 +49,30 @@ function LinkCard({ user }: { user: string }) {
     <>
       {simulation ? <SimBanner compact /> : null}
       <Card className="max-w-2xl p-6">
-        <p className="text-[14px] text-mist-300">
-          Linking alerts for <span className="font-semibold text-paper">{user}</span>
+        <p className="text-[14px] text-body">
+          Linking alerts for <span className="font-semibold text-ink">{user}</span>
         </p>
 
         {link && !expired ? (
           <div className="mt-5">
-            <p className="text-[13px] text-mist-400">Your one-time code</p>
-            <p className="num mt-1 select-all text-[34px] tracking-[0.18em] text-paper sm:text-[40px]">{link.code}</p>
-            <p className="mt-1 text-[13px] text-mist-400">
-              Expires in <span className="num text-mist-200">{formatCountdown(remaining)}</span>. It works once.
+            <p className="text-[13px] text-muted">Your one-time code</p>
+            <p className="num mt-1 select-all text-[34px] tracking-[0.18em] text-ink sm:text-[40px]">{link.code}</p>
+            <p className="mt-1 text-[13px] text-muted">
+              Expires in <span className="num text-ink-2">{formatCountdown(remaining)}</span>. It works once.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <a
                 href={telegramStart(link.botUsername, link.code)}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-rescue px-5 text-[15px] font-semibold text-ink-950 hover:bg-[#ff8c55]"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-rescue px-5 text-[15px] font-semibold text-ink hover:bg-[#ff7440]"
               >
                 Open @{link.botUsername}
               </a>
               <CopyButton value={link.code} label="Copy code" />
             </div>
-            <p className="mt-4 text-[13.5px] leading-relaxed text-mist-300">
-              The button opens the bot with the code filled in: tap Start. Or open <span className="text-paper">@{link.botUsername}</span> yourself and send
+            <p className="mt-4 text-[13.5px] leading-relaxed text-body">
+              The button opens the bot with the code filled in: tap Start. Or open <span className="text-ink">@{link.botUsername}</span> yourself and send
               it the code. Send <span className="num">/unlink</span> there to stop.
             </p>
           </div>

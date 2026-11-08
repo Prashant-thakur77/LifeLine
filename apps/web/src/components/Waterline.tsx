@@ -1,23 +1,14 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { formatHealth } from "../lib/format";
 import { GAUGE_MAX } from "../lib/gauge";
-import { hullY, settle, type Spring } from "../lib/waterline";
+import { hullY, settle, wavePath, type Spring } from "../lib/waterline";
 import { Mark } from "./Shell";
 import { cx } from "./ui";
 
 export type Levels = { warn: number; trigger: number; target: number };
 export type WaterTone = "safe" | "warn" | "rescue" | "liquidation" | "none" | "unknown";
-
-const TONE: Record<WaterTone, string> = {
-  safe: "62 211 162",
-  warn: "244 182 63",
-  rescue: "255 122 61",
-  liquidation: "255 82 102",
-  none: "147 165 179",
-  unknown: "244 182 63",
-};
 
 type Props = {
   /** The health the water settles at. Null means no trusted reading: the water stays put and is hatched, never lowered. */
@@ -29,35 +20,38 @@ type Props = {
   /** Increment to ping the surface (a fresh reading arrived). */
   pingSignal: number;
   reduced: boolean;
-  /** The label carried down the line, such as "+3.47 USDC". */
+  /** The label carried down the line, such as "+3.47 USDC → 0x1111…1111". */
   throwLabel?: string | null;
   /** Fraction of the height where health 1.0 sits. */
   scaleTop?: number;
   /** The health at the bottom of the scale: 4.0, or less for a short panel. */
   scaleMax?: number;
-  /** Fraction of the width covered by text: the surface line and hairlines stay quiet there. */
-  quietLeft?: number;
   /** Names where the line is thrown from, such as the vault. */
   anchorLabel?: string;
-  /** "hero" spans the viewport; "panel" fits inside a card. */
+  /** "hero" spans the page; "panel" fits inside a card. */
   size?: "hero" | "panel";
   /** Rides the surface: the readout. */
   surface?: ReactNode;
   className?: string;
 };
 
-const SEA_STATE: Record<WaterTone, number> = { safe: 0.55, none: 0.5, warn: 0.85, unknown: 0.7, rescue: 1.2, liquidation: 1.3 };
+/** Four sheets of cut paper, back to front: lighter and higher behind, deeper in front. Each drifts at its own pace. */
+const WAVES = [
+  { fill: "#b7ccff", rise: -46, amp: 9, period: 520, seconds: 58, reverse: false },
+  { fill: "#6f93ff", rise: -26, amp: 12, period: 760, seconds: 44, reverse: true },
+  { fill: "#1d4bff", rise: -6, amp: 11, period: 640, seconds: 36, reverse: false },
+  { fill: "#0e2fb3", rise: 22, amp: 8, period: 900, seconds: 50, reverse: true },
+] as const;
 
-const ROPE_REVEAL_MS = 240;
+const ROPE_REVEAL_MS = 260;
 const ROPE_HOLD_MS = 2600;
 const ROPE_FADE_MS = 500;
-const PING_MS = 1300;
 
 /**
- * The landing page's signature: health drawn as a sea level against a load line painted
- * on a hull. Falling health is rising water. A rescue throws an orange line from the
- * reserve and the water drops back. One animation loop draws the canvas and moves the
- * surface layer directly, so React only renders when the reading changes.
+ * The signature: health as the sea level against a load line printed on an orange
+ * paper hull. Falling health is rising water. A rescue throws a line from the reserve,
+ * a lifebuoy lands with a splash, and the water drops back. The waves drift by CSS;
+ * one loop moves the sea and the readout, and only while something is moving.
  */
 export function Waterline({
   health,
@@ -67,78 +61,66 @@ export function Waterline({
   pingSignal,
   reduced,
   throwLabel,
-  scaleTop = 0.14,
+  scaleTop = 0.16,
   scaleMax = GAUGE_MAX,
-  quietLeft = 0,
   anchorLabel,
   size = "hero",
   surface,
   className,
 }: Props) {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const box = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const sea = useRef<SVGGElement>(null);
   const rope = useRef<SVGSVGElement>(null);
   const ropePath = useRef<SVGPathElement>(null);
   const ropeTwist = useRef<SVGPathElement>(null);
-  const ropeTag = useRef<HTMLDivElement>(null);
+  const buoy = useRef<HTMLDivElement>(null);
+  const tag = useRef<HTMLSpanElement>(null);
+  const splash = useRef<HTMLDivElement>(null);
+  const ping = useRef<HTMLSpanElement>(null);
+  const rider = useRef<HTMLDivElement>(null);
   const ladder = useRef<HTMLDivElement>(null);
   const anchorSquare = useRef<HTMLSpanElement>(null);
-  const tag = useRef<HTMLSpanElement>(null);
-  const rider = useRef<HTMLDivElement>(null);
+  const [dims, setDims] = useState({ w: 1200, h: 600 });
 
-  // Everything the loop reads lives in one ref, so props can change without restarting it.
   const live = useRef({
     target: health === null ? null : hullY(health, scaleTop, scaleMax),
-    tone,
     reduced,
-    scaleTop,
     spring: null as Spring | null,
     throwAt: -Infinity,
-    pingAt: -Infinity,
-    size: { w: 0, h: 0, dpr: 1 },
-    /** Where the line lands and the ping rings: just right of the readout. */
+    splashed: true,
+    h: 600,
+    w: 1200,
     focusX: 0,
-    /** Where the line is thrown from: the top of the load line's spine. */
     anchor: { x: 0, y: 0 },
-    quietLeft,
-    sea: SEA_STATE[tone],
     wake: () => {},
   });
 
-  useEffect(() => {
-    const s = live.current;
-    s.target = health === null ? null : hullY(health, scaleTop, scaleMax);
-    s.quietLeft = quietLeft;
-    s.tone = tone;
-    s.reduced = reduced;
-    s.scaleTop = scaleTop;
-    if (s.spring === null && s.target !== null) s.spring = { value: s.target, velocity: 0 };
-    s.wake();
-  }, [health, tone, reduced, scaleTop, scaleMax, quietLeft]);
-
-  /** Where the line starts (the reserve square) and lands (beside the readout), from the layout as it is now. */
+  /** Where the line starts (the reserve tag) and lands (beside the readout), from the layout as it is now. */
   const measure = () => {
     const el = box.current;
     if (!el) return;
     const s = live.current;
     const rect = el.getBoundingClientRect();
     const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-    s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 18) : rect.width * 0.6;
+    s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 22) : rect.width * 0.5;
     const square = anchorSquare.current?.getBoundingClientRect();
-    const spine = ladder.current?.getBoundingClientRect();
-    s.anchor = square
-      ? { x: square.left + square.width / 2 - rect.left, y: square.top + square.height / 2 - rect.top }
-      : spine
-        ? { x: spine.left - rect.left, y: spine.top - rect.top - 30 }
-        : { x: rect.width * 0.95, y: 12 };
+    s.anchor = square ? { x: square.left + square.width / 2 - rect.left, y: square.top + square.height / 2 - rect.top } : { x: rect.width * 0.7, y: 10 };
   };
   const measureRef = useRef(measure);
   measureRef.current = measure;
 
-  // A change of scale moves the ladder without resizing the box, so measure again.
+  useEffect(() => {
+    const s = live.current;
+    s.target = health === null ? null : hullY(health, scaleTop, scaleMax);
+    s.reduced = reduced;
+    if (s.spring === null && s.target !== null) s.spring = { value: s.target, velocity: 0 };
+    s.wake();
+  }, [health, reduced, scaleTop, scaleMax]);
+
   useEffect(() => {
     measureRef.current();
-  }, [scaleTop, scaleMax, anchorLabel, size]);
+  }, [scaleTop, scaleMax, anchorLabel, size, dims]);
 
   const lastThrow = useRef(throwSignal);
   useEffect(() => {
@@ -146,6 +128,7 @@ export function Waterline({
     lastThrow.current = throwSignal;
     measureRef.current();
     live.current.throwAt = performance.now();
+    live.current.splashed = false;
     live.current.wake();
   }, [throwSignal]);
 
@@ -153,24 +136,26 @@ export function Waterline({
   useEffect(() => {
     if (pingSignal === lastPing.current) return;
     lastPing.current = pingSignal;
-    if (!live.current.reduced) live.current.pingAt = performance.now();
-    live.current.wake();
+    if (live.current.reduced || !ping.current) return;
+    ping.current.style.left = `${live.current.focusX}px`;
+    ping.current.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(0.2, 0.08)", opacity: 0.9 },
+        { transform: "translate(-50%, -50%) scale(1, 0.3)", opacity: 0 },
+      ],
+      { duration: 1400, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" },
+    );
   }, [pingSignal]);
 
   useEffect(() => {
     const el = box.current;
-    const cv = canvas.current;
-    const ctx = cv?.getContext("2d");
-    if (!el || !cv || !ctx) return;
+    if (!el) return;
     const s = live.current;
-
     const resize = () => {
       const rect = el.getBoundingClientRect();
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      s.size = { w: rect.width, h: rect.height, dpr };
-      cv.width = Math.round(rect.width * dpr);
-      cv.height = Math.round(rect.height * dpr);
-      rope.current?.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+      s.w = rect.width;
+      s.h = rect.height;
+      setDims({ w: Math.round(rect.width), h: Math.round(rect.height) });
       measureRef.current();
       s.wake();
     };
@@ -179,181 +164,114 @@ export function Waterline({
 
     let frame = 0;
     let running = false;
-    let visible = true;
     let last = performance.now();
-    const born = last;
+
+    const splashNow = (x: number, y: number) => {
+      const holder = splash.current;
+      if (!holder || s.reduced) return;
+      holder.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      [...holder.children].forEach((child, i) => {
+        const angle = -Math.PI / 2 + (i - (holder.children.length - 1) / 2) * 0.45;
+        const dist = 26 + (i % 3) * 10;
+        (child as HTMLElement).animate(
+          [
+            { transform: "translate(-50%, -50%) scale(0.4)", opacity: 1 },
+            { transform: `translate(calc(-50% + ${Math.cos(angle) * dist}px), calc(-50% + ${Math.sin(angle) * dist}px)) scale(1)`, opacity: 1, offset: 0.55 },
+            { transform: `translate(calc(-50% + ${Math.cos(angle) * dist * 1.25}px), calc(-50% + ${Math.sin(angle) * dist * 0.3 + 18}px)) scale(0.6)`, opacity: 0 },
+          ],
+          { duration: 620, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)" },
+        );
+      });
+    };
 
     const draw = (now: number) => {
-      const { w, h, dpr } = s.size;
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
+      const h = s.h;
       if (s.target !== null && s.spring) s.spring = s.reduced ? { value: s.target, velocity: 0 } : settle(s.spring, s.target, dt);
       const level = (s.spring?.value ?? 1) * h;
-      const trusted = s.target !== null;
-      const t = (now - born) / 1000;
-      // Sea state follows stress: nearly still when safe, a little rougher toward liquidation. Never frantic.
-      s.sea += (SEA_STATE[s.tone] - s.sea) * Math.min(1, dt * 1.2);
-      const amp = s.reduced ? 0 : Math.max(2.5, Math.min(6, h / 110)) * s.sea;
-      const wave = (x: number, phase: number, k: number) =>
-        Math.sin(x * k + t * 0.9 + phase) * amp + Math.sin(x * k * 0.47 - t * 0.55 + phase * 2) * amp * 0.6;
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-
-      if (s.spring) {
-        // Back swell, then the body, then the surface line.
-        const back = ctx.createLinearGradient(0, level - 20, 0, h);
-        back.addColorStop(0, "rgba(64, 160, 168, 0.10)");
-        back.addColorStop(1, "rgba(64, 160, 168, 0.02)");
-        ctx.beginPath();
-        ctx.moveTo(0, h);
-        for (let x = 0; x <= w + 8; x += 8) ctx.lineTo(x, level - 6 + wave(x, 1.7, 0.011));
-        ctx.lineTo(w, h);
-        ctx.closePath();
-        ctx.fillStyle = back;
-        ctx.fill();
-
-        const body = ctx.createLinearGradient(0, level, 0, h);
-        body.addColorStop(0, trusted ? "rgba(18, 84, 96, 0.62)" : "rgba(60, 60, 50, 0.4)");
-        body.addColorStop(0.35, trusted ? "rgba(8, 40, 54, 0.78)" : "rgba(30, 30, 28, 0.55)");
-        body.addColorStop(1, "rgba(4, 14, 22, 0.94)");
-        ctx.beginPath();
-        ctx.moveTo(0, h);
-        for (let x = 0; x <= w + 8; x += 8) ctx.lineTo(x, level + wave(x, 0, 0.016));
-        ctx.lineTo(w, h);
-        ctx.closePath();
-        ctx.fillStyle = body;
-        ctx.fill();
-
-        ctx.beginPath();
-        for (let x = 0; x <= w + 8; x += 8) {
-          const y = level + wave(x, 0, 0.016);
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        const strong = trusted ? 0.9 : 0.6;
-        if (s.quietLeft > 0) {
-          const fadeTo = Math.min(1, s.quietLeft + 0.08);
-          const stroke = ctx.createLinearGradient(0, 0, w, 0);
-          stroke.addColorStop(0, `rgb(${TONE[s.tone]} / 0.16)`);
-          stroke.addColorStop(s.quietLeft, `rgb(${TONE[s.tone]} / 0.16)`);
-          stroke.addColorStop(fadeTo, `rgb(${TONE[s.tone]} / ${strong})`);
-          ctx.strokeStyle = stroke;
-        } else {
-          ctx.strokeStyle = `rgb(${TONE[s.tone]} / ${strong})`;
-        }
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash(trusted ? [] : [6, 6]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // A sonar ping where a fresh reading arrived.
-        const ping = (now - s.pingAt) / PING_MS;
-        if (ping >= 0 && ping < 1) {
-          const px = s.focusX;
-          const py = level + wave(px, 0, 0.016);
-          ctx.beginPath();
-          ctx.ellipse(px, py, 10 + ping * 90, 3 + ping * 18, 0, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgb(${TONE[s.tone]} / ${0.55 * (1 - ping)})`;
-          ctx.lineWidth = 1.25;
-          ctx.stroke();
-        }
-      }
-
+      sea.current?.setAttribute("transform", `translate(0 ${level.toFixed(2)})`);
       if (rider.current) {
         rider.current.style.transform = `translate3d(0, ${level}px, 0)`;
-        // Nothing to ride until there's a first reading.
         rider.current.style.opacity = s.spring ? "1" : "0";
       }
 
-      // The throw line: from the deck, off the top right, down to the surface.
       const since = now - s.throwAt;
       const ropeOn = since >= 0 && since < ROPE_HOLD_MS + ROPE_FADE_MS;
       if (ropePath.current && ropeTwist.current && rope.current) {
         if (ropeOn) {
           const ex = s.focusX;
-          const ey = level + wave(ex, 0, 0.016);
-          const sx = s.anchor.x;
-          const sy = s.anchor.y;
+          const ey = level - 4;
+          const { x: sx, y: sy } = s.anchor;
           const reveal = s.reduced ? 1 : Math.min(1, since / ROPE_REVEAL_MS);
           const easeOut = 1 - (1 - reveal) ** 3;
           const taut = s.reduced ? 1 : Math.min(1, Math.max(0, (since - ROPE_REVEAL_MS) / 700));
-          // The line arcs out from the reserve over the top, then drops into the gap beside the
-          // readout: it never crosses the load-line labels, the disc or the readout. It starts
-          // slack and pulls taut; it never dips under the surface.
-          const slack = h * 0.16 * (1 - taut);
-          const cx = ex + (sx - ex) * 0.08;
+          // Out over the top from the reserve, then down beside the readout; slack first, then taut.
+          const slack = h * 0.14 * (1 - taut);
+          const cx = ex + (sx - ex) * 0.1;
           const cy = Math.min(ey - 6, sy + (ey - sy) * 0.12 + slack);
           const d = `M ${sx} ${sy} Q ${cx} ${cy} ${ex} ${ey}`;
           const fade = since > ROPE_HOLD_MS ? 1 - (since - ROPE_HOLD_MS) / ROPE_FADE_MS : 1;
           ropePath.current.setAttribute("d", d);
           ropeTwist.current.setAttribute("d", d);
           const length = ropePath.current.getTotalLength();
-          for (const p of [ropePath.current, ropeTwist.current]) {
-            p.style.strokeDasharray = p === ropePath.current ? `${length}` : `2 7`;
-            p.style.strokeDashoffset = p === ropePath.current ? `${length * (1 - easeOut)}` : "0";
-          }
+          ropePath.current.style.strokeDasharray = `${length}`;
+          ropePath.current.style.strokeDashoffset = `${length * (1 - easeOut)}`;
           ropeTwist.current.style.opacity = easeOut >= 1 ? "1" : "0";
           rope.current.style.opacity = String(Math.max(0, fade));
-          if (ropeTag.current) {
-            ropeTag.current.style.opacity = String(easeOut >= 1 ? Math.max(0, fade) : 0);
-            ropeTag.current.style.transform = `translate3d(${ex}px, ${ey}px, 0)`;
+          if (buoy.current) {
+            buoy.current.style.opacity = String(easeOut >= 1 ? Math.max(0, fade) : 0);
+            buoy.current.style.transform = `translate3d(${ex}px, ${ey}px, 0)`;
           }
           if (tag.current) {
-            // Below and left of the buoy, but never off the panel's edge.
             const tw = tag.current.offsetWidth;
-            const tx = Math.max(12, Math.min(w - tw - 12, ex - tw - 10));
-            tag.current.style.transform = `translate3d(${tx - ex}px, 18px, 0)`;
+            const tx = Math.max(12, Math.min(s.w - tw - 12, ex - tw - 14));
+            tag.current.style.transform = `translate3d(${tx - ex}px, 20px, 0)`;
+          }
+          if (easeOut >= 1 && !s.splashed) {
+            s.splashed = true;
+            splashNow(ex, ey);
           }
         } else {
           rope.current.style.opacity = "0";
-          if (ropeTag.current) ropeTag.current.style.opacity = "0";
+          if (buoy.current) buoy.current.style.opacity = "0";
         }
       }
 
-      const moving =
-        !s.reduced ||
-        (s.spring !== null && s.target !== null && Math.abs(s.spring.value - s.target) > 0.0005) ||
-        ropeOn;
-      if (visible && moving && !document.hidden) frame = requestAnimationFrame(draw);
+      const moving = (s.spring !== null && s.target !== null && Math.abs(s.spring.value - s.target) > 0.0004) || ropeOn;
+      if (moving && !document.hidden) frame = requestAnimationFrame(draw);
       else running = false;
     };
 
     s.wake = () => {
-      if (running || !visible) return;
+      if (running) return;
       running = true;
       last = performance.now();
       frame = requestAnimationFrame(draw);
     };
-
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry?.isIntersecting ?? true;
-      if (visible) s.wake();
-    });
-    io.observe(el);
     const onVisibility = () => {
       if (!document.hidden) s.wake();
     };
     document.addEventListener("visibilitychange", onVisibility);
     resize();
-    s.wake();
-
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      io.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       s.wake = () => {};
     };
   }, []);
 
-  const within = (health: number) => (hullY(health, scaleTop, scaleMax) - scaleTop) / (1 - scaleTop);
+  const within = (h: number) => (hullY(h, scaleTop, scaleMax) - scaleTop) / (1 - scaleTop);
+  const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`;
+  const trusted = health !== null;
   const marks = [
-    { key: "liq", label: "Liquidation", value: 1, tone: "danger" },
-    { key: "trigger", label: "Rescue", value: levels.trigger, tone: "rescue" },
-    { key: "warn", label: "Warn", value: levels.warn, tone: "warn" },
-    { key: "target", label: "Refill", value: levels.target, tone: "safe" },
-  ] as const;
+    { key: "liq", label: "Liquidation", short: "Liq.", value: 1, bar: "bg-danger" },
+    { key: "trigger", label: "Rescue", short: "Rescue", value: levels.trigger, bar: "bg-ink" },
+    { key: "warn", label: "Warn", short: "Warn", value: levels.warn, bar: "bg-sun" },
+    { key: "target", label: "Refill", short: "Refill", value: levels.target, bar: "bg-[repeating-linear-gradient(90deg,var(--color-ink)_0_8px,transparent_8px_13px)]" },
+  ];
+  const { w, h } = dims;
 
   return (
     <div
@@ -361,96 +279,133 @@ export function Waterline({
       className={cx(
         "overflow-hidden",
         size === "hero"
-          ? "[--disc-w:84px] [--ladder-r:12px] [--ladder-w:128px] sm:[--ladder-w:190px] lg:[--disc-w:104px] lg:[--ladder-r:4%] lg:[--ladder-w:170px] xl:[--disc-w:124px] xl:[--ladder-w:250px]"
-          : "[--disc-w:84px] [--ladder-r:16px] [--ladder-w:128px] sm:[--ladder-w:210px]",
+          ? "[--hull-r:0px] [--hull-w:44%] sm:[--hull-w:40%] lg:[--hull-r:3%] lg:[--hull-w:34%]"
+          : "[--hull-r:0px] [--hull-w:46%] sm:[--hull-w:42%]",
         className ?? "relative",
       )}
     >
-      {/* The load line, painted on the hull. Below the surface it shows through the water, dimmed. */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        {[
-          { value: 1, className: "bg-danger/25" },
-          { value: levels.trigger, className: "bg-rescue/25" },
-        ].map((line) => (
-          <div
-            key={line.value}
-            className={cx("absolute right-0 h-px", line.className)}
-            style={{ top: pct(hullY(line.value, scaleTop, scaleMax)), left: pct(quietLeft) }}
-          />
-        ))}
-        <div ref={ladder} className="absolute bottom-0 right-[var(--ladder-r)] w-[var(--ladder-w)]" style={{ top: pct(scaleTop) }}>
-          {anchorLabel ? (
-            <div className="absolute bottom-full left-0 mb-5 flex -translate-x-[5px] items-center gap-2 whitespace-nowrap">
-              <span ref={anchorSquare} className="size-[10px] bg-rescue" />
-              <span className="font-readout text-[11px] text-paper/80">{anchorLabel}</span>
-            </div>
-          ) : null}
-          <div className="absolute inset-y-0 left-0 w-[3px] -translate-x-1/2 bg-paper/45" />
-          {marks.map((mark) => (
-            <div key={mark.key} className="absolute inset-x-0 flex -translate-y-1/2 items-center gap-2 sm:gap-3" style={{ top: pct(within(mark.value)) }}>
-              <div className={cx("h-[4px] w-[18%] shrink-0 sm:w-[30%]", MARK_BAR[mark.tone])} />
-              <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap leading-none sm:gap-2">
-                <span className="font-stencil text-[12px] uppercase tracking-[0.04em] text-paper/80 sm:text-[15px]">
-                  {mark.key === "liq" ? (
-                    <>
-                      <span className="sm:hidden">Liq.</span>
-                      <span className="hidden sm:inline">{mark.label}</span>
-                    </>
-                  ) : (
-                    mark.label
-                  )}
-                </span>
-                <span className={cx("num text-[12px] sm:text-[14px]", MARK_TEXT[mark.tone])}>{formatHealth(mark.value)}</span>
-              </div>
-            </div>
+      {/* The sun, printed: yellow over a misregistered orange pass. */}
+      <div className="pointer-events-none absolute right-[calc(var(--hull-r)+var(--hull-w)-9%)] top-[2%] aspect-square w-[min(26%,240px)]" aria-hidden>
+        <span className="absolute inset-0 translate-x-[4px] translate-y-[3px] rounded-full bg-rescue/35 mix-blend-multiply" />
+        <span className="absolute inset-0 rounded-full bg-sun mix-blend-multiply" />
+        <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,transparent_58%,rgb(255_247_234/0.9)_59%)] bg-[length:100%_100%]" />
+        <span className="absolute inset-[-14%] rounded-full bg-[radial-gradient(var(--color-sun)_1.2px,transparent_1.6px)] bg-[length:9px_9px] opacity-70 [mask-image:radial-gradient(circle,transparent_48%,black_52%,transparent_72%)]" />
+      </div>
+
+      {/* The hull: orange paper, with the load line printed on it. */}
+      <div
+        className="pointer-events-none absolute bottom-0 right-[var(--hull-r)] w-[var(--hull-w)] rounded-tl-[44px] bg-rescue shadow-[0_1px_0_rgb(11_21_51/0.2),0_24px_48px_-24px_rgb(11_21_51/0.55)]"
+        style={{ top: pct(Math.max(0, scaleTop - 0.15)) }}
+        aria-hidden
+      >
+        <span className="absolute inset-x-0 top-[16px] h-[9px] bg-paper/90" />
+        <span className="absolute inset-x-0 top-[30px] h-[3px] bg-ink/80" />
+        <span className="absolute left-[22px] right-0 top-[44px] flex gap-[14px] overflow-hidden">
+          {Array.from({ length: 24 }, (_, i) => (
+            <span key={i} className="size-[5px] shrink-0 rounded-full bg-ink/35" />
           ))}
-          {/* The disc, as on a ship's hull: a ring crossed by a bar, on the line the user set. */}
-          <div className="absolute right-full hidden w-[var(--disc-w)] -translate-y-1/2 pr-[6%] sm:block" style={{ top: pct(within(levels.trigger)) }}>
-            <svg viewBox="0 0 160 120" className="block w-full overflow-visible">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-rescue)" strokeOpacity="0.85" strokeWidth="9" />
-              <rect x="-4" y="55.5" width="128" height="9" fill="var(--color-rescue)" />
-              <line x1="124" y1="60" x2="172" y2="60" stroke="var(--color-rescue)" strokeOpacity="0.55" strokeWidth="3" strokeDasharray="6 5" />
-            </svg>
-            <p className="absolute left-0 top-full mt-2 w-[75%] text-center font-stencil text-[12px] uppercase tracking-[0.06em] text-rescue lg:text-[13px]">
-              Your trigger
-            </p>
+        </span>
+      </div>
+
+      <div
+        ref={ladder}
+        className="pointer-events-none absolute bottom-0 right-[calc(var(--hull-r)+12px)] w-[calc(var(--hull-w)*0.62)]"
+        style={{ top: pct(scaleTop) }}
+        aria-hidden
+      >
+        {anchorLabel ? (
+          <div className="absolute bottom-full left-0 mb-[84px] flex -translate-x-[6px] items-center gap-2 whitespace-nowrap rounded-sm bg-ink px-2 py-1">
+            <span ref={anchorSquare} className="size-[9px] bg-rescue" />
+            <span className="font-readout text-[10.5px] text-paper">{anchorLabel}</span>
           </div>
-          <div className="num absolute bottom-3 left-3 text-[11px] text-mist-100">{formatHealth(scaleMax)}+</div>
+        ) : null}
+        <div className="absolute inset-y-0 left-0 w-[3px] -translate-x-1/2 bg-ink/80" />
+        {marks.map((mark) => (
+          <div key={mark.key} className="absolute inset-x-0 flex -translate-y-1/2 items-center gap-2 sm:gap-3" style={{ top: pct(within(mark.value)) }}>
+            <div className={cx("h-[5px] w-[22%] shrink-0 sm:w-[28%]", mark.bar)} />
+            <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap leading-none sm:gap-2">
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.02em] text-ink [font-variation-settings:'wdth'_75] sm:text-[15px]">
+                {size === "panel" ? (
+                  mark.short
+                ) : (
+                  <>
+                    <span className="sm:hidden">{mark.short}</span>
+                    <span className="hidden sm:inline">{mark.label}</span>
+                  </>
+                )}
+              </span>
+              <span className="font-readout text-[11.5px] text-ink sm:text-[13px]">{formatHealth(mark.value)}</span>
+            </div>
+          </div>
+        ))}
+        {/* The disc, as on a ship's hull: a ring crossed by a bar, on the line the user set. */}
+        <div className="absolute left-[calc(-1*var(--disc,96px)-10px)] hidden w-[var(--disc,96px)] -translate-y-1/2 sm:block" style={{ top: pct(within(levels.trigger)) }}>
+          <svg viewBox="0 0 120 120" className="block w-full overflow-visible">
+            <circle cx="60" cy="60" r="48" fill="var(--color-paper)" stroke="var(--color-ink)" strokeWidth="9" />
+            <rect x="-6" y="55" width="132" height="10" fill="var(--color-ink)" />
+            <line x1="126" y1="60" x2="138" y2="60" stroke="var(--color-ink)" strokeWidth="3" strokeDasharray="4 3" />
+          </svg>
+          <p className="absolute left-0 top-full mt-1.5 w-full text-center text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink [font-variation-settings:'wdth'_75]">
+            Your trigger
+          </p>
         </div>
       </div>
 
-      <canvas ref={canvas} className="pointer-events-none absolute inset-0 size-full" aria-hidden />
+      {/* The sea: four sheets of cut paper, drifting, raised and lowered together by health. */}
+      <svg className="pointer-events-none absolute inset-0 size-full" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <pattern id={`dots-${id}`} width="8" height="8" patternUnits="userSpaceOnUse">
+            <circle cx="4" cy="4" r="1.5" fill="#6f93ff" />
+          </pattern>
+          <pattern id={`hatch-${id}`} width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="4" height="10" fill="rgb(245 161 0 / 0.45)" />
+          </pattern>
+        </defs>
+        <g ref={sea}>
+          {WAVES.map((wave, i) => (
+            <g
+              key={i}
+              className={cx("wave-drift", !trusted && i < 3 && "opacity-50")}
+              style={{
+                ["--p" as string]: `${wave.period}px`,
+                animationDuration: `${wave.seconds}s`,
+                animationDirection: wave.reverse ? "reverse" : "normal",
+                filter: "drop-shadow(0 -3px 4px rgb(11 21 51 / 0.22))",
+              }}
+            >
+              <path d={wavePath({ width: w, height: h + 120, period: wave.period, amp: wave.amp, top: wave.rise })} fill={wave.fill} />
+              {i === 3 ? <path d={wavePath({ width: w, height: h + 120, period: wave.period, amp: wave.amp, top: wave.rise + 18 })} fill={`url(#dots-${id})`} opacity="0.55" /> : null}
+              {!trusted && i === 3 ? <path d={wavePath({ width: w, height: h + 120, period: wave.period, amp: wave.amp, top: wave.rise })} fill={`url(#hatch-${id})`} /> : null}
+            </g>
+          ))}
+        </g>
+      </svg>
 
       <svg ref={rope} className="pointer-events-none absolute inset-0 size-full opacity-0" aria-hidden>
-        <path ref={ropePath} fill="none" stroke="var(--color-rescue)" strokeWidth="4" strokeLinecap="round" />
-        <path ref={ropeTwist} fill="none" stroke="var(--color-paper)" strokeOpacity="0.65" strokeWidth="1.4" strokeLinecap="round" />
+        <path ref={ropePath} fill="none" stroke="var(--color-ink)" strokeWidth="4" strokeLinecap="round" />
+        <path ref={ropeTwist} fill="none" stroke="var(--color-rescue)" strokeWidth="2" strokeDasharray="3 6" strokeLinecap="round" />
       </svg>
+
       {throwLabel ? (
-        <div ref={ropeTag} className="pointer-events-none absolute left-0 top-0 opacity-0" aria-hidden>
-          {/* The line ends at a lifebuoy on the water, tagged with what it carries and where it goes. */}
-          <span className="absolute -left-[13px] -top-[13px] block size-[26px] rounded-full bg-ink-950/60">
+        <div ref={buoy} className="pointer-events-none absolute left-0 top-0 opacity-0" aria-hidden>
+          <span className="absolute -left-[16px] -top-[16px] block size-[32px] drop-shadow-[0_3px_2px_rgb(11_21_51/0.35)]">
             <Mark className="size-full" />
           </span>
-          <span ref={tag} className="num absolute left-0 top-0 block whitespace-nowrap rounded-sm bg-rescue px-2 py-1 text-[12.5px] font-semibold text-ink-950">
+          <span ref={tag} className="absolute left-0 top-0 block whitespace-nowrap rounded-sm bg-ink px-2 py-1 font-readout text-[12px] text-paper">
             {throwLabel}
           </span>
         </div>
       ) : null}
+      <div ref={splash} className="pointer-events-none absolute left-0 top-0" aria-hidden>
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className={cx("absolute size-[9px] rounded-full opacity-0", i % 2 ? "bg-paper" : "bg-sea-light")} />
+        ))}
+      </div>
 
       <div ref={rider} className="pointer-events-none absolute inset-x-0 top-0 opacity-0 will-change-transform">
         {surface}
+        <span ref={ping} className="absolute top-0 block h-[60px] w-[220px] rounded-[50%] border-2 border-paper opacity-0" />
       </div>
     </div>
   );
 }
-
-const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`;
-
-const MARK_BAR = {
-  danger: "bg-danger/80",
-  rescue: "bg-rescue",
-  warn: "bg-warn/80",
-  safe: "bg-[repeating-linear-gradient(90deg,var(--color-safe)_0_9px,transparent_9px_14px)]",
-} as const;
-
-const MARK_TEXT = { danger: "text-danger", rescue: "text-rescue", warn: "text-warn", safe: "text-safe" } as const;

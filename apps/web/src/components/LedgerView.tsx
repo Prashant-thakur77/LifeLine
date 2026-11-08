@@ -35,11 +35,11 @@ export function LedgerView() {
         title="Every rescue and every refusal"
         aside={
           separateSim ? (
-            <div className="inline-flex rounded-xl border border-ink-500 bg-ink-850 p-1 text-[13px] font-medium" role="group" aria-label="Keeper">
-              <Link href="/ledger" className={cx("rounded-lg px-3 py-1.5", !wantsSim ? "bg-ink-700 text-paper" : "text-mist-300 hover:text-paper")}>
+            <div className="inline-flex rounded-lg border-2 border-ink bg-card p-1 text-[13px] font-medium" role="group" aria-label="Keeper">
+              <Link href="/ledger" className={cx("rounded-lg px-3 py-1.5", !wantsSim ? "bg-shade text-ink" : "text-body hover:text-ink")}>
                 Live keeper
               </Link>
-              <Link href="/ledger?source=sim" className={cx("rounded-lg px-3 py-1.5", wantsSim ? "bg-ink-700 text-paper" : "text-mist-300 hover:text-paper")}>
+              <Link href="/ledger?source=sim" className={cx("rounded-lg px-3 py-1.5", wantsSim ? "bg-shade text-ink" : "text-body hover:text-ink")}>
                 Simulation
               </Link>
             </div>
@@ -51,7 +51,7 @@ export function LedgerView() {
       </PageHeader>
 
       {ledger.data ? (
-        <p className="mb-4 text-[13px] text-mist-400">
+        <p className="mb-4 text-[13px] text-muted">
           {events.length} events across {users} {users === 1 ? "account" : "accounts"}, from the latest 200 records. Refreshes every 15 s.
         </p>
       ) : null}
@@ -65,7 +65,7 @@ export function LedgerView() {
           <Skeleton className="h-36" />
         </div>
       ) : ledger.error && !ledger.data ? (
-        <Notice tone="danger" title="Couldn't load the ledger" action={<button className="text-paper underline" onClick={ledger.refresh}>Try again</button>}>
+        <Notice tone="danger" title="Couldn't load the ledger" action={<button className="text-ink underline" onClick={ledger.refresh}>Try again</button>}>
           {ledger.error.message}
         </Notice>
       ) : shown.length === 0 ? (

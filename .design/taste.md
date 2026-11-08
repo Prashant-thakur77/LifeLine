@@ -1,66 +1,63 @@
-# Lifeline: taste profile
+# Lifeline: taste profile (v2, bright daylight)
 
-The filter for every design decision. Derived from the project, not from a conversation: the assumptions are marked, and Prashant can overrule any of them.
+The filter for every design decision. v2 replaces the night-water version on 2026-11-09: Prashant found the deep navy, teal and single orange dull, and asked for a full redesign that is bright, art-made and high-class. His picks: the **bright daylight** palette; **printed illustration**, **paper cut-out** and **kinetic type and motion** as the art; no 3D models.
 
 ## Personality
 
 The site IS:
 
-- **Steady.** Calm under pressure. Large, unhurried type; heavy, slow motion that settles instead of bouncing; generous space around the one number that matters.
-- **Vigilant.** Always watching. Live readouts that tick, a steady 5-second pulse, tick-marked instrument scales, one signal colour that means "Lifeline is acting".
-- **Candid.** Shows its working. Real numbers, real transaction hashes, the simulation labelled as one, refusals shown as proudly as rescues. Data before decoration.
+- **Bright.** A rescue on a clear day. Warm white paper, saturated sea blue, signal orange, sunshine yellow. Colour carries meaning and joy at once; nothing is grey or murky.
+- **Crafted.** Made by hand for Lifeline: risograph print layers with grain, halftone and a little misregistration; waves, buoy and boat cut from paper and stacked with real depth; type that moves with intent. No stock imagery, no generic icons.
+- **Candid.** Easy to read and easy to trust: real numbers set large, the simulation always labelled, every claim one click from its proof. Navigation is obvious on every page.
 
 It must NEVER feel:
 
-- **Casino.** No neon, confetti, rockets, "to the moon", glowing coins, slot-machine counters.
-- **Corporate bank.** No stock photos, padlock icons, blue-to-purple gradients, "enterprise-grade security" language.
-- **Frantic.** No flashing red, shaking, sirens, countdown panic. Danger is shown clearly and quietly.
+- **Childish.** No cartoon mascots, bubbly rounded UI, emoji, bouncy toy motion. Bright and crafted, but grown-up: the craft of a great print studio, the polish of a financial product.
+- **Casino.** No neon, coins, confetti, "to the moon", flashing counters.
+- **Template.** No stock photos, blue-purple SaaS gradients, glassmorphism, identical icon cards, fade-up on every block.
 
 ## Audience taste
 
-- Hyperliquid traders use dark trading terminals, Telegram bots and on-chain explorers. Trust for them is tabular numbers that update, explorer links, and open source. They distrust marketing copy and anything that hides fees.
-- Judges skim. They want to see the thing work in the first screen and then find proof (transactions, tests, attestation) one click away.
-- Global crypto audience, English. Orange reads as rescue and safety everywhere, not as danger; red stays reserved for liquidation.
+- Perps traders and crypto judges see dark terminals all day. A bright, printed, confident site stands out in a hackathon gallery, as long as the numbers stay sharp and tabular.
+- Trust here is proof, not polish: transaction links, the vault's refusal codes, tests. Professional means precise typography, a strong grid and restraint in the tool pages.
+- Global audience. Orange reads as rescue and safety equipment; blue as sea and calm; red stays reserved for liquidation.
 
 ## Brand anchors
 
-| Anchor | Now | Verdict |
-| --- | --- | --- |
-| Lifebuoy mark (paper ring, four orange quarters) | `Shell.tsx` | Keep. It is the most ownable thing we have. |
-| Signal orange `#ff7a3d` | Main buttons, rescue zone | Keep, and use it even more strictly: only where Lifeline acts. |
-| Night-water ink navy | Backgrounds | Evolve toward real sea depth: a darker, greener abyss with a visible surface. |
-| Paper text `#f5f1e8` | Headlines | Keep. |
-| Health colours (sea green, amber, red) and simulation violet | Gauge, badges | Keep: they carry meaning the tool pages rely on. |
-| Fraunces display serif | Headlines | Replace on the landing page with a condensed, stencil-like or grotesque display that feels painted on a hull. Assumption. |
-| IBM Plex Sans / Mono | Body and numbers | Keep Mono for numbers. Body can stay or move to a sharper grotesque. |
-| Copy voice: plain, factual, from the user's side | Everywhere | Keep. |
+| Anchor | Verdict |
+| --- | --- |
+| Lifebuoy mark | Keep, redrawn as a printed object (ring with four orange quarters, slight misregistration) |
+| Signal orange | Keep, brighter: `#FF5A1F`, used where Lifeline acts |
+| Navy night background | Replace with warm white paper `#FFF7EA` and ink `#0B1533` |
+| Waterline / load-line concept | Keep the idea, remake it in paper: stacked cut-paper waves that rise and fall with health, the load line printed on the hull |
+| Stencil display type | Evolve: still a poster face, chosen for a bright print look |
+| Plain, factual copy voice | Keep |
 
 ## Feel in motion
 
-- Heavy and precise. Water and levels move slowly: 900–1600 ms, a long ease-in-out with no overshoot.
-- The rescue is the one fast thing: a throw line snaps out in about 220 ms with a sharp ease-out, pulls taut, and the water drops back over about 1.2 s.
-- Readouts tick like instruments: digits roll or step, never fade.
-- Base rhythm: the keeper's 5-second poll, shown as a quiet sonar-style ping.
-- Entrances are restrained: content is readable at once, motion adds to it after.
+- Paper moves like paper: layers slide with parallax depth and settle with a soft, slightly heavy ease (700–1100 ms, ease-out, no rubbery bounce).
+- Print reveals: shapes appear as if pulled through a press, colour layer by colour layer, a few frames out of register, then snap into register (300–500 ms).
+- Kinetic type: big words set in motion on scroll, character or line reveals with masks, but every line is readable within half a second.
+- The rescue is still the one fast thing: the line is thrown in about 250 ms.
+- Tool pages move less: hover lifts, number tickers, quick transitions.
 
 ## Material and texture
 
-Deep water at night seen from the surface; painted hull steel with stencilled markings; enamel safety signage; wet rope; instrument glass with fine tick marks; monospaced readouts. Fine grain is welcome; glossy glass is not.
+Warm uncoated paper, risograph ink (blue, orange, yellow, mint overprinting into new colours where they cross), halftone dots, cut paper edges with soft drop shadows, rope, enamel signage. Grain everywhere, very fine.
 
 ## Taste anchors
 
-- The load line (Plimsoll mark) stencilled on a ship's hull: an authoritative scale that says how deep is safe. It is our warn, trigger and liquidation levels.
-- Coast-guard and lifeboat livery: high-vis orange against white and dark blue, with a bold diagonal stripe. Confident, unmistakable, never decorative.
-- Marine depth sounders and tide-gauge charts: one moving line against a fixed scale, read at a glance.
-- Engineering manuals with precise callouts and labelled diagrams: every element named, nothing vague.
-- Trading terminals: tabular figures, dense when it helps, no ornament on numbers.
+- Risograph-printed posters and zines: two or three spot colours overprinting, grain, misregistration.
+- Layered paper-cut dioramas of the sea: depth from stacked shapes and soft shadows, not from 3D rendering.
+- Coast-guard and lifeboat livery: orange, white and blue, bold diagonal stripes.
+- Swiss and editorial poster typography: huge type, strict grid, generous white space.
+- Trading terminals, but only for the numbers: tabular, exact, never decorated.
 
 ## Lines not to cross
 
-- No fake data: every moving number or line on the landing page comes from the live sim keeper or is clearly a diagram.
-- The simulation is always labelled.
-- No red flashing or alarm motion, even at liquidation.
-- No 3D coins, token logos as decoration, or chain-logo walls.
-- No custom cursor or smooth-scroll hijacking on the tool pages.
-- Motion never delays reading a number or pressing a button.
-- No copy that promises liquidation can't happen.
+- No fake data: everything that moves with health comes from the live sim keeper or the audit log, and is labelled as simulation.
+- No childish cartoon look, mascots or emoji.
+- Contrast stays readable: text on colour passes WCAG AA; orange text only at large sizes or on ink.
+- No custom cursor or scroll hijacking on the tool pages; navigation stays plain and always visible.
+- Motion never delays reading a number or pressing a button; reduced motion gets the same content, still.
+- Nothing promises that liquidation can't happen.

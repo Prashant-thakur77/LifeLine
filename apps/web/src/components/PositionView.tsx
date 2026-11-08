@@ -64,12 +64,12 @@ function Position({ user }: { user: string }) {
         title={user}
         aside={
           policy ? (
-            <div className="flex flex-col items-start gap-1 text-[13px] text-mist-400 sm:items-end">
+            <div className="flex flex-col items-start gap-1 text-[13px] text-muted sm:items-end">
               <span>Hyperliquid address</span>
               {simulation ? (
-                <span className="num text-mist-200">{shortMiddle(policy.hlAddress)} (pretend)</span>
+                <span className="num text-ink-2">{shortMiddle(policy.hlAddress)} (pretend)</span>
               ) : (
-                <ExternalLink href={hyperliquidAddress(policy.hlAddress)} className="num text-mist-100">
+                <ExternalLink href={hyperliquidAddress(policy.hlAddress)} className="num text-ink">
                   {shortMiddle(policy.hlAddress)}
                 </ExternalLink>
               )}
@@ -112,8 +112,8 @@ function Position({ user }: { user: string }) {
 
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between gap-3">
-          <h2 className="font-display text-[22px] text-paper">Recent activity</h2>
-          <Link href={pageHref("/history", user)} className="text-[14px] text-mist-300 hover:text-paper">
+          <h2 className="font-display text-[22px] text-ink">Recent activity</h2>
+          <Link href={pageHref("/history", user)} className="text-[14px] text-body hover:text-ink">
             Full history →
           </Link>
         </div>
@@ -145,9 +145,9 @@ function LiveLine({
   restCountdown: string | null;
 }) {
   if (error && updatedAt === undefined && !(error instanceof KeeperError && error.kind === "not-watched")) {
-    return <span className="text-[#ff8a98]">{error.message}</span>;
+    return <span className="text-danger-ink">{error.message}</span>;
   }
-  if (updatedAt === undefined) return <span className="text-mist-400">Connecting to the keeper…</span>;
+  if (updatedAt === undefined) return <span className="text-muted">Connecting to the keeper…</span>;
   const age = timeAgo(new Date(updatedAt).toISOString(), now);
   const readingAge = readingAt ? timeAgo(readingAt, now) : null;
   return (
@@ -159,7 +159,7 @@ function LiveLine({
           : `Live from the keeper, asked every ${KEEPER_POLL_INTERVAL_SEC} s. Reading taken ${readingAge ?? "—"}.`}
       </span>
       {restCountdown ? (
-        <span className="text-sim">
+        <span className="text-sim-ink">
           The sim keeper is resting between price drops, so this reading holds still. Next drop in <span className="num">{restCountdown}</span>.
         </span>
       ) : null}
@@ -178,12 +178,12 @@ const WATER_TONE: Record<Reading["zone"], WaterTone> = {
 };
 
 const ZONE_TEXT: Record<WaterTone, string> = {
-  safe: "text-safe",
-  warn: "text-warn",
-  rescue: "text-rescue",
-  liquidation: "text-danger",
-  none: "text-mist-300",
-  unknown: "text-warn",
+  safe: "text-safe-ink",
+  warn: "text-warn-ink",
+  rescue: "text-rescue-ink",
+  liquidation: "text-danger-ink",
+  none: "text-body",
+  unknown: "text-warn-ink",
 };
 
 /**
@@ -234,12 +234,12 @@ function GaugePanel(props: {
         throwSignal={thrown}
         pingSignal={ping}
         reduced={reduced}
-        scaleTop={0.18}
+        scaleTop={0.3}
         anchorLabel="Reserve"
         throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
         surface={
-          <div className="absolute left-5 -translate-y-full pb-2.5 sm:left-6">
-            <p className="font-readout text-[clamp(48px,6vw,76px)] font-light leading-[0.9] tracking-[-0.04em] text-paper tabular-nums">
+          <div className="absolute left-5 -translate-y-full pb-[60px] sm:left-6">
+            <p className="font-readout text-[clamp(48px,6vw,76px)] font-light leading-[0.9] tracking-[-0.04em] text-ink tabular-nums">
               {shown === null ? "—" : formatHealth(shown)}
             </p>
             <p className={cx("mt-2 whitespace-nowrap font-readout text-[11px] uppercase tracking-[0.12em]", ZONE_TEXT[WATER_TONE[zone]])}>Health · {label}</p>
@@ -325,12 +325,12 @@ function PolicyCard({ policy }: { policy: HealthResponse["policy"] | null }) {
       <CardHeader eyebrow="As the keeper reads it" title="Policy" action={policy?.paused ? <Badge tone="warn">Paused</Badge> : policy ? <Badge tone="safe">Active</Badge> : null} />
       {policy ? (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 p-5 text-[14px]">
-          <dt className="text-mist-400">Per rescue, at most</dt>
-          <dd className="num text-right text-mist-100">{formatUnits(policy.maxPerRescue, ASSETS.NEAR_USDC.decimals)} USDC</dd>
-          <dt className="text-mist-400">Per 24 hours, at most</dt>
-          <dd className="num text-right text-mist-100">{formatUnits(policy.maxPerDay, ASSETS.NEAR_USDC.decimals)} USDC</dd>
-          <dt className="text-mist-400">Cooldown</dt>
-          <dd className="num text-right text-mist-100">{formatSeconds(policy.cooldownSec)}</dd>
+          <dt className="text-muted">Per rescue, at most</dt>
+          <dd className="num text-right text-ink">{formatUnits(policy.maxPerRescue, ASSETS.NEAR_USDC.decimals)} USDC</dd>
+          <dt className="text-muted">Per 24 hours, at most</dt>
+          <dd className="num text-right text-ink">{formatUnits(policy.maxPerDay, ASSETS.NEAR_USDC.decimals)} USDC</dd>
+          <dt className="text-muted">Cooldown</dt>
+          <dd className="num text-right text-ink">{formatSeconds(policy.cooldownSec)}</dd>
         </dl>
       ) : (
         <div className="p-5">
@@ -346,26 +346,26 @@ function ReserveCard({ user, simulation }: { user: string; simulation: boolean }
   const reserve = usePoll(vault && !simulation ? `reserve:${vault}:${user}` : null, () => vaultViews.reserve(config.rpcUrl, vault!, user), 15_000);
   return (
     <Card>
-      <CardHeader eyebrow="In the vault" title="Reserve" action={vault && !simulation ? <Link href="/fund" className="text-[13px] text-mist-300 hover:text-paper">Add funds →</Link> : null} />
+      <CardHeader eyebrow="In the vault" title="Reserve" action={vault && !simulation ? <Link href="/fund" className="text-[13px] text-body hover:text-ink">Add funds →</Link> : null} />
       <div className="p-5 text-[14px]">
         {simulation ? (
-          <p className="text-mist-300">The demo account has no on-chain reserve: the sim keeper pretends it has enough for every rescue.</p>
+          <p className="text-body">The demo account has no on-chain reserve: the sim keeper pretends it has enough for every rescue.</p>
         ) : !vault ? (
-          <p className="text-mist-300">The vault isn&apos;t deployed yet, so there&apos;s no reserve to read. Health and history above still work.</p>
+          <p className="text-body">The vault isn&apos;t deployed yet, so there&apos;s no reserve to read. Health and history above still work.</p>
         ) : reserve.loading ? (
           <Skeleton className="h-10" />
         ) : reserve.error ? (
-          <p className="text-[#ff8a98]">{reserve.error instanceof RpcError ? reserve.error.message : "Couldn't read the vault."}</p>
+          <p className="text-danger-ink">{reserve.error instanceof RpcError ? reserve.error.message : "Couldn't read the vault."}</p>
         ) : Object.keys(reserve.data ?? {}).length === 0 ? (
-          <p className="text-mist-300">Empty. Fund it so the keeper has something to rescue with.</p>
+          <p className="text-body">Empty. Fund it so the keeper has something to rescue with.</p>
         ) : (
           <ul className="space-y-2">
             {Object.entries(reserve.data ?? {}).map(([token, amount]) => {
               const meta = tokenMeta(token, config.usdcContractId);
               return (
                 <li key={token} className="flex items-baseline justify-between gap-3">
-                  <span className="text-mist-300">{meta.symbol.length > 12 ? shortMiddle(meta.symbol) : meta.symbol}</span>
-                  <span className="num text-[18px] text-paper">{formatUnits(amount, meta.decimals)}</span>
+                  <span className="text-body">{meta.symbol.length > 12 ? shortMiddle(meta.symbol) : meta.symbol}</span>
+                  <span className="num text-[18px] text-ink">{formatUnits(amount, meta.decimals)}</span>
                 </li>
               );
             })}
@@ -384,18 +384,18 @@ function PositionsTable({ response, simulation }: { response: HealthResponse | n
       {positions === null ? (
         <div className="p-5">
           {response?.status === "unknown" ? (
-            <p className="text-[14px] text-mist-300">Hyperliquid couldn&apos;t be read, so positions are unknown.</p>
+            <p className="text-[14px] text-body">Hyperliquid couldn&apos;t be read, so positions are unknown.</p>
           ) : (
             <Skeleton className="h-16" />
           )}
         </div>
       ) : positions.length === 0 ? (
-        <p className="p-5 text-[14px] text-mist-300">No open positions.</p>
+        <p className="p-5 text-[14px] text-body">No open positions.</p>
       ) : (
         <div className="overflow-x-auto px-1 pb-3 sm:px-3">
           <table className="w-full min-w-[340px] text-left text-[14px]">
             <thead>
-              <tr className="text-[12px] uppercase tracking-[0.08em] text-mist-400">
+              <tr className="text-[12px] uppercase tracking-[0.08em] text-muted">
                 <th className="px-2 py-3 sm:px-3 font-medium">Coin</th>
                 <th className="px-2 py-3 sm:px-3 text-right font-medium">Size</th>
                 <th className="px-2 py-3 sm:px-3 text-right font-medium">Entry</th>
@@ -404,16 +404,16 @@ function PositionsTable({ response, simulation }: { response: HealthResponse | n
             </thead>
             <tbody>
               {positions.map((p) => (
-                <tr key={p.coin} className="border-t border-ink-600/60">
+                <tr key={p.coin} className="border-t-2 border-ink/10">
                   <td className="px-2 py-3 sm:px-3">
-                    <span className="font-semibold text-paper">{p.coin}</span>{" "}
-                    <span className={cx("text-[12px] font-semibold uppercase tracking-[0.06em]", p.size >= 0 ? "text-safe" : "text-[#ff8a98]")}>
+                    <span className="font-semibold text-ink">{p.coin}</span>{" "}
+                    <span className={cx("text-[12px] font-semibold uppercase tracking-[0.06em]", p.size >= 0 ? "text-safe-ink" : "text-danger-ink")}>
                       {p.size >= 0 ? "long" : "short"}
                     </span>
                   </td>
-                  <td className="num px-2 py-3 sm:px-3 text-right text-mist-100">{formatPrice(Math.abs(p.size))}</td>
-                  <td className="num px-2 py-3 sm:px-3 text-right text-mist-100">{formatPrice(p.entryPx)}</td>
-                  <td className="num px-2 py-3 sm:px-3 text-right text-rescue">{p.liquidationPx === null ? <span className="text-mist-400">none near</span> : formatPrice(p.liquidationPx)}</td>
+                  <td className="num px-2 py-3 sm:px-3 text-right text-ink">{formatPrice(Math.abs(p.size))}</td>
+                  <td className="num px-2 py-3 sm:px-3 text-right text-ink">{formatPrice(p.entryPx)}</td>
+                  <td className="num px-2 py-3 sm:px-3 text-right text-rescue-ink">{p.liquidationPx === null ? <span className="text-muted">none near</span> : formatPrice(p.liquidationPx)}</td>
                 </tr>
               ))}
             </tbody>
@@ -447,7 +447,7 @@ function Controls({ user, simulation }: { user: string; simulation: boolean }) {
       <CardHeader eyebrow="Only you can do these" title="Controls" />
       <div className="grid gap-6 p-5 md:grid-cols-2">
         {!vault ? (
-          <p className="text-[14px] text-mist-300 md:col-span-2">The vault isn&apos;t deployed yet, so there&apos;s nothing to pause or withdraw from.</p>
+          <p className="text-[14px] text-body md:col-span-2">The vault isn&apos;t deployed yet, so there&apos;s nothing to pause or withdraw from.</p>
         ) : chainPolicy.loading ? (
           <Skeleton className="h-24 md:col-span-2" />
         ) : chainPolicy.error && chainPolicy.data === undefined ? (
@@ -461,8 +461,8 @@ function Controls({ user, simulation }: { user: string; simulation: boolean }) {
         ) : (
           <>
             <div className="flex flex-col gap-3">
-              <h3 className="text-[14px] font-semibold text-paper">{paused ? "Rescues are paused" : "Rescues are on"}</h3>
-              <p className="text-[14px] leading-relaxed text-mist-300">
+              <h3 className="text-[14px] font-semibold text-ink">{paused ? "Rescues are paused" : "Rescues are on"}</h3>
+              <p className="text-[14px] leading-relaxed text-body">
                 {paused
                   ? "The vault refuses every rescue until you unpause. Unpausing needs your wallet's full-access key."
                   : "Pausing takes effect at once and attaches no deposit. The vault refuses every rescue until you unpause."}
@@ -499,7 +499,7 @@ function Controls({ user, simulation }: { user: string; simulation: boolean }) {
                 }
               }}
             >
-              <h3 className="text-[14px] font-semibold text-paper">Withdraw USDC</h3>
+              <h3 className="text-[14px] font-semibold text-ink">Withdraw USDC</h3>
               <Field
                 label={`Amount (reserve holds ${formatUnits(balance, ASSETS.NEAR_USDC.decimals)} USDC)`}
                 htmlFor="withdraw-amount"
@@ -542,8 +542,8 @@ function TokenBalanceNote({ user }: { user: string }) {
   const balance = usePoll(`bal:${config.usdcContractId}:${user}`, () => tokenViews.balance(config.rpcUrl, config.usdcContractId, user), 30_000);
   if (balance.data === undefined) return null;
   return (
-    <p className="border-t border-ink-600/60 px-5 py-3 text-[13px] text-mist-400">
-      Your NEAR account holds <span className="num text-mist-200">{formatUnits(balance.data, ASSETS.NEAR_USDC.decimals)} USDC</span> outside the vault.
+    <p className="border-t-2 border-ink/10 px-5 py-3 text-[13px] text-muted">
+      Your NEAR account holds <span className="num text-ink-2">{formatUnits(balance.data, ASSETS.NEAR_USDC.decimals)} USDC</span> outside the vault.
     </p>
   );
 }
