@@ -5,6 +5,8 @@ import { VaultRejectedError, type RescueRecord, type Vault } from "./ports";
 
 const RESCUE_GAS_TGAS = "100";
 const RESCUES_PAGE = 100;
+/** The daily cap looks back 24 h; an hour more covers clock differences. */
+const HISTORY_MS = 25 * 60 * 60 * 1000;
 const USERS_PAGE = 100;
 /** What the keeper says when `rescue` resolves to false: the vault refunded a failed transfer. */
 export const REFUNDED = "the transfer to 1Click failed, so the vault put the money back in the reserve";
@@ -110,7 +112,11 @@ function withTimeout<T>(work: Promise<T>, ms: number, what: string): Promise<T> 
  * account, a user whose policy names a different keeper reads as having no policy:
  * the vault would refuse this keeper's rescue anyway.
  */
-export function createNearVault(client: NearClient, options: { keeperAccountId?: string } = {}): Required<Vault> {
+export function createNearVault(
+  client: NearClient,
+  options: { keeperAccountId?: string; now?: () => Date } = {},
+): Required<Vault> {
+  const now = options.now ?? (() => new Date());
   return {
     async getPolicy(user) {
       const raw = await client.view("get_policy", { user });
@@ -136,22 +142,30 @@ export function createNearVault(client: NearClient, options: { keeperAccountId?:
       return reserveOf(await client.view("get_reserve", { user }), token);
     },
 
+    /**
+     * The rescues of the last 25 hours, oldest first: every one the daily cap and the
+     * cooldown can count, and every recent quote id. Read back from the newest, so a long
+     * history doesn't make each check slower.
+     */
     async getRescues(user) {
-      const rescues: RescueRecord[] = [];
-      let read = 0;
-      for (;;) {
-        const from = read;
-        const page = (await client.view("get_rescues", { user, from, limit: RESCUES_PAGE })) as Raw[] | null;
-        read += page?.length ?? 0;
-        for (const raw of page ?? []) {
-          const rescue = parseRescue(raw);
-          if (rescue !== null) rescues.push(rescue);
-        }
-        if ((page?.length ?? 0) < RESCUES_PAGE) return rescues;
+      const count = await client.view("get_rescue_count", { user });
+      if (typeof count !== "number" || !Number.isInteger(count) || count < 0) throw new Error("unreadable rescue count");
+      const cutoff = now().getTime() - HISTORY_MS;
+      const pages: RescueRecord[][] = [];
+      let end = count;
+      while (end > 0) {
+        const from = Math.max(0, end - RESCUES_PAGE);
+        const page = ((await client.view("get_rescues", { user, from, limit: end - from })) as Raw[] | null) ?? [];
+        if (page.length === 0) break;
+        const times = page.map((raw) => Date.parse(chainTimeToIso(pick(raw, "at", "timestamp", "at_ns", "timestamp_ns"))));
+        pages.unshift(page.map(parseRescue).filter((rescue): rescue is RescueRecord => rescue !== null));
+        end = from;
+        if (Math.min(...times) < cutoff) break;
       }
+      return pages.flat();
     },
 
-    async rescue({ user, token, amount, depositAddress, recipient, quoteId }) {
+    async rescue({ user, token, amount, depositAddress, recipient, quoteId, quote, signature }) {
       const { txHash, failure, value } = await client.call("rescue", {
         user,
         token,
@@ -159,6 +173,8 @@ export function createNearVault(client: NearClient, options: { keeperAccountId?:
         deposit_address: depositAddress,
         recipient,
         quote_id: quoteId,
+        quote,
+        signature,
       });
       if (failure !== null) throw new VaultRejectedError(failure);
       if (value === false) throw new VaultRejectedError(REFUNDED);

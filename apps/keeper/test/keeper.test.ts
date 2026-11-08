@@ -6,7 +6,8 @@ import { QuoteRefusedError, VaultRejectedError, type Intents, type Quote, type Q
 import { openStore } from "../src/sql-node";
 import { AT, HL, policy as basePolicy, snapshot, USER } from "./helpers";
 
-const MIN = 60 * 1000;
+const SEC = 1000;
+const MIN = 60 * SEC;
 
 /** A fake outside world, with a clock that only moves when the keeper sleeps or a test says so. */
 function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuotes?: boolean } = {}) {
@@ -60,6 +61,7 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
         refundTo: params.refundTo,
         destinationAsset: ASSETS.HYPERLIQUID_USDC.assetId,
         quotedAt: new Date(w.nowMs).toISOString(),
+        ...(params.dry ? {} : { signed: { payload: `signed-${w.quotes.length}`, signature: `sig-${w.quotes.length}` } }),
         ...w.quoteOverride,
       };
     },
@@ -536,6 +538,22 @@ describe("when the rescue goes wrong", () => {
     expect(store.ledger(100).filter((r) => r.kind === "RESCUE_FAILED")).toHaveLength(1);
   });
 
+  it("hands the vault the text 1Click signed, so the vault can check where the money goes", async () => {
+    const { w, step } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    await step();
+    expect(w.sent[0]).toMatchObject({ quote: "signed-2", signature: "sig-2", depositAddress: "deposit-2" });
+  });
+
+  it("refuses a live quote that 1Click didn't sign for a deposit", async () => {
+    const { w, step, last } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.quoteOverride = { signed: undefined };
+    await step();
+    expect(w.rescueAttempts).toBe(0);
+    expect(last("RESCUE_FAILED")?.explanation).toMatch(/didn't sign the quote/);
+  });
+
   it("refuses a live quote with no deposit address", async () => {
     const { w, step, last } = makeWorld();
     w.accountValue = TRIGGER_VALUE;
@@ -589,7 +607,25 @@ describe("when the rescue goes wrong", () => {
       const startedAt = w.nowMs;
       await step();
       expect(last("RESCUE_FAILED")?.explanation).toMatch(/never reached the vault/i);
-      expect(w.nowMs - startedAt).toBeLessThan(MIN);
+      expect(w.nowMs - startedAt).toBeLessThan(5 * MIN);
+    });
+
+    it("trusts the chain's no only once the quote is too old for the vault to accept, since the send may still land", async () => {
+      const { w, step, last, vault } = makeWorld();
+      w.accountValue = TRIGGER_VALUE;
+      w.vaultError = new Error("RPC timeout");
+      w.finalStatus = "PENDING_DEPOSIT";
+      let askedAt: number | null = null;
+      const realGetRescues = vault.getRescues;
+      vault.getRescues = async (user) => {
+        if (w.rescueAttempts > 0 && askedAt === null) askedAt = w.nowMs;
+        return realGetRescues(user);
+      };
+      const quotedAt = w.nowMs;
+      await step();
+      expect(last("RESCUE_FAILED")?.explanation).toMatch(/never reached the vault/i);
+      // The vault takes a quote for 2 minutes, and 1Click's clock may run 30 s behind NEAR's.
+      expect((askedAt ?? 0) - quotedAt).toBeGreaterThanOrEqual(150 * SEC);
     });
 
     it("waits it out if the chain can't be read either, because a false FAILED could send twice", async () => {
@@ -622,6 +658,22 @@ describe("when the rescue goes wrong", () => {
       await step();
       expect(w.nowMs - startedAt).toBeGreaterThanOrEqual(30 * MIN);
     });
+  });
+
+  it("doesn't call a refused rescue failed while the vault's history can't be read, because an earlier send may have landed", async () => {
+    const { w, step, last, vault } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    w.vaultError = new VaultRejectedError("Smart contract panicked: DEPOSIT_REUSED");
+    w.finalStatus = "PENDING_DEPOSIT";
+    const realGetRescues = vault.getRescues;
+    vault.getRescues = async (user) => {
+      if (w.rescueAttempts > 0) throw new Error("rpc down");
+      return realGetRescues(user);
+    };
+    const startedAt = w.nowMs;
+    await step();
+    expect(w.nowMs - startedAt).toBeGreaterThanOrEqual(30 * MIN);
+    expect(last("RESCUE_FAILED")?.explanation).toMatch(/may still arrive/i);
   });
 
   it("follows the deposit if the vault says no but the chain shows the rescue landed", async () => {
@@ -884,6 +936,8 @@ describe("after a crash", () => {
       depositAddress: "deposit-old",
       recipient: HL,
       quoteId: "corr-old",
+      quote: "",
+      signature: "",
     });
     keeper.recover();
     await keeper.tick();
@@ -900,13 +954,14 @@ describe("after a crash", () => {
     keeper.recover();
     await keeper.settled();
     expect(last("RESCUE_FAILED")?.explanation).toMatch(/never reached the vault/i);
-    expect(w.nowMs - startedAt).toBeLessThan(MIN);
+    // Not before its quote is too old to land, but well before the 30-minute wait.
+    expect(w.nowMs - startedAt).toBeLessThan(5 * MIN);
     expect(store.unfinishedRescues()).toEqual([]);
   });
 
   it("keeps waiting after a restart if the chain shows the rescue was sent", async () => {
     const { w, keeper, last } = await crashMidRescue();
-    w.sent.push({ user: USER, token: ASSETS.NEAR_USDC.contractId, amount: "18498453", depositAddress: "deposit-old", recipient: HL, quoteId: "corr-old" });
+    w.sent.push({ user: USER, token: ASSETS.NEAR_USDC.contractId, amount: "18498453", depositAddress: "deposit-old", recipient: HL, quoteId: "corr-old", quote: "", signature: "" });
     w.rescues.push({ amount: "18498453", at: new Date(w.nowMs).toISOString(), quoteId: "corr-old" });
     w.statuses = [...Array<SwapStatus>(100).fill("PROCESSING"), "SUCCESS"]; // 200 s, longer than the first check
     keeper.recover();
@@ -916,7 +971,7 @@ describe("after a crash", () => {
 
   it("leaves latency out of a resumed rescue, because downtime isn't rescue time", async () => {
     const { w, keeper, last } = await crashMidRescue();
-    w.sent.push({ user: USER, token: ASSETS.NEAR_USDC.contractId, amount: "18498453", depositAddress: "deposit-old", recipient: HL, quoteId: "corr-old" });
+    w.sent.push({ user: USER, token: ASSETS.NEAR_USDC.contractId, amount: "18498453", depositAddress: "deposit-old", recipient: HL, quoteId: "corr-old", quote: "", signature: "" });
     keeper.recover();
     await keeper.settled();
     expect(last("RESCUE_DONE")?.latencyMs).toBeUndefined();

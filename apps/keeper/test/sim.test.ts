@@ -190,6 +190,8 @@ describe("the sim's account", () => {
       depositAddress: "sim-1",
       recipient: world.hlAddress,
       quoteId: "corr-1",
+      quote: "",
+      signature: "",
     });
     expect(txHash).toMatch(/^sim-tx-/);
     expect(await world.intents.getStatus("sim-1")).toBe("KNOWN_DEPOSIT_TX");

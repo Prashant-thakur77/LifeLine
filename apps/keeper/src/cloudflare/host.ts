@@ -8,7 +8,7 @@ import { createExplainer } from "../explain";
 import { describeRecord } from "../format";
 import { Keeper } from "../keeper";
 import { connectNear, createNearVault } from "../near";
-import { createUserList } from "../users";
+import { canRescue, createUserList } from "../users";
 import { createOneClick } from "@lifeline/intents";
 import { createRecordPipeline } from "../pipeline";
 import type { Intents, ReadHealth, Vault } from "../ports";
@@ -191,6 +191,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
       const userList = createUserList({
         fixed: live.users,
         load: async () => (await vault.getUsers?.()) ?? [],
+        accept: canRescue(vault),
         now: () => now().getTime(),
         log,
       });

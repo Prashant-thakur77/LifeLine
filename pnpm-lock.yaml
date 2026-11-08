@@ -341,9 +341,15 @@ importers:
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
+      '@noble/hashes':
+        specifier: 2.2.0
+        version: 2.2.0
       '@scure/base':
         specifier: 2.2.0
         version: 2.2.0
+      json-stable-stringify:
+        specifier: 1.3.0
+        version: 1.3.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -416,6 +422,9 @@ importers:
       '@lifeline/hyperliquid':
         specifier: workspace:*
         version: link:../packages/hyperliquid
+      '@lifeline/intents':
+        specifier: workspace:*
+        version: link:../packages/intents
       '@lifeline/keeper':
         specifier: workspace:*
         version: link:../apps/keeper
@@ -425,6 +434,15 @@ importers:
       '@lifeline/shared':
         specifier: workspace:*
         version: link:../packages/shared
+      '@noble/curves':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@noble/hashes':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@scure/base':
+        specifier: 2.2.0
+        version: 2.2.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

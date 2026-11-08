@@ -9,6 +9,8 @@ export type Quote = {
   refundTo: string;
   destinationAsset: string;
   quotedAt: string; // ISO time
+  /** A live quote's signed text and 1Click's signature, which the vault checks itself. */
+  signed?: { payload: string; signature: string };
 };
 
 export type QuoteParams = {

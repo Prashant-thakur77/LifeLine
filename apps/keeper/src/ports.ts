@@ -12,6 +12,9 @@ export type RescueArgs = {
   depositAddress: string;
   recipient: string;
   quoteId: string;
+  /** The text 1Click signed for this quote, and its signature: the vault reads where the money goes from it. */
+  quote: string;
+  signature: string;
 };
 
 /** The chain says the vault refused. Any other error leaves the outcome unknown. */

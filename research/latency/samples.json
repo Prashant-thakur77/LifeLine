@@ -1,0 +1,268 @@
+{
+  "generatedAt": "2026-11-08T14:25:35.926Z",
+  "decisions": [
+    {
+      "at": "2026-11-08T14:18:46.935Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 301,
+      "probeMs": 986,
+      "quoteMs": 834,
+      "freshMs": 190,
+      "totalMs": 2311,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:18:50.737Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 186,
+      "probeMs": 765,
+      "quoteMs": 661,
+      "freshMs": 189,
+      "totalMs": 1801,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:18:54.673Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 258,
+      "probeMs": 745,
+      "quoteMs": 711,
+      "freshMs": 222,
+      "totalMs": 1937,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:18:58.496Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 191,
+      "probeMs": 649,
+      "quoteMs": 788,
+      "freshMs": 194,
+      "totalMs": 1822,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:02.586Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 257,
+      "probeMs": 922,
+      "quoteMs": 713,
+      "freshMs": 197,
+      "totalMs": 2090,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:06.779Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 552,
+      "probeMs": 744,
+      "quoteMs": 691,
+      "freshMs": 206,
+      "totalMs": 2192,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:10.628Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 189,
+      "probeMs": 720,
+      "quoteMs": 749,
+      "freshMs": 191,
+      "totalMs": 1849,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:14.989Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 317,
+      "probeMs": 823,
+      "quoteMs": 786,
+      "freshMs": 435,
+      "totalMs": 2361,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:18.717Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 192,
+      "probeMs": 675,
+      "quoteMs": 663,
+      "freshMs": 197,
+      "totalMs": 1727,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:22.679Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 193,
+      "probeMs": 672,
+      "quoteMs": 682,
+      "freshMs": 416,
+      "totalMs": 1963,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:26.523Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 223,
+      "probeMs": 735,
+      "quoteMs": 695,
+      "freshMs": 190,
+      "totalMs": 1843,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:30.367Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 189,
+      "probeMs": 714,
+      "quoteMs": 719,
+      "freshMs": 221,
+      "totalMs": 1843,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:34.251Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 192,
+      "probeMs": 738,
+      "quoteMs": 766,
+      "freshMs": 187,
+      "totalMs": 1884,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:38.296Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 188,
+      "probeMs": 713,
+      "quoteMs": 777,
+      "freshMs": 366,
+      "totalMs": 2045,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:42.280Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 192,
+      "probeMs": 726,
+      "quoteMs": 780,
+      "freshMs": 286,
+      "totalMs": 1983,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:46.129Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 199,
+      "probeMs": 743,
+      "quoteMs": 719,
+      "freshMs": 188,
+      "totalMs": 1849,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:49.894Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 214,
+      "probeMs": 680,
+      "quoteMs": 685,
+      "freshMs": 186,
+      "totalMs": 1765,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:53.677Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 188,
+      "probeMs": 730,
+      "quoteMs": 672,
+      "freshMs": 193,
+      "totalMs": 1782,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:19:57.539Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 195,
+      "probeMs": 754,
+      "quoteMs": 721,
+      "freshMs": 193,
+      "totalMs": 1862,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T14:20:01.445Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 195,
+      "probeMs": 718,
+      "quoteMs": 796,
+      "freshMs": 198,
+      "totalMs": 1906,
+      "timeEstimateSec": 30
+    }
+  ],
+  "failed": [],
+  "near": [
+    {
+      "at": "2026-11-08T14:20:08.689Z",
+      "txHash": "8awWAs84NnMWxqGeBX6YZ55dE2UxxJKB5P3aXZYjvhnz",
+      "ms": 4392,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:20:44.967Z",
+      "txHash": "8R6pffuKku3qFBhfbNDkXKrG6BGXfHoNvbRNVJFK5yXt",
+      "ms": 4248,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:21:21.094Z",
+      "txHash": "CaZsCojYiGVTbxEcE1YwK6fZE9yZgXgUZrbXUZdjRzAo",
+      "ms": 4097,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:21:56.892Z",
+      "txHash": "D2TibrQtL6meHi5gi1MAJqtZy7ZXksvSK7sWPn3wJQno",
+      "ms": 3766,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:22:33.334Z",
+      "txHash": "NBrErK4es8qUu8wcQDvYzbFYtHwPWszbRwiKt1ckQfA",
+      "ms": 4411,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:23:09.834Z",
+      "txHash": "9ZsXx9aRyz7bf3JH7rKWHb2K57P3XKKgH7VFjZhmuQPP",
+      "ms": 4469,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:23:46.620Z",
+      "txHash": "FmgdaMdbfDv6bsMLpQsQdAXXJVDaCEkAVSpXKEdatKsp",
+      "ms": 4757,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:24:23.287Z",
+      "txHash": "FSU7m24p6Laj3in7rjWeL8TUxBze9JfjuR3rbtZudoeW",
+      "ms": 4636,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:24:59.740Z",
+      "txHash": "AF3rGYPVEfPaUFYu3Xuz4Zfq6Mz8JujS17rJqe4uCh7Q",
+      "ms": 4436,
+      "network": "testnet"
+    },
+    {
+      "at": "2026-11-08T14:25:35.925Z",
+      "txHash": "5jfcXxjXhJ4L4Acy15F3BPcPUU6oWTmyKda84vv89j2e",
+      "ms": 4154,
+      "network": "testnet"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript"
 import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import { createOneClick, isSignedBy1Click } from "../src/oneclick";
+import { signedQuotePayload } from "../src/signed";
 import dry from "./recorded/quote-dry.json";
 import real from "./recorded/quote-real.json";
 import statusPending from "./recorded/status-pending.json";
@@ -49,6 +50,12 @@ describe("getQuote", () => {
     const quote = await oneClick.getQuote({ ...params, dry: false });
     expect(quote.depositAddress).toBe(real.quote.depositAddress);
     expect(quote.quoteId).toBe(real.correlationId);
+  });
+
+  it("keeps a live quote's signed text and signature, for the vault to check", async () => {
+    const { oneClick } = client(() => json(real));
+    const quote = await oneClick.getQuote({ ...params, dry: false });
+    expect(quote.signed).toEqual({ payload: signedQuotePayload(real as never), signature: real.signature });
   });
 
   it("asks for NEAR USDC to Hyperliquid USDC, 1% slippage, on the perps route", async () => {

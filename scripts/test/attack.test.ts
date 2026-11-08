@@ -121,19 +121,38 @@ describe("formatAttempt", () => {
 });
 
 describe("sendContractAttack", () => {
-  const config = { vaultId: "vault.team.near", keeperAccountId: "keeper.team.near", user: "team.near", token: "usdc.near" };
+  const quote = { payload: '{"depositAddress":"abc","amountIn":"3000000"}', signature: "ed25519:sig" };
+  const config = {
+    network: "mainnet" as const,
+    vaultId: "vault.team.near",
+    keeperAccountId: "keeper.team.near",
+    user: "team.near",
+    token: "usdc.near",
+    hlAddress: "0x1111111111111111111111111111111111111111",
+    amount: "3000000",
+    quote,
+  };
 
-  it("calls rescue with the attacker as recipient, a tiny amount, and the deposit going to the team", async () => {
+  it("sends a genuine quote's money to the keeper's own account, with the user's real address as recipient", async () => {
     const calls: { method: string; args: Record<string, unknown> }[] = [];
     const proof = await sendContractAttack(
-      { view: async () => null, call: async (method, args) => (calls.push({ method, args }), { txHash: "HASH", failure: "Smart contract panicked: wrong recipient" }) },
+      { view: async () => null, call: async (method, args) => (calls.push({ method, args }), { txHash: "HASH", failure: "Smart contract panicked: BAD_QUOTE: its deposit address isn't the one this rescue pays" }) },
       config,
       () => NOW,
     );
     expect(calls).toEqual([
       {
         method: "rescue",
-        args: { user: "team.near", token: "usdc.near", amount: "1", deposit_address: "keeper.team.near", recipient: ATTACKER_HL, quote_id: "attack-demo" },
+        args: {
+          user: "team.near",
+          token: "usdc.near",
+          amount: "3000000",
+          deposit_address: "keeper.team.near",
+          recipient: "0x1111111111111111111111111111111111111111",
+          quote_id: "attack-demo",
+          quote: quote.payload,
+          signature: quote.signature,
+        },
       },
     ]);
     expect(proof).toEqual({
@@ -141,7 +160,7 @@ describe("sendContractAttack", () => {
       txHash: "HASH",
       signer: "keeper.team.near",
       vault: "vault.team.near",
-      failure: "Smart contract panicked: wrong recipient",
+      failure: "Smart contract panicked: BAD_QUOTE: its deposit address isn't the one this rescue pays",
       recordedAt: NOW.toISOString(),
     });
   });
