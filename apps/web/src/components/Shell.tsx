@@ -8,7 +8,7 @@ import { config } from "../lib/env";
 import { shortMiddle } from "../lib/format";
 import { pageHref } from "../lib/links";
 import { describeTxError } from "../lib/tx";
-import { Button, cx, PaperRule, Spinner } from "./ui";
+import { Button, cx, PaperRule } from "./ui";
 import { useWallet } from "./WalletProvider";
 
 /** A lifebuoy: the mark. A white ring with four signal-orange quarters, outlined in ink like a printed object. */
@@ -94,8 +94,8 @@ function WalletButton() {
 
   if (status === "loading") {
     return (
-      <Button size="sm" variant="secondary" disabled>
-        <Spinner className="size-3.5" /> Wallet
+      <Button size="sm" variant="primary" aria-disabled title="The wallet connector is loading" className="cursor-progress">
+        Connect wallet
       </Button>
     );
   }
@@ -223,7 +223,18 @@ export function Footer() {
               </div>
               <div>
                 <dt className="text-paper/80">Vault</dt>
-                <dd className="break-all">{config.vaultId ?? "not deployed yet"}</dd>
+                <dd className="break-all">
+                  {config.vaultId ? (
+                    config.vaultId
+                  ) : (
+                    <>
+                      <a href="https://testnet.nearblocks.io/address/vault.lifeline-team.testnet" target="_blank" rel="noreferrer noopener" className="underline decoration-sun underline-offset-4 hover:text-sun">
+                        vault.lifeline-team.testnet
+                      </a>{" "}
+                      on testnet; mainnet at launch
+                    </>
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-paper/80">Demo</dt>

@@ -158,7 +158,7 @@ export function HeroWater() {
           pingSignal={pingSignal}
           reduced={reduced}
           scaleTop={wide ? 0.28 : 0.26}
-          scaleMax={wide ? 4 : 2.4}
+          scaleMax={wide ? 3 : 2.4}
           anchorLabel={wide ? (story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)") : "Reserve"}
           throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
           surface={

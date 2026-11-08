@@ -56,7 +56,12 @@ export function BacktestExplorer() {
             />
           </div>
 
-          <ul className="mt-7 flex flex-col gap-5" aria-live="polite">
+          <p className="mt-4 text-[13.5px] leading-relaxed text-body">
+            {scenario === "flash"
+              ? "Stress test: every candle's fall is replayed as if it happened in its first minute, faster than most real markets. A bound on how much speed hurts, not a forecast."
+              : "Real 4h candles. They can't show how fast the price moved inside each candle, so the flash-crash test gives the other bound."}
+          </p>
+          <ul className="mt-6 flex flex-col gap-5" aria-live="polite">
             {rows.map((row) => (
               <li key={`${scenario}-${row.label}`} className="grid grid-cols-[52px_1fr] items-center gap-x-4 gap-y-1.5">
                 <span className={cx("row-span-2 text-[22px] font-extrabold text-ink [font-variation-settings:'wdth'_75]", row.label === "All" && "text-sea")}>{row.label}</span>

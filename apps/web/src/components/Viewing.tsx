@@ -72,7 +72,7 @@ export function AccountChooser({ path, purpose }: { path: string; purpose: strin
       <Card className="relative overflow-hidden p-6">
         <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-sim/10 blur-3xl" aria-hidden />
         <Badge tone="sim">No wallet needed</Badge>
-        <h2 className="mt-4 font-display text-[24px] leading-tight text-ink">Watch the live demo</h2>
+        <h2 className="mt-4 text-[22px] font-bold leading-snug text-ink">Watch the live demo</h2>
         <p className="mt-2 text-[14.5px] leading-relaxed text-body">
           {DEMO_USER} runs on the sim keeper around the clock: a live ETH price, a position that drifts toward liquidation, and a rescue every
           quarter hour.
@@ -82,7 +82,7 @@ export function AccountChooser({ path, purpose }: { path: string; purpose: strin
         </ButtonLink>
       </Card>
       <Card className="p-6">
-        <h2 className="font-display text-[22px] leading-tight text-ink">Or use your own account</h2>
+        <h2 className="text-[20px] font-bold leading-snug text-ink">Or use your own account</h2>
         <p className="mt-2 text-[14.5px] leading-relaxed text-body">{purpose}</p>
         {accountId ? null : (
           <Button

@@ -108,7 +108,7 @@ export function Playground() {
           <Choice label="Reserve in the vault" options={RESERVES.map((v) => ({ value: v, text: usd(v) }))} value={reserve} onChange={setReserve} />
 
           <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border-2 border-ink bg-paper px-4 py-3">
-            <span className="text-[14px] font-bold text-ink">Lifeline on</span>
+            <span className="text-[14px] font-bold text-ink">Lifeline {lifeline ? "on" : "off"}</span>
             <input type="checkbox" checked={lifeline} onChange={(e) => setLifeline(e.target.checked)} className="switch" />
           </label>
           <p className="-mt-3 text-[12.5px] leading-relaxed text-muted">Caps as the defaults: at most $25 a rescue and $50 a day. The 2-minute cooldown is left out.</p>
@@ -126,6 +126,7 @@ export function Playground() {
               pingSignal={0}
               reduced={reduced}
               scaleTop={0.3}
+              scaleMax={3}
               anchorLabel="Reserve"
               throwLabel={lastRescue ? `+${usd(lastRescue.landedUsd)} margin` : null}
               surface={

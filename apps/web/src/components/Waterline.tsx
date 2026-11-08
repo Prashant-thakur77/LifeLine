@@ -37,10 +37,10 @@ type Props = {
 
 /** Four sheets of cut paper, back to front: lighter and higher behind, deeper in front. Each drifts at its own pace. */
 const WAVES = [
-  { fill: "#b7ccff", rise: -46, amp: 9, period: 520, seconds: 58, reverse: false },
-  { fill: "#6f93ff", rise: -26, amp: 12, period: 760, seconds: 44, reverse: true },
-  { fill: "#1d4bff", rise: -6, amp: 11, period: 640, seconds: 36, reverse: false },
-  { fill: "#0e2fb3", rise: 22, amp: 8, period: 900, seconds: 50, reverse: true },
+  { fill: "#b7ccff", rise: -16, amp: 7, period: 520, seconds: 58, reverse: false },
+  { fill: "#6f93ff", rise: -7, amp: 8, period: 760, seconds: 44, reverse: true },
+  { fill: "#1d4bff", rise: 0, amp: 6, period: 640, seconds: 36, reverse: false },
+  { fill: "#0e2fb3", rise: 26, amp: 7, period: 900, seconds: 50, reverse: true },
 ] as const;
 
 const ROPE_REVEAL_MS = 260;
@@ -192,7 +192,8 @@ export function Waterline({
       const level = (s.spring?.value ?? 1) * h;
       sea.current?.setAttribute("transform", `translate(0 ${level.toFixed(2)})`);
       if (rider.current) {
-        rider.current.style.transform = `translate3d(0, ${level}px, 0)`;
+        const lift = (rider.current.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0;
+        rider.current.style.transform = `translate3d(0, ${Math.max(level, lift + 6)}px, 0)`;
         rider.current.style.opacity = s.spring ? "1" : "0";
       }
 
@@ -339,7 +340,7 @@ export function Waterline({
 
       <div
         ref={ladder}
-        className="pointer-events-none absolute bottom-0 right-[calc(var(--hull-r)+12px)] w-[calc(var(--hull-w)*0.62)]"
+        className="pointer-events-none absolute bottom-0 right-[calc(var(--hull-r)+8px)] w-[calc(var(--hull-w)*0.86)] sm:right-[calc(var(--hull-r)+12px)] sm:w-[calc(var(--hull-w)*0.62)]"
         style={{ top: pct(scaleTop) }}
         aria-hidden
       >
@@ -375,8 +376,10 @@ export function Waterline({
             <rect x="-6" y="55" width="132" height="10" fill="var(--color-ink)" />
             <line x1="126" y1="60" x2="138" y2="60" stroke="var(--color-ink)" strokeWidth="3" strokeDasharray="4 3" />
           </svg>
-          <p className="absolute left-0 top-full mt-1.5 w-full text-center text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink [font-variation-settings:'wdth'_75]">
-            Your trigger
+          <p className="absolute left-0 top-full mt-1.5 w-full text-center [font-variation-settings:'wdth'_75]">
+            <span className="rounded-sm bg-paper/90 px-1 text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink">
+              Your trigger
+            </span>
           </p>
         </div>
       </div>
@@ -412,6 +415,8 @@ export function Waterline({
       <div ref={rider} className="pointer-events-none absolute inset-x-0 top-0 opacity-0 will-change-transform">
         {surface}
         <span ref={ping} className="absolute top-0 block h-[60px] w-[220px] rounded-[50%] border-2 border-paper opacity-0" />
+        {/* Where the water is now, marked on the load line itself. */}
+        <span className="absolute top-0 hidden h-[3px] w-[38px] -translate-y-1/2 bg-sun shadow-[0_0_0_2px_var(--color-ink)] sm:block" style={{ right: "calc(var(--hull-r) + 12px + var(--hull-w) * 0.62 - 19px)" }} />
       </div>
     </div>
   );

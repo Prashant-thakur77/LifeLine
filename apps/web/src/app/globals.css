@@ -211,6 +211,9 @@ body::after {
 .riso {
   text-shadow: 0.045em 0.03em 0 rgb(29 75 255 / 0.5);
 }
+.riso.text-sea {
+  text-shadow: 0.045em 0.03em 0 rgb(255 90 31 / 0.55);
+}
 
 .num {
   font-family: var(--font-mono);

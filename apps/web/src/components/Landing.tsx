@@ -344,7 +344,7 @@ function NextStep() {
             Protect my position
           </ButtonLink>
         </div>
-        <Mark quarters="#0b1533" className="pointer-events-none absolute -right-16 -top-16 size-56 sm:-right-10 sm:-top-20 lg:size-72" />
+        <Mark quarters="#0b1533" className="pointer-events-none absolute -right-10 -top-20 hidden size-56 sm:block lg:size-72" />
       </div>
     </section>
   );

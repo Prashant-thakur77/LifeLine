@@ -112,7 +112,7 @@ function Position({ user }: { user: string }) {
 
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between gap-3">
-          <h2 className="font-display text-[22px] text-ink">Recent activity</h2>
+          <h2 className="text-[20px] font-bold leading-snug text-ink">Recent activity</h2>
           <Link href={pageHref("/history", user)} className="text-[14px] text-body hover:text-ink">
             Full history →
           </Link>
@@ -235,6 +235,7 @@ function GaugePanel(props: {
         pingSignal={ping}
         reduced={reduced}
         scaleTop={0.3}
+        scaleMax={3}
         anchorLabel="Reserve"
         throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
         surface={

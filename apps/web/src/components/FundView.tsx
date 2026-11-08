@@ -51,7 +51,7 @@ export function FundView() {
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <Card className="self-start p-6 lg:order-2 lg:col-span-5">
-          <h2 className="font-display text-[22px] text-ink">Connect the account that will hold the reserve</h2>
+          <h2 className="text-[20px] font-bold leading-snug text-ink">Connect the account that will hold the reserve</h2>
           <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-body">
             1Click delivers USDC to your NEAR account, and the vault credits the reserve to whoever deposits it, so funding needs your wallet. To see Lifeline
             work without one, <a className="text-ink underline decoration-line-strong underline-offset-2" href={pageHref("/position", "demo.near")}>open the live demo</a>.

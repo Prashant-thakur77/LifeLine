@@ -22,17 +22,32 @@ function Sheet({ children, label }: { children: (ids: { shadow: string; dots: st
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const shadow = `ps-${id}`;
   const dots = `dots-${id}`;
+  const tint = `tint-${id}`;
+  const grain = `grain-${id}`;
   return (
     <svg viewBox="0 0 320 220" className="block h-auto w-full" role="img" aria-label={label}>
       <defs>
         <filter id={shadow} x="-20%" y="-20%" width="140%" height="150%">
           <feDropShadow dx="0" dy="3" stdDeviation="2.4" floodColor={INK} floodOpacity="0.22" />
         </filter>
+        <filter id={tint}>
+          <feFlood floodColor={RESCUE} result="ink" />
+          <feComposite in="ink" in2="SourceAlpha" operator="in" />
+        </filter>
+        <filter id={grain} x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix values="0 0 0 0 0.04  0 0 0 0 0.08  0 0 0 0 0.2  0 0 0 0.22 0" />
+        </filter>
         <pattern id={dots} width="7" height="7" patternUnits="userSpaceOnUse">
           <circle cx="3.5" cy="3.5" r="1.3" fill={INK} opacity="0.16" />
         </pattern>
       </defs>
+      {/* Second ink, printed a hair out of register. */}
+      <g transform="translate(2.6 1.8)" opacity="0.32" style={{ mixBlendMode: "multiply" }} filter={`url(#${tint})`} aria-hidden>
+        {children({ shadow: "none", dots: `url(#${dots})` })}
+      </g>
       {children({ shadow: `url(#${shadow})`, dots: `url(#${dots})` })}
+      <rect width="320" height="220" filter={`url(#${grain})`} opacity="0.5" style={{ mixBlendMode: "multiply" }} aria-hidden />
     </svg>
   );
 }
@@ -49,8 +64,16 @@ export function FundScene() {
             <rect x="96" y="96" width="128" height="104" rx="10" fill={SEA} />
             <rect x="96" y="96" width="128" height="104" rx="10" fill={dots} />
             <circle cx="160" cy="150" r="30" fill={SEA_DEEP} />
-            <circle cx="160" cy="150" r="20" fill="none" stroke={PAPER} strokeWidth="5" />
-            <rect x="157" y="126" width="6" height="22" rx="3" fill={RESCUE} />
+            {/* The vault door's wheel */}
+            <circle cx="160" cy="150" r="17" fill="none" stroke={PAPER} strokeWidth="4.5" />
+            <g stroke={PAPER} strokeWidth="4.5" strokeLinecap="round">
+              <line x1="160" y1="128" x2="160" y2="172" />
+              <line x1="141" y1="139" x2="179" y2="161" />
+              <line x1="141" y1="161" x2="179" y2="139" />
+            </g>
+            <circle cx="160" cy="150" r="6" fill={RESCUE} stroke={INK} strokeWidth="2" />
+            <rect x="104" y="120" width="8" height="18" rx="2" fill={INK} />
+            <rect x="104" y="160" width="8" height="18" rx="2" fill={INK} />
             <rect x="136" y="92" width="48" height="9" rx="4.5" fill={INK} />
           </g>
           <path d="M 44 34 Q 110 10 150 86" fill="none" stroke={INK} strokeWidth="1.6" strokeDasharray="3 5" opacity="0.5" />

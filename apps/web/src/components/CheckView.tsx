@@ -11,6 +11,7 @@ import { cushionUsd } from "../lib/gauge";
 import { checkAddress } from "../lib/hl";
 import { hyperliquidAddress } from "../lib/links";
 import { Button, ButtonLink, Card, ExternalLink, Notice, PageHeader, Skeleton, Stat, cx, inputClass } from "./ui";
+import { WatchScene } from "./art/Scenes";
 import { Waterline, type WaterTone } from "./Waterline";
 
 const REASONS: Record<Extract<HealthResult, { status: "unknown" }>["reason"], string> = {
@@ -78,7 +79,18 @@ export function CheckView() {
       </form>
 
       {!address ? (
-        <p className="mt-6 text-[14px] text-muted">The reading refreshes every 10 seconds while this page is open.</p>
+        <div className="mt-8 grid grid-cols-1 items-center gap-6 overflow-hidden rounded-xl border-2 border-ink bg-[#e3ebff] sm:grid-cols-2">
+          <div className="border-b-2 border-ink sm:border-b-0 sm:border-r-2">
+            <WatchScene />
+          </div>
+          <div className="p-6">
+            <p className="text-[20px] font-bold leading-snug text-ink">Paste an address to see its sea level.</p>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-body">
+              Health is cross account value divided by maintenance margin, the number the keeper watches every 5 seconds. Here it refreshes every 10 seconds while
+              the page is open.
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-12">
           <Card className="overflow-hidden lg:col-span-7">
@@ -92,6 +104,7 @@ export function CheckView() {
               pingSignal={ping}
               reduced={reduced}
               scaleTop={0.3}
+              scaleMax={3}
               surface={
                 <div className="absolute left-5 -translate-y-full pb-[60px] sm:left-6">
                   <p className="font-readout text-[clamp(48px,6vw,80px)] font-light leading-[0.9] tracking-[-0.05em] text-ink tabular-nums">
@@ -148,25 +161,25 @@ export function CheckView() {
 
           {snapshot && snapshot.positions.length > 0 ? (
             <Card className="overflow-x-auto lg:col-span-12">
-              <table className="w-full min-w-[520px] text-left text-[14px]">
+              <table className="w-full text-left text-[13px] sm:text-[14px]">
                 <caption className="px-5 pt-5 text-left text-[17px] font-bold text-ink">Open positions</caption>
                 <thead>
                   <tr className="font-readout text-[11px] uppercase tracking-[0.08em] text-muted">
-                    <th className="px-5 py-3 font-normal">Coin</th>
-                    <th className="px-5 py-3 font-normal">Side and size</th>
-                    <th className="px-5 py-3 font-normal">Entry</th>
-                    <th className="px-5 py-3 font-normal">Liquidation price</th>
+                    <th className="px-3 py-3 font-normal sm:px-5">Coin</th>
+                    <th className="px-3 py-3 font-normal sm:px-5">Side and size</th>
+                    <th className="px-3 py-3 font-normal sm:px-5">Entry</th>
+                    <th className="px-3 py-3 font-normal sm:px-5">Liquidation price</th>
                   </tr>
                 </thead>
                 <tbody>
                   {snapshot.positions.map((p) => (
                     <tr key={p.coin} className="border-t-2 border-ink/10">
-                      <td className="px-5 py-3 font-bold text-ink">{p.coin}</td>
-                      <td className={cx("num px-5 py-3", p.size >= 0 ? "text-safe-ink" : "text-danger-ink")}>
+                      <td className="px-3 py-3 font-bold text-ink sm:px-5">{p.coin}</td>
+                      <td className={cx("num px-3 py-3 sm:px-5", p.size >= 0 ? "text-safe-ink" : "text-danger-ink")}>
                         {p.size >= 0 ? "Long" : "Short"} {Math.abs(p.size)}
                       </td>
-                      <td className="num px-5 py-3 text-ink">{formatPrice(p.entryPx)}</td>
-                      <td className="num px-5 py-3 text-ink">{p.liquidationPx === null ? "none" : formatPrice(p.liquidationPx)}</td>
+                      <td className="num px-3 py-3 text-ink sm:px-5">{formatPrice(p.entryPx)}</td>
+                      <td className="num px-3 py-3 text-ink sm:px-5">{p.liquidationPx === null ? "none" : formatPrice(p.liquidationPx)}</td>
                     </tr>
                   ))}
                 </tbody>
