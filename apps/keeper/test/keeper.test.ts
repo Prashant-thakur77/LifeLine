@@ -3,7 +3,7 @@ import type { AuditRecord, Policy } from "@lifeline/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Keeper } from "../src/keeper";
 import { QuoteRefusedError, VaultRejectedError, type Intents, type Quote, type QuoteParams, type RescueArgs, type SwapStatus, type Vault } from "../src/ports";
-import { Store } from "../src/store";
+import { openStore } from "../src/sql-node";
 import { AT, HL, policy as basePolicy, snapshot, USER } from "./helpers";
 
 const MIN = 60 * 1000;
@@ -92,7 +92,7 @@ function makeWorld(options: { policy?: Partial<Policy>; reserve?: string; dryQuo
     },
   };
 
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const keeper = new Keeper({
     store,
     vault,
@@ -700,6 +700,18 @@ describe("when the rescue goes wrong", () => {
     w.accountValue = TRIGGER_VALUE;
     store.saveHealth = () => {
       throw new Error("disk full");
+    };
+    await step();
+    expect(w.sent).toHaveLength(1);
+  });
+
+  it("still rescues if recording a warning fails, like when a storage quota runs out", async () => {
+    const { w, step, store } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    const latest = store.latest.bind(store);
+    store.latest = (user, kind) => {
+      if (kind === "WARN") throw new Error("rows read limit exceeded");
+      return latest(user, kind);
     };
     await step();
     expect(w.sent).toHaveLength(1);

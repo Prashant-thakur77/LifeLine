@@ -5,17 +5,19 @@ import type { AddressInfo } from "node:net";
 import { dirname } from "node:path";
 import { createLifelineBot } from "@lifeline/bot";
 import { getHealth } from "@lifeline/hyperliquid";
-import { createApi, NOT_AVAILABLE_ATTESTATION } from "./api";
+import { createLinkLimiter, NOT_AVAILABLE_ATTESTATION } from "./api";
+import { createApi } from "./api-node";
 import { AttestationMonitor, checkAttestation } from "./attestation";
 import { DEFAULT_NEAR_AI_MODEL, DEFAULT_NEAR_AI_URL, parseMode, readLiveConfig, type LiveConfig } from "./config";
 import { createExplainer } from "./explain";
+import { nodeIntel } from "./intel-node";
 import { describeRecord } from "./format";
 import { Keeper } from "./keeper";
 import { connectNear, createNearVault } from "./near";
 import { createOneClick } from "./oneclick";
 import { createRecordPipeline } from "./pipeline";
 import { runSim, SIM_USER } from "./sim";
-import { Store } from "./store";
+import { openStore } from "./sql-node";
 
 const SHUTDOWN_DRAIN_MS = 5_000;
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -28,7 +30,7 @@ const listen = (server: Server, port: number) =>
 
 async function runSimCli(): Promise<number> {
   console.log("Lifeline keeper, sim mode. No wallet, no keys, no funds: only the quotes are real, and they're dry.\n");
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const api = createApi({
     store,
     now,
@@ -88,7 +90,7 @@ async function runSimCli(): Promise<number> {
 
 async function runLive(config: LiveConfig): Promise<void> {
   mkdirSync(dirname(config.dbPath), { recursive: true });
-  const store = new Store(config.dbPath);
+  const store = openStore(config.dbPath);
   const log = (line: string) => console.log(`${now().toISOString()} ${line}`);
   const telegram =
     config.botToken === null
@@ -102,7 +104,7 @@ async function runLive(config: LiveConfig): Promise<void> {
     log,
   });
   const attestation = new AttestationMonitor(
-    () => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now }),
+    () => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: nodeIntel }),
     { sleep },
   );
   const keeper = new Keeper({
@@ -131,6 +133,7 @@ async function runLive(config: LiveConfig): Promise<void> {
     botUsername: config.botUsername,
     attestation: () => attestation.latest(),
     corsOrigin: config.corsOrigin,
+    allowLink: createLinkLimiter(),
   });
 
   const shutdown = async () => {

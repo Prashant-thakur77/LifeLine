@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "node:crypto";
-import { js_get_collateral, js_verify } from "@phala/dcap-qvl-node";
 import type { AttestationResponse } from "@lifeline/shared";
 import { createRemoteJWKSet, decodeJwt, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from "jose";
 import { NOT_AVAILABLE_ATTESTATION } from "./api";
@@ -47,11 +46,18 @@ const CHECK_ORDER = [NONCE_CHECK, QUOTE_CHECK, BINDING_CHECK, GPU_CHECK, COMPOSE
 
 export type QuoteResult = { status: string; reportData: string; mrConfig: string };
 
+/** Intel's DCAP verifier. intel-node.ts and intel-web.ts provide the same Rust code, built for Node and for Cloudflare. */
+export type IntelDcap = {
+  verify(rawQuote: Uint8Array, collateral: unknown, nowSec: bigint): unknown;
+  getCollateral(pccsUrl: string, rawQuote: Uint8Array): Promise<unknown>;
+};
+
 export type AttestationOptions = {
   baseUrl: string;
   model: string;
   apiKey?: string | null;
   now: () => Date;
+  intel: IntelDcap;
   randomNonce?: () => string;
   fetch?: typeof fetch;
   verifyQuote?: (quoteHex: string) => Promise<QuoteResult>;
@@ -100,12 +106,12 @@ export function reportFields(report: { TD10?: ReportFields; TD15?: { base?: Repo
 }
 
 /** Real Intel DCAP verification. It throws on a bad quote. */
-export function verifyQuoteOffline(quoteHex: string, collateral: unknown, nowSec: bigint): QuoteResult {
-  const result = js_verify(Buffer.from(quoteHex, "hex"), collateral, nowSec) as { status: string; report: Parameters<typeof reportFields>[0] };
+export function verifyQuoteOffline(quoteHex: string, collateral: unknown, nowSec: bigint, intel: IntelDcap): QuoteResult {
+  const result = intel.verify(Buffer.from(quoteHex, "hex"), collateral, nowSec) as { status: string; report: Parameters<typeof reportFields>[0] };
   return { status: result.status, ...reportFields(result.report) };
 }
 
-export function verifyQuoteWith(getCollateral: (rawQuote: Buffer) => Promise<unknown>, now: () => Date) {
+export function verifyQuoteWith(getCollateral: (rawQuote: Buffer) => Promise<unknown>, now: () => Date, intel: IntelDcap) {
   return async (quoteHex: string): Promise<QuoteResult> => {
     if (!isWellFormedQuote(quoteHex)) throw new Error("malformed quote");
     let collateral: unknown;
@@ -114,7 +120,7 @@ export function verifyQuoteWith(getCollateral: (rawQuote: Buffer) => Promise<unk
     } catch {
       throw new Unavailable("Intel's collateral couldn't be fetched");
     }
-    return verifyQuoteOffline(quoteHex, collateral, BigInt(Math.floor(now().getTime() / 1000)));
+    return verifyQuoteOffline(quoteHex, collateral, BigInt(Math.floor(now().getTime() / 1000)), intel);
   };
 }
 
@@ -169,11 +175,11 @@ export function checkGpuClaims(
  * model has no authority.
  */
 export async function checkAttestation(options: AttestationOptions): Promise<AttestationResponse> {
-  const { baseUrl, model, apiKey, now } = options;
+  const { baseUrl, model, apiKey, now, intel } = options;
   const doFetch = options.fetch ?? fetch;
   const nonce = (options.randomNonce ?? (() => randomBytes(32).toString("hex")))().toLowerCase();
   const verifyQuote =
-    options.verifyQuote ?? verifyQuoteWith((raw) => withTimeout(js_get_collateral(INTEL_PCCS_URL, raw) as Promise<unknown>, REQUEST_TIMEOUT_MS), now);
+    options.verifyQuote ?? verifyQuoteWith((raw) => withTimeout(intel.getCollateral(INTEL_PCCS_URL, raw), REQUEST_TIMEOUT_MS), now, intel);
   const jwks = options.jwks ?? createRemoteJWKSet(new URL(NRAS_JWKS_URL), { timeoutDuration: REQUEST_TIMEOUT_MS });
   const answer = (status: AttestationResponse["status"], checks: Check[]): AttestationResponse => ({
     status,
@@ -349,14 +355,27 @@ export async function checkAttestation(options: AttestationOptions): Promise<Att
 }
 
 /** Checks on startup and every 6 hours, sooner if unverified, and always has an answer for the API. */
+export type SavedAttestation = { result: AttestationResponse; nextCheckAt: number };
+
 export class AttestationMonitor {
   private current: AttestationResponse = NOT_AVAILABLE_ATTESTATION;
   private stopped = false;
 
   constructor(
     private readonly check: () => Promise<AttestationResponse>,
-    private readonly options: { sleep: (ms: number) => Promise<void>; checkTimeoutMs?: number },
+    private readonly options: {
+      sleep: (ms: number) => Promise<void>;
+      checkTimeoutMs?: number;
+      /** Called after each check, with when the next is due, so a host can keep both across a restart. */
+      onChecked?: (state: SavedAttestation) => void;
+    },
   ) {}
+
+  /** Picks up a saved check, so a restart serves it at once and doesn't check again early. */
+  restore(saved: SavedAttestation): void {
+    this.current = saved.result;
+    this.nextCheckAt = saved.nextCheckAt;
+  }
 
   latest(): AttestationResponse {
     return this.current;
@@ -375,5 +394,26 @@ export class AttestationMonitor {
 
   stop(): void {
     this.stopped = true;
+  }
+
+  private checking = false;
+  private nextCheckAt = 0;
+
+  /**
+   * For a host that ticks, like a Durable Object, instead of run()'s own loop: starts a
+   * check when one is due, and resolves when that check is done. Same schedule as run().
+   */
+  async refreshIfDue(nowMs: number): Promise<void> {
+    if (this.checking || nowMs < this.nextCheckAt) return;
+    this.checking = true;
+    try {
+      this.current = await withTimeout(this.check(), this.options.checkTimeoutMs ?? CHECK_TIMEOUT_MS);
+    } catch {
+      this.current = NOT_AVAILABLE_ATTESTATION;
+    } finally {
+      this.checking = false;
+    }
+    this.nextCheckAt = nowMs + (this.current.status === "verified" ? VERIFIED_RECHECK_MS : UNVERIFIED_RECHECK_MS);
+    this.options.onChecked?.({ result: this.current, nextCheckAt: this.nextCheckAt });
   }
 }

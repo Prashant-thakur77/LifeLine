@@ -227,9 +227,18 @@ importers:
       '@lifeline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@noble/curves':
+        specifier: 2.2.0
+        version: 2.2.0
       '@phala/dcap-qvl-node':
         specifier: 0.3.3
         version: 0.3.3
+      '@phala/dcap-qvl-web':
+        specifier: 0.3.3
+        version: 0.3.3
+      '@scure/base':
+        specifier: 2.2.0
+        version: 2.2.0
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
@@ -240,6 +249,9 @@ importers:
         specifier: 7.4.0
         version: 7.4.0
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261025.1
+        version: 5.20261025.1
       '@types/better-sqlite3':
         specifier: 9.6.0
         version: 9.6.0
@@ -373,6 +385,9 @@ importers:
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
 
 packages:
+
+  '@cloudflare/workers-types@5.20261025.1':
+    resolution: {integrity: sha512-tMRFCIZKRRieDIdAe38rpszuInDpG6ugnT8mHgJrBj8zR0EbdWeTkg8NunLhVfX3tpBatD0UXVbDuZfgZxe9Fg==}
 
   '@defuse-protocol/one-click-sdk-typescript@0.1.26':
     resolution: {integrity: sha512-vYoBgEbppergtYd/H1IaJW9Jm5mPrX+jAwuuhMvDFstirJB53KFe2HnGLTg0KNyg6qztbOeDK0sA/oEAee+EAw==}
@@ -572,6 +587,9 @@ packages:
 
   '@phala/dcap-qvl-node@0.3.3':
     resolution: {integrity: sha512-Iakz7N6VfWXWfgDkgJ5PFr414UV8BD3mk9ssEd0sFFiGNgiAwzD/wE2zwsGRya7qYYC+R8rvg4uEHXQfu1ArAQ==}
+
+  '@phala/dcap-qvl-web@0.3.3':
+    resolution: {integrity: sha512-pCSZVCMT13K5dAU+Cb5TURT0GXZ6MKvHfgQxUbELAMY8OiQglztpVN42WOjUt17z2iQjBHUWhpwodPgGO+D+CQ==}
 
   '@rolldown/binding-android-arm-eabi@1.2.16':
     resolution: {integrity: sha512-ia3DwAs0OsMGS7+IConptSiyk9pEXkOx/AbJ2n/lAGxH3QkWQus1t8d7gnAT38FCU2sQu8lUbeR6AiZFv4JxaA==}
@@ -1424,6 +1442,8 @@ packages:
 
 snapshots:
 
+  '@cloudflare/workers-types@5.20261025.1': {}
+
   '@defuse-protocol/one-click-sdk-typescript@0.1.26(debug@4.4.3)':
     dependencies:
       '@noble/hashes': 1.8.0
@@ -1544,6 +1564,8 @@ snapshots:
   '@oxc-project/types@0.156.0': {}
 
   '@phala/dcap-qvl-node@0.3.3': {}
+
+  '@phala/dcap-qvl-web@0.3.3': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.16':
     optional: true

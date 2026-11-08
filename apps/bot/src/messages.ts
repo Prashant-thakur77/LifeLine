@@ -25,7 +25,12 @@ export const describeReason = (code: string) => REASONS[code] ?? `The policy eng
 
 const health = (value: number) => value.toFixed(2);
 
+/** The keeper's sim mode marks its pretend deposits and transactions this way. */
+const isSimulated = (record: AuditRecord) =>
+  record.nearTx?.startsWith("sim-") === true || record.request?.depositAddress.startsWith("sim-") === true;
+
 function links(record: AuditRecord, network: Network): string[] {
+  if (isSimulated(record)) return ["This is the simulation: no wallet, no funds, and nothing on chain to link to."];
   const lines: string[] = [];
   if (record.nearTx) {
     const host = network === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io";

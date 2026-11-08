@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createRecordPipeline } from "../src/pipeline";
-import { Store } from "../src/store";
+import { openStore } from "../src/sql-node";
 import { record, USER } from "./helpers";
 
 const setup = (options: { explain?: Parameters<typeof createRecordPipeline>[0]["explain"]; notifyThrows?: boolean } = {}) => {
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const notified: { id: string; explanation?: string }[] = [];
   const pipeline = createRecordPipeline({
     store,
@@ -126,7 +126,7 @@ describe("the record pipeline", () => {
     store.append(r);
     pipeline.handle(r);
     await pipeline.settled();
-    const raw = store.db.prepare("SELECT json FROM audit WHERE id = 'a'").get() as { json: string };
+    const raw = store.db.get("SELECT json FROM audit WHERE id = 'a'") as { json: string };
     expect((JSON.parse(raw.json) as { explanation: string }).explanation).toBe("The keeper's own note.");
     expect(store.audit(USER, 1)[0]?.explanation).toBe("Plain words.");
   });

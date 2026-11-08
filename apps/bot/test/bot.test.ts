@@ -355,3 +355,64 @@ describe("handler errors", () => {
     await expect(t.say("/help")).resolves.toBeUndefined();
   });
 });
+
+describe("webhook mode, for hosts that can't long-poll", () => {
+  const update = (text: string) => ({
+    update_id: 9,
+    message: {
+      message_id: 1,
+      date: 0,
+      chat: { id: CHAT, type: "private" as const, first_name: "x" },
+      from: { id: 7, is_bot: false, first_name: "x" },
+      text,
+    },
+  });
+  const post = (body: unknown, secret?: string) =>
+    t.life.handleWebhook(
+      new Request("https://lifeline-keeper.example/telegram/webhook", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(secret === undefined ? {} : { "x-telegram-bot-api-secret-token": secret }) },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  it("handles an update Telegram posts with the secret", async () => {
+    const response = await post(update("GOODCODE"), t.life.webhookSecret);
+    expect(response.status).toBe(200);
+    expect(t.reply()).toContain("Linked to alice.near");
+  });
+
+  it.each([undefined, "wrong", ""])("refuses an update with secret %s, and does nothing with it", async (secret) => {
+    const response = await post(update("GOODCODE"), secret);
+    expect(response.status).toBe(401);
+    expect(t.sent).toEqual([]);
+    expect(t.fake.links.size).toBe(0);
+  });
+
+  it("makes the secret from the token without containing it, in characters Telegram accepts", () => {
+    expect(t.life.webhookSecret).toMatch(/^[A-Za-z0-9_-]{1,256}$/);
+    expect(t.life.webhookSecret).not.toContain("1:fake");
+    const other = createLifelineBot({ token: "2:other", botInfo: BOT_INFO, store: t.fake.store, dashboardUrl: "x", network: "mainnet", now: () => AT, log: () => {} });
+    expect(other.webhookSecret).not.toBe(t.life.webhookSecret);
+  });
+
+  it("registers with Telegram: the URL, the secret, only messages, and no backlog", async () => {
+    await t.life.registerWebhook("https://lifeline-keeper.example/telegram/webhook");
+    expect(t.sent.map((call) => call.method)).toEqual(["getWebhookInfo", "setWebhook"]);
+    expect(t.sent[1]?.payload).toEqual({
+      url: "https://lifeline-keeper.example/telegram/webhook",
+      secret_token: t.life.webhookSecret,
+      allowed_updates: ["message"],
+      drop_pending_updates: true,
+    });
+  });
+
+  it("leaves a webhook that's already right alone, so a restart doesn't drop waiting messages", async () => {
+    const url = "https://lifeline-keeper.example/telegram/webhook";
+    t.life.bot.api.config.use(async (previous, method, payload, signal) =>
+      method === "getWebhookInfo" ? ({ ok: true, result: { url, has_custom_certificate: false, pending_update_count: 3 } } as never) : previous(method, payload, signal),
+    );
+    await t.life.registerWebhook(url);
+    expect(t.sent.filter((call) => call.method === "setWebhook")).toEqual([]);
+  });
+});

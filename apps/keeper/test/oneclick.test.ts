@@ -1,6 +1,7 @@
+import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
-import { createOneClick } from "../src/oneclick";
+import { createOneClick, isSignedBy1Click } from "../src/oneclick";
 import dry from "./recorded/quote-dry.json";
 import real from "./recorded/quote-real.json";
 import statusPending from "./recorded/status-pending.json";
@@ -148,3 +149,66 @@ describe("submitDeposit", () => {
     expect(bodyOf(calls[0])).toEqual({ txHash: "hash", depositAddress: "addr", nearSenderAccount: "vault.team.near" });
   });
 });
+
+describe("the quote signature check", () => {
+  type Raw = Parameters<typeof verifyQuoteSignature>[0];
+  const recorded: [string, Raw][] = [
+    ["a real quote", real as unknown as Raw],
+    ["a dry quote", dry as unknown as Raw],
+  ];
+
+  it.each(recorded)("accepts %s, as the 1Click SDK does", (_name, quote) => {
+    expect(verifyQuoteSignature(quote)).toBe(true);
+    expect(isSignedBy1Click(quote)).toBe(true);
+  });
+
+  /** Every field a tamperer would want, plus the signature and timestamp themselves. */
+  type Editable = { quote: Record<string, unknown>; quoteRequest: Record<string, unknown>; signature: string; timestamp: string };
+  const tamperings: [string, (q: Editable) => void][] = [
+    ["recipient", (q) => (q.quoteRequest.recipient = "0x9999999999999999999999999999999999999999")],
+    ["refundTo", (q) => (q.quoteRequest.refundTo = "attacker.near")],
+    ["destinationAsset", (q) => (q.quoteRequest.destinationAsset = "nep141:wrap.near")],
+    ["depositAddress", (q) => (q.quote.depositAddress = "attacker.near")],
+    ["amountIn", (q) => (q.quote.amountIn = "1")],
+    ["minAmountOut", (q) => (q.quote.minAmountOut = "999999999999")],
+    ["withdrawFee", (q) => (q.quote.withdrawFee = "0")],
+    ["timestamp", (q) => (q.timestamp = "2030-01-01T00:00:00.000Z")],
+    ["signature", (q) => (q.signature = q.signature.slice(0, -4) + (q.signature.endsWith("1111") ? "2222" : "1111"))],
+  ];
+
+  it.each(tamperings)("refuses a quote with a changed %s, as the 1Click SDK does", (_field, tamper) => {
+    const quote = structuredClone(real) as unknown as Editable;
+    tamper(quote);
+    expect(verifyQuoteSignature(quote as unknown as Raw)).toBe(false);
+    expect(isSignedBy1Click(quote as unknown as Raw)).toBe(false);
+  });
+
+  it("refuses junk instead of throwing", () => {
+    expect(isSignedBy1Click({ ...(real as object), signature: "not base58 !" } as never)).toBe(false);
+    expect(isSignedBy1Click({} as never)).toBe(false);
+  });
+});
+
+describe("a signed quote that doesn't answer what was asked", () => {
+  it("refuses a signed dry quote served for a live request, even with a deposit address added", async () => {
+    // A dry quote's signature leaves out the deposit address and fee, so this would otherwise pass.
+    const replayed = { ...structuredClone(dry), quote: { ...structuredClone(dry).quote, depositAddress: "attacker.near", withdrawFee: "1" } };
+    const { oneClick } = client(() => json(replayed));
+    await expect(oneClick.getQuote({ ...params, dry: false })).rejects.toThrow(/dry/);
+  });
+
+  it("refuses a live quote served for a dry request", async () => {
+    const { oneClick } = client(() => json(real));
+    await expect(oneClick.getQuote({ ...params, dry: true })).rejects.toThrow(/dry/);
+  });
+
+  it.each([
+    ["amount", { amount: "9000000" }],
+    ["recipient", { recipient: "0x2222222222222222222222222222222222222222" }],
+    ["refundTo", { refundTo: "someone-else.near" }],
+  ])("refuses a genuine quote for a different %s", async (field, changed) => {
+    const { oneClick } = client(() => json(real));
+    await expect(oneClick.getQuote({ ...params, ...changed, dry: false })).rejects.toThrow(new RegExp(field));
+  });
+});
+

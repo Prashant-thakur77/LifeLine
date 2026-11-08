@@ -1,6 +1,8 @@
 import type { AttestationResponse } from "@lifeline/shared";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import {
   AttestationMonitor,
@@ -11,7 +13,11 @@ import {
   verifyQuoteOffline,
   verifyQuoteWith,
   type AttestationOptions,
+  type IntelDcap,
 } from "../src/attestation";
+import { NOT_AVAILABLE_ATTESTATION } from "../src/api";
+import { nodeIntel } from "../src/intel-node";
+import { webIntel } from "../src/intel-web";
 import collateral from "./recorded/attestation-collateral.json";
 import jwks from "./recorded/attestation-jwks.json";
 import meta from "./recorded/attestation-meta.json";
@@ -28,13 +34,14 @@ const honest: Respond = (url) => (url.includes("nras.") ? json(nras) : json(repo
 
 /** The gateway runs on a different Intel platform, so its quote has its own collateral. */
 const verifyRecorded = (quote: string) =>
-  verifyQuoteOffline(quote, quote === report.gateway_attestation.intel_quote ? collateral.gateway : collateral.model, BigInt(meta.recordedAtSec));
+  verifyQuoteOffline(quote, quote === report.gateway_attestation.intel_quote ? collateral.gateway : collateral.model, BigInt(meta.recordedAtSec), nodeIntel);
 
 const run = (overrides: { respond?: Respond; options?: Partial<AttestationOptions> } = {}) =>
   checkAttestation({
     baseUrl: "https://near-ai.test/v1",
     model: meta.model as string,
     now: () => NOW,
+    intel: nodeIntel,
     randomNonce: () => NONCE,
     fetch: (async (url: string, init?: RequestInit) => (overrides.respond ?? honest)(String(url), init)) as typeof fetch,
     verifyQuote: async (quote: string) => verifyRecorded(quote),
@@ -109,6 +116,7 @@ describe("a real report, with the real cryptography", () => {
         baseUrl: "https://near-ai.test/v1",
         model: "m",
         now: () => NOW,
+        intel: nodeIntel,
         fetch: (async (url: string) => {
           seen.add(new URL(url).searchParams.get("nonce") ?? "");
           return json({}, 500);
@@ -209,7 +217,7 @@ describe("a report that shouldn't be trusted", () => {
     r.gateway_attestation.intel_quote = `${quote.slice(0, 1200)}${quote[1200] === "0" ? "1" : "0"}${quote.slice(1201)}`;
     const result = await run({
       respond: (url) => (url.includes("nras.") ? json(nras) : json(r)),
-      options: { verifyQuote: async (q) => verifyQuoteOffline(q, q === r.gateway_attestation.intel_quote ? collateral.gateway : collateral.model, BigInt(meta.recordedAtSec)) },
+      options: { verifyQuote: async (q) => verifyQuoteOffline(q, q === r.gateway_attestation.intel_quote ? collateral.gateway : collateral.model, BigInt(meta.recordedAtSec), nodeIntel) },
     });
     expect(result.status).toBe("failed");
     expect(check(result, GATEWAY_CHECK)?.passed).toBe(false);
@@ -251,7 +259,7 @@ describe("a report that shouldn't be trusted", () => {
       options: {
         verifyQuote: verifyQuoteWith(async () => {
           throw new Error("this quote should never reach the network");
-        }, () => NOW),
+        }, () => NOW, nodeIntel),
       },
     });
     expect(result.status).toBe("failed");
@@ -322,7 +330,7 @@ describe("when a check can't run at all", () => {
       options: {
         verifyQuote: verifyQuoteWith(async () => {
           throw new Error("error decoding response body");
-        }, () => NOW),
+        }, () => NOW, nodeIntel),
       },
     });
     expect(result.status).toBe("not available");
@@ -356,7 +364,7 @@ describe("when a check can't run at all", () => {
   });
 
   it("verifies a real quote through the online path", async () => {
-    const verify = verifyQuoteWith(async () => collateral.model, () => new Date(meta.recordedAtSec * 1000));
+    const verify = verifyQuoteWith(async () => collateral.model, () => new Date(meta.recordedAtSec * 1000), nodeIntel);
     expect((await verify(attestation(report).intel_quote)).status).toBe("UpToDate");
   });
 
@@ -588,3 +596,111 @@ describe("the recorded fixture", () => {
     expect(quote.mrConfig.startsWith(`01${hash}`)).toBe(true);
   });
 });
+
+const require = createRequire(import.meta.url);
+const ENGINES: [string, IntelDcap][] = [
+  ["the Node build", nodeIntel],
+  ["the web build Cloudflare runs", webIntel(readFileSync(require.resolve("@phala/dcap-qvl-web/dcap-qvl-web_bg.wasm")))],
+];
+
+describe.each(ENGINES)("Intel's quote verifier, %s", (_engine, intel) => {
+  const quotes: [string, string, unknown][] = [
+    ["model", attestation(report).intel_quote, collateral.model],
+    ["gateway", report.gateway_attestation.intel_quote, collateral.gateway],
+  ];
+
+  it.each(quotes)("verifies the recorded %s quote, with the same report as the Node build", (_name, quote, quoteCollateral) => {
+    const result = verifyQuoteOffline(quote, quoteCollateral, BigInt(meta.recordedAtSec), intel);
+    expect(result.status).toBe("UpToDate");
+    expect(result).toEqual(verifyQuoteOffline(quote, quoteCollateral, BigInt(meta.recordedAtSec), nodeIntel));
+  });
+
+  it("refuses a quote with one byte changed", () => {
+    const quote = attestation(report).intel_quote;
+    const at = quote.length - 200;
+    const tampered = quote.slice(0, at) + (quote[at] === "0" ? "1" : "0") + quote.slice(at + 1);
+    expect(() => verifyQuoteOffline(tampered, collateral.model, BigInt(meta.recordedAtSec), intel)).toThrow();
+  });
+});
+
+describe("AttestationMonitor on a host that ticks, like a Durable Object", () => {
+  const verified: AttestationResponse = { status: "verified", checkedAt: "t", model: "m", checks: [] };
+  const HOUR = 3_600_000;
+
+  const counting = (result: () => Promise<AttestationResponse>) => {
+    let checks = 0;
+    const monitor = new AttestationMonitor(
+      () => {
+        checks += 1;
+        return result();
+      },
+      { sleep: async () => {} },
+    );
+    return { monitor, checks: () => checks };
+  };
+
+  it("checks on the first tick, and serves the result", async () => {
+    const t = counting(async () => verified);
+    await t.monitor.refreshIfDue(0);
+    expect(t.checks()).toBe(1);
+    expect(t.monitor.latest().status).toBe("verified");
+  });
+
+  it("doesn't start a second check while one is running", async () => {
+    let finish: (value: AttestationResponse) => void = () => {};
+    const t = counting(() => new Promise((resolve) => (finish = resolve)));
+    const first = t.monitor.refreshIfDue(0);
+    void t.monitor.refreshIfDue(5_000);
+    expect(t.checks()).toBe(1);
+    finish(verified);
+    await first;
+  });
+
+  it("rechecks a verified result after 6 hours, not before", async () => {
+    const t = counting(async () => verified);
+    await t.monitor.refreshIfDue(0);
+    await t.monitor.refreshIfDue(6 * HOUR - 1);
+    expect(t.checks()).toBe(1);
+    await t.monitor.refreshIfDue(6 * HOUR);
+    expect(t.checks()).toBe(2);
+  });
+
+  it("rechecks after 10 minutes when the last check couldn't run, so an outage doesn't stick", async () => {
+    const t = counting(async () => NOT_AVAILABLE_ATTESTATION);
+    await t.monitor.refreshIfDue(0);
+    await t.monitor.refreshIfDue(10 * 60_000 - 1);
+    expect(t.checks()).toBe(1);
+    await t.monitor.refreshIfDue(10 * 60_000);
+    expect(t.checks()).toBe(2);
+  });
+
+  it("says not available when a check throws, and drops an old verified", async () => {
+    let fail = false;
+    const t = counting(async () => {
+      if (fail) throw new Error("boom");
+      return verified;
+    });
+    await t.monitor.refreshIfDue(0);
+    fail = true;
+    await t.monitor.refreshIfDue(6 * HOUR);
+    expect(t.monitor.latest().status).toBe("not available");
+  });
+
+  it("starts from a saved result and schedule, so a restart doesn't check again early", async () => {
+    const t = counting(async () => verified);
+    t.monitor.restore({ result: verified, nextCheckAt: 6 * HOUR });
+    expect(t.monitor.latest().status).toBe("verified");
+    await t.monitor.refreshIfDue(6 * HOUR - 1);
+    expect(t.checks()).toBe(0);
+    await t.monitor.refreshIfDue(6 * HOUR);
+    expect(t.checks()).toBe(1);
+  });
+
+  it("reports each finished check and its next time, so the host can save them", async () => {
+    const saved: unknown[] = [];
+    const monitor = new AttestationMonitor(async () => verified, { sleep: async () => {}, onChecked: (state) => saved.push(state) });
+    await monitor.refreshIfDue(1_000);
+    expect(saved).toEqual([{ result: verified, nextCheckAt: 1_000 + 6 * HOUR }]);
+  });
+});
+

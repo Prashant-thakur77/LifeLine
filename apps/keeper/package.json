@@ -9,10 +9,13 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
     "sim": "tsx src/main.ts --sim",
     "live": "tsx src/main.ts --live",
-    "attest": "tsx src/attest.ts"
+    "attest": "tsx src/attest.ts",
+    "cf:dev": "pnpm dlx wrangler@4.158.0 dev --env sim",
+    "cf:deploy:sim": "pnpm dlx wrangler@4.158.0 deploy --env sim --var KEEPER_VERSION:$(git rev-parse --short HEAD)",
+    "cf:deploy": "pnpm dlx wrangler@4.158.0 deploy --var KEEPER_VERSION:$(git rev-parse --short HEAD)"
   },
   "dependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
@@ -20,12 +23,16 @@
     "@lifeline/hyperliquid": "workspace:*",
     "@lifeline/policy": "workspace:*",
     "@lifeline/shared": "workspace:*",
+    "@noble/curves": "2.2.0",
     "@phala/dcap-qvl-node": "0.3.3",
+    "@phala/dcap-qvl-web": "0.3.3",
+    "@scure/base": "2.2.0",
     "better-sqlite3": "13.0.3",
     "jose": "6.2.15",
     "near-api-js": "7.4.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20261025.1",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "catalog:",
     "tsx": "catalog:",

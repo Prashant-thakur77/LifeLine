@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { ASSETS, POLICY_DEFAULTS, type AuditRecord, type Policy } from "@lifeline/shared";
 import { Keeper } from "./keeper";
 import type { Intents, ReadHealth, RescueArgs, RescueRecord, SwapStatus, Vault } from "./ports";
@@ -132,7 +131,7 @@ export async function runSim(options: {
     users: () => [SIM_USER],
     now,
     sleep,
-    newId: randomUUID,
+    newId: () => crypto.randomUUID(),
     dryQuotes: true,
     log,
     ...(onRecord ? { onRecord } : {}),
@@ -149,4 +148,101 @@ export async function runSim(options: {
   }
   await keeper.settled();
   return { sent: world.sent, reserveBefore, reserveAfter: world.reserve() };
+}
+
+const SHOW_RESCUED_MS = 60_000; // after a rescue, keep reading for a minute so the API shows the new health
+
+export type SimLoop = {
+  /** One alarm's worth: moves the script on a step, or holds, then runs one keeper tick. */
+  tick(): Promise<void>;
+  /**
+   * When the next tick is needed. Between drops nothing changes, so the host can sleep
+   * until the rest is over: an always-awake Durable Object costs duration all day.
+   */
+  nextTickInMs(tickMs: number): number;
+  /** Resolves once the current drop's rescue, if any, has finished. */
+  settled(): Promise<void>;
+};
+
+type Cycle = { world: SimWorld; keeper: Keeper; scale: number; step: number; doneAt: number | null };
+
+/**
+ * The scripted drop on repeat, for a hosted demo. Each tick moves the price one step;
+ * at the end the price holds while the keeper keeps watching, so the API shows the
+ * health after the rescue. After a rest, a new drop starts from the live price. Each
+ * drop gets a fresh pretend account and vault, so one drop's rescue can't count
+ * against the next one's caps or cooldown. Like runSim, only the quotes are real,
+ * and they're always dry.
+ */
+export function createSimLoop(options: {
+  store: Store;
+  quotes: Pick<Intents, "getQuote">;
+  now: () => Date;
+  sleep: (ms: number) => Promise<void>;
+  log: (line: string) => void;
+  restMs: number;
+  startPrice?: () => Promise<number>;
+  onRecord?: (record: AuditRecord) => void;
+}): SimLoop {
+  const { store, quotes, now, sleep, log, restMs, startPrice, onRecord } = options;
+  let cycle: Cycle | null = null;
+  let busy = false;
+
+  const begin = async (): Promise<Cycle> => {
+    let entry = BASE_PRICE;
+    try {
+      const live = await startPrice?.();
+      if (live !== undefined && Number.isFinite(live) && live > 0) entry = live;
+    } catch (error) {
+      log(`sim: live price unavailable, starting at ${BASE_PRICE}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const world = createSimWorld({ quotes, now, entryPrice: entry });
+    const keeper = new Keeper({
+      store,
+      vault: world.vault,
+      intents: world.intents,
+      readHealth: world.readHealth,
+      users: () => [SIM_USER],
+      now,
+      sleep,
+      newId: () => crypto.randomUUID(),
+      dryQuotes: true,
+      log,
+      ...(onRecord ? { onRecord } : {}),
+    });
+    return { world, keeper, scale: entry / BASE_PRICE, step: 0, doneAt: null };
+  };
+
+  return {
+    async tick() {
+      // The host doesn't wait for a tick, so one can arrive before the last has finished.
+      if (busy) return;
+      busy = true;
+      try {
+        const rested = cycle !== null && cycle.doneAt !== null && now().getTime() - cycle.doneAt >= restMs;
+        if (cycle === null || rested) cycle = await begin();
+        const current = cycle;
+        const scripted = PRICE_DROP[current.step];
+        if (scripted !== undefined) {
+          current.world.setPrice(scripted * current.scale);
+          current.step += 1;
+          if (current.step === PRICE_DROP.length) {
+            // The rest only counts once this drop's rescue has finished.
+            void current.keeper.settled().then(() => {
+              current.doneAt = now().getTime();
+            });
+          }
+        }
+        await current.keeper.tick();
+      } finally {
+        busy = false;
+      }
+    },
+    nextTickInMs(tickMs) {
+      if (cycle === null || cycle.doneAt === null) return tickMs;
+      const sinceDone = now().getTime() - cycle.doneAt;
+      return sinceDone < SHOW_RESCUED_MS ? tickMs : Math.max(tickMs, restMs - sinceDone);
+    },
+    settled: () => cycle?.keeper.settled() ?? Promise.resolve(),
+  };
 }

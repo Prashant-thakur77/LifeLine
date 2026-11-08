@@ -1,13 +1,13 @@
 import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import type { Intents, QuoteParams } from "../src/ports";
-import { createSimWorld, PRICE_DROP, runSim, SIM_USER } from "../src/sim";
-import { Store } from "../src/store";
+import { createSimLoop, createSimWorld, PRICE_DROP, runSim, SIM_USER } from "../src/sim";
+import { openStore } from "../src/sql-node";
 
 const AT_MS = Date.parse("2026-11-08T15:00:00.000Z");
 
 /** Stands in for 1Click's dry quotes, with the fee and spread seen live. */
-function fakeQuotes(seen: QuoteParams[] = []): Pick<Intents, "getQuote"> {
+function fakeQuotes(seen: QuoteParams[] = [], now: () => Date = () => new Date(AT_MS)): Pick<Intents, "getQuote"> {
   return {
     async getQuote(params) {
       seen.push(params);
@@ -21,7 +21,7 @@ function fakeQuotes(seen: QuoteParams[] = []): Pick<Intents, "getQuote"> {
         recipient: params.recipient,
         refundTo: params.refundTo,
         destinationAsset: ASSETS.HYPERLIQUID_USDC.assetId,
-        quotedAt: new Date(AT_MS).toISOString(),
+        quotedAt: now().toISOString(),
       };
     },
   };
@@ -29,7 +29,7 @@ function fakeQuotes(seen: QuoteParams[] = []): Pick<Intents, "getQuote"> {
 
 const run = async (seen: QuoteParams[] = []) => {
   let nowMs = AT_MS;
-  const store = new Store(":memory:");
+  const store = openStore(":memory:");
   const result = await runSim({
     store,
     quotes: fakeQuotes(seen),
@@ -92,7 +92,7 @@ describe("the scripted price drop", () => {
 describe("starting from a live price", () => {
   it("gives the same story at any price, because the position scales with it", async () => {
     let nowMs = AT_MS;
-    const store = new Store(":memory:");
+    const store = openStore(":memory:");
     const ticks: { price: number; health: number }[] = [];
     await runSim({
       store,
@@ -170,3 +170,137 @@ describe("the sim's account", () => {
     expect(seen[0]?.dry).toBe(true);
   });
 });
+
+describe("the hosted sim loop", () => {
+  const TICK_MS = 5_000;
+  const REST_MS = 10 * 60_000;
+
+  const setup = (startPrice?: () => Promise<number>) => {
+    let nowMs = AT_MS;
+    const seen: QuoteParams[] = [];
+    const store = openStore(":memory:");
+    const loop = createSimLoop({
+      store,
+      quotes: fakeQuotes(seen, () => new Date(nowMs)),
+      now: () => new Date(nowMs),
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+      restMs: REST_MS,
+      ...(startPrice ? { startPrice } : {}),
+    });
+    /** One alarm: a tick, then 5 s pass while any rescue carries on. */
+    const tick = async (times = 1) => {
+      for (let i = 0; i < times; i += 1) {
+        await loop.tick();
+        nowMs += TICK_MS;
+        await loop.settled();
+      }
+    };
+    const count = (kind: string) => store.ledger(200).filter((r) => r.kind === kind).length;
+    return { tick, count, store, seen, elapse: (ms: number) => (nowMs += ms) };
+  };
+
+  it("rescues exactly once per drop, then holds at the rescued health", async () => {
+    const t = setup();
+    await t.tick(PRICE_DROP.length + 10);
+    expect(t.count("RESCUE_DONE")).toBe(1);
+    expect(t.count("RESCUE_FAILED") + t.count("RESCUE_BLOCKED")).toBe(0);
+    const health = t.store.health(SIM_USER);
+    expect(health?.status).toBe("ok");
+    expect(health?.snapshot?.health).toBeGreaterThanOrEqual(health?.policy.trigger ?? Infinity);
+  });
+
+  it("starts the next drop only after resting, and rescues again", async () => {
+    const t = setup();
+    await t.tick(PRICE_DROP.length + 3);
+    t.elapse(REST_MS - 60_000);
+    await t.tick(3);
+    expect(t.count("WARN")).toBe(1);
+    t.elapse(60_000);
+    await t.tick(PRICE_DROP.length + 3);
+    expect(t.count("WARN")).toBe(2);
+    expect(t.count("RESCUE_DONE")).toBe(2);
+  });
+
+  it("opens each drop at the live price", async () => {
+    const t = setup(async () => 2000);
+    await t.tick(2);
+    expect(t.store.health(SIM_USER)?.snapshot?.positions[0]?.entryPx).toBe(2000);
+  });
+
+  it.each([["fails", async () => Promise.reject(new Error("down"))], ["is nonsense", async () => Number.NaN]])(
+    "opens at 3,000 when the live price %s",
+    async (_case, startPrice) => {
+      const t = setup(startPrice as () => Promise<number>);
+      await t.tick(2);
+      expect(t.store.health(SIM_USER)?.snapshot?.positions[0]?.entryPx).toBe(3000);
+    },
+  );
+
+  it("only ever asks 1Click for dry quotes, so nothing can be deposited", async () => {
+    const t = setup();
+    await t.tick(PRICE_DROP.length + 3);
+    expect(t.seen.length).toBeGreaterThan(0);
+    expect(t.seen.every((params) => params.dry === true)).toBe(true);
+  });
+
+  it("asks to sleep between drops: ticks until the rescue is done and shown for a minute, then not until the rest is over", async () => {
+    let nowMs = AT_MS;
+    const store = openStore(":memory:");
+    const loop = createSimLoop({
+      store,
+      quotes: fakeQuotes([], () => new Date(nowMs)),
+      now: () => new Date(nowMs),
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+      restMs: REST_MS,
+    });
+    expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS);
+    let lastStepAt = 0;
+    for (let i = 0; i < PRICE_DROP.length; i += 1) {
+      await loop.tick();
+      await loop.settled();
+      expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS);
+      lastStepAt = nowMs;
+      nowMs += TICK_MS;
+    }
+    // The rescue was done by the drop's last step, so the minute and the rest run from there.
+    nowMs = lastStepAt + 59_000;
+    await loop.tick();
+    expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS); // still showing the rescued health
+    nowMs = lastStepAt + 60_000;
+    await loop.tick();
+    expect(loop.nextTickInMs(TICK_MS)).toBe(REST_MS - 60_000); // asleep until the rest is over
+  });
+
+  it("ignores a tick that arrives while the last one is still running, so the script can't skip ahead", async () => {
+    let release: (price: number) => void = () => {};
+    let priceCalls = 0;
+    const store = openStore(":memory:");
+    const loop = createSimLoop({
+      store,
+      quotes: fakeQuotes(),
+      now: () => new Date(AT_MS),
+      sleep: async () => {},
+      log: () => {},
+      restMs: REST_MS,
+      startPrice: () => {
+        priceCalls += 1;
+        return new Promise((resolve) => (release = resolve));
+      },
+    });
+    const first = loop.tick();
+    await loop.tick(); // arrives while the first is still waiting for the price
+    release(3000);
+    await first;
+    expect(priceCalls).toBe(1);
+    expect(store.health(SIM_USER)?.snapshot?.health).toBeCloseTo(5, 1); // the script's first step, not its second
+  });
+});
+

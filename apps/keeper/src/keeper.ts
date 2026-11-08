@@ -190,7 +190,14 @@ export class Keeper {
       }
 
       const { snapshot } = result;
-      if (snapshot.health < policy.warn) this.warn(user, snapshot);
+      // A warning is only a record: failing to write one mustn't stop the rescue check below.
+      if (snapshot.health < policy.warn) {
+        try {
+          this.warn(user, snapshot);
+        } catch (error) {
+          this.deps.log(`${user}: couldn't record a warning: ${messageOf(error)}`);
+        }
+      }
       if (snapshot.health < policy.trigger) {
         if (!this.firstBelowAt.has(user)) this.firstBelowAt.set(user, this.deps.now().getTime());
         if (!this.active.has(user)) {
@@ -210,7 +217,7 @@ export class Keeper {
   /** A failed save mustn't stop a rescue: an out-of-date API beats an unprotected user. */
   private saveHealth(user: string, response: HealthResponse): void {
     try {
-      this.deps.store.saveHealth(user, response);
+      this.deps.store.saveHealth(user, response, this.deps.now().getTime());
     } catch (error) {
       this.deps.log(`${user}: couldn't save health: ${messageOf(error)}`);
     }

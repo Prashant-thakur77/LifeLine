@@ -56,7 +56,7 @@ Settled. Don't reopen them unless the day-1 spike proves one wrong.
 | Keeper storage | SQLite (`better-sqlite3`), one file |
 | Telegram | `grammY` |
 | AI explanations | NEAR AI Cloud, OpenAI-compatible API at `https://cloud-api.near.ai/v1` |
-| Hosting | Dashboard on Vercel. Keeper and bot as one service on Railway with a persistent volume |
+| Hosting | Cloudflare, on the human's domain. Keeper and bot: one Worker with a Durable Object (`apps/keeper/wrangler.jsonc`), the real one at `lifeline-keeper.prashantthakur.dev` and the always-on sim at `lifeline-sim.prashantthakur.dev`. Dashboard: Cloudflare too. Changed on 2026-11-08 from Vercel and Railway at the human's request: their Vercel team is paused until 8 Dec 2026 |
 | Licence | MIT |
 
 **Accounts**
@@ -134,7 +134,17 @@ Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
 - `refundTo` must be an existing NEAR account, or the quote fails with a 400.
 - `GET /v1/attestation/report` answered without an API key for `deepseek-ai/DeepSeek-V4.1-Flash-1017`, though the NEAR agent skill says one is required, so send the key when there is one. Its `report_data` is the signing address padded to 32 bytes, then the nonce. `pnpm --filter keeper attest` verified it end to end through NVIDIA's NRAS and Intel's DCAP: 8 GPUs, Intel status `UpToDate`.
 - The quote response has no `quoteId` field. Its top-level keys are `quote`, `quoteRequest`, `signature`, `timestamp` and `correlationId`. The keeper passes `correlationId` as the vault's `quote_id`.
-- `verifyQuoteSignature` from `@defuse-protocol/one-click-sdk-typescript` accepts real dry and non-dry quotes and rejects a changed recipient or deposit address. A non-dry quote's `deadline` came back about 3 days out even when we asked for 5 minutes, so a deposit address stays usable long after the keeper's 60 s limit.
+- `verifyQuoteSignature` from `@defuse-protocol/one-click-sdk-typescript` accepts real dry and non-dry quotes and rejects a changed recipient or deposit address. It costs about 12 ms of CPU (tweetnacl), so the keeper checks the SDK's own `quoteHash` with noble's Ed25519 instead: 1.9 ms, and tests hold it to the SDK's answer on real quotes and on every tampered field. A non-dry quote's `deadline` came back about 3 days out even when we asked for 5 minutes, so a deposit address stays usable long after the keeper's 60 s limit.
+
+Checked on 2026-11-08 on Cloudflare, with the sim deployed at `lifeline-sim.prashantthakur.dev`:
+
+- A Durable Object's SQLite runs the keeper's store unchanged: the triggers refuse `UPDATE` and `DELETE` on the audit log, and `json_extract`, `RETURNING` and a rolled-back `transactionSync` all work. Intel's web verifier (`@phala/dcap-qvl-web`) verifies the attestation on Cloudflare: 6 of 6 checks.
+- Alarm invocations used up to 77 ms of CPU (the first, with the attestation check) and 43 ms (a rescue), all with outcome `ok`, so the Durable Object isn't held to the free plan's 10 ms per request.
+- An object woken every few seconds never goes idle, so it is billed duration all day: at 128 MB about 11,000 GB-s a day of the free plan's 13,000. The real keeper fits; the sim sleeps between drops so both can run.
+- The free plan also allows 100,000 rows written and 5 million rows read a day, and each `setAlarm` counts as a row written. Past a limit, operations of that type fail until 00:00 UTC. So the keeper sets one alarm a minute and ticks every 5 s inside it, writes each user's health at most once a minute, caches stats, limits link codes, and the Worker caches API reads for 5 s.
+- After a deferred code update on 2026-11-08 the sim's stored alarm stopped firing, which left it silently idle. The cron now re-arms any alarm more than 2 minutes overdue, and `/` shows `lastTickAt` and `nextAlarmAt` so a stall is visible.
+- `wrangler deploy` once failed with "The request to Cloudflare's API timed out" and left the old version live. Check `wrangler deployments list` after a deploy.
+- A deploy reaches a running Durable Object only when it hibernates or after 300 s, Cloudflare's default deferred code update. The keeper never hibernates, so a fix takes up to 5 minutes to reach it. On the switch the object restarts, and the keeper picks up any unfinished rescue from its log.
 
 ## Commands
 
@@ -151,6 +161,9 @@ pnpm backtest                    # regenerates research/backtest/RESULTS.md and 
 pnpm demo:sim                    # the whole rescue story from the live ETH price: no wallet, keys or funds
 pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved mainnet refusal re-checked on chain
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
+pnpm --filter keeper cf:dev      # the sim keeper on Cloudflare's runtime, locally
+pnpm --filter keeper cf:deploy:sim   # deploys lifeline-sim.prashantthakur.dev (needs a Cloudflare login)
+pnpm --filter keeper cf:deploy   # the real keeper: set its secrets first, and ask the human before mainnet
 ```
 
 Packages are TypeScript source with no build step. `apps/web` needs `transpilePackages: ["@lifeline/shared"]` in its Next config. `.gitkeep` files in `apps/web`, `contracts/vault`, `docs` and `spike` only hold the empty folders; delete them when real files arrive.
