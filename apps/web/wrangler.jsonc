@@ -1,0 +1,15 @@
+// The dashboard on Cloudflare: a static export (out/, from `next build`) served as Workers
+// static assets, so no request runs any code and the free plan's CPU limit never applies.
+//
+//   pnpm --filter web cf:dev      builds, then serves out/ on Cloudflare's runtime locally
+//   pnpm --filter web cf:deploy   builds, then deploys lifeline.prashantthakur.dev
+//
+// NEXT_PUBLIC_* values are read at build time, so set them (see .env.example) before
+// building. Unknown paths get out/404.html with a 404 status. /ledger is served from
+// out/ledger.html by the default html_handling.
+{
+  "name": "lifeline-web",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "out", "not_found_handling": "404-page" },
+  "routes": [{ "pattern": "lifeline.prashantthakur.dev", "custom_domain": true }]
+}
