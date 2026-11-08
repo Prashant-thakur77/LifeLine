@@ -145,8 +145,9 @@ function StatsSection() {
           <div className="max-w-xl">
             <h3 className="text-[15px] font-semibold text-paper">Explanations from attested hardware</h3>
             <p className="mt-1 text-[14px] leading-relaxed text-mist-300">
-              Every rescue comes with a plain-language explanation written by a model on NEAR AI Cloud. The keeper checks, with a fresh nonce, that the model
-              runs in a secure enclave, verified through NVIDIA and Intel.
+              Every decision gets a plain-language explanation. The facts come from the record itself, and a private model on NEAR AI Cloud adds a
+              sentence when the keeper has a NEAR AI key. The keeper checks, with a fresh nonce, that the model runs in a secure enclave, verified
+              through NVIDIA and Intel.
             </p>
           </div>
           {attestation.data ? (
