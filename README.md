@@ -35,7 +35,14 @@ pnpm --filter keeper attest
 
 The same sim keeper runs around the clock on Cloudflare, at https://lifeline-sim.prashantthakur.dev. About every 15 minutes it plays the price drop again and rescues once, and it serves the API the dashboard reads: [stats](https://lifeline-sim.prashantthakur.dev/api/stats), [ledger](https://lifeline-sim.prashantthakur.dev/api/ledger), [health](https://lifeline-sim.prashantthakur.dev/api/health/demo.near) and [attestation](https://lifeline-sim.prashantthakur.dev/api/attestation). Everything in it is simulated except the dry quotes, the ETH price and the attestation check.
 
-To run that Worker on Cloudflare's runtime locally, or to deploy it (needs a Cloudflare login):
+The dashboard is in `apps/web`, a static Next.js site that reads the keeper's API and the vault. With no settings it shows the sim's `demo.near`:
+
+```sh
+pnpm --filter web dev          # http://localhost:3000
+pnpm --filter web cf:dev       # the built site on Cloudflare's runtime
+```
+
+To run the sim keeper's Worker on Cloudflare's runtime locally, or to deploy it (needs a Cloudflare login):
 
 ```sh
 pnpm --filter keeper cf:dev
