@@ -27,7 +27,7 @@ export type LiveConfig = {
 type Env = Record<string, string | undefined>;
 
 const USAGE = "usage: keeper --sim | --live";
-const REQUIRED = ["NEAR_NETWORK", "NEAR_RPC_URL", "VAULT_CONTRACT_ID", "KEEPER_ACCOUNT_ID", "KEEPER_PRIVATE_KEY", "KEEPER_USERS"];
+const REQUIRED = ["NEAR_NETWORK", "NEAR_RPC_URL", "VAULT_CONTRACT_ID", "KEEPER_ACCOUNT_ID", "KEEPER_PRIVATE_KEY"];
 const ACCOUNT_SUFFIX = { testnet: ".testnet", mainnet: ".near" } as const;
 
 export function parseMode(argv: string[]): Mode {
@@ -82,7 +82,8 @@ export function readLiveConfig(env: Env): LiveConfig {
 
   const vaultId = env.VAULT_CONTRACT_ID as string;
   const keeperAccountId = env.KEEPER_ACCOUNT_ID as string;
-  const users = (env.KEEPER_USERS as string)
+  // Optional: the keeper also watches everyone the vault lists.
+  const users = (env.KEEPER_USERS ?? "")
     .split(",")
     .map((user) => user.trim())
     .filter((user) => user !== "");

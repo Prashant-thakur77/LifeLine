@@ -21,6 +21,7 @@
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
     "@lifeline/bot": "workspace:*",
     "@lifeline/hyperliquid": "workspace:*",
+    "@lifeline/intents": "workspace:*",
     "@lifeline/policy": "workspace:*",
     "@lifeline/shared": "workspace:*",
     "@noble/curves": "2.2.0",

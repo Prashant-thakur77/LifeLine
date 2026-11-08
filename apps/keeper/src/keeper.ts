@@ -25,6 +25,12 @@ const STATUS_POLL_MS = 2 * SEC;
 const CREDIT_POLL_MS = SEC;
 const SENT_TIMEOUT_MS = 30 * MIN; // how long a rescue known to be sent keeps the user locked
 const UNSURE_GRACE_MS = 30 * SEC; // after a crash or an unclear send, before asking the chain
+/**
+ * The vault refuses a quote 2 minutes after 1Click dated it, and allows 1Click's clock
+ * 30 s of skew. After this, a send that's still in flight can no longer land, so the
+ * chain's "no" is final.
+ */
+const QUOTE_UNUSABLE_AFTER_MS = 155 * SEC;
 const CREDIT_TIMEOUT_MS = MIN;
 const REFUSED_RETRY_MS = 5 * MIN; // a refusal the engine didn't predict won't clear itself in 5 s
 
@@ -304,6 +310,7 @@ export class Keeper {
 
     let request: PolicyRequest;
     let decision: PolicyDecision;
+    let signed: { payload: string; signature: string } | null = null;
     try {
       const [rescues, reserve] = await Promise.all([vault.getRescues(user), vault.getReserve(user, token)]);
       const history = { rescues, reserve };
@@ -329,6 +336,9 @@ export class Keeper {
       const id = newId();
       const depositAddress = quote.depositAddress ?? (dryQuotes ? `sim-${id}` : null);
       if (depositAddress === null) throw new QuoteRefusedError("the quote has no deposit address");
+      // The vault reads where the money goes from this text, so a live rescue can't go without it.
+      signed = quote.signed ?? (dryQuotes ? { payload: "", signature: "" } : null);
+      if (signed === null) throw new QuoteRefusedError("1Click didn't sign the quote for a deposit");
 
       const fresh = await this.read(hlAddress);
       const snapshot = fresh.status === "ok" ? fresh.snapshot : detected;
@@ -364,7 +374,7 @@ export class Keeper {
     }
 
     this.quoteRetryAt.delete(user);
-    await this.send(user, request, decision, healthBefore, detectedAt);
+    await this.send(user, request, decision, healthBefore, detectedAt, signed ?? { payload: "", signature: "" });
     this.firstBelowAt.delete(user);
   }
 
@@ -374,6 +384,7 @@ export class Keeper {
     decision: PolicyDecision,
     healthBefore: number,
     detectedAt: number,
+    signed: { payload: string; signature: string },
   ): Promise<void> {
     const { vault, intents, log, now } = this.deps;
     const fields: RecordFields = { kind: "RESCUE_FAILED", request, decision, healthBefore };
@@ -389,12 +400,20 @@ export class Keeper {
         depositAddress: request.depositAddress,
         recipient: request.recipient,
         quoteId: request.quoteId,
+        quote: signed.payload,
+        signature: signed.signature,
       }));
     } catch (error) {
       if (error instanceof VaultRejectedError) {
         // near-api-js re-signs after a nonce error, so a retry can be refused after the first landed.
-        if ((await this.onChain(user, request.quoteId)) === "yes") {
+        const landed = await this.onChain(user, request.quoteId);
+        if (landed === "yes") {
           await this.settleSent(user, request, fields, detectedAt);
+          return;
+        }
+        // Unknown must never be read as no: a false FAILED can send the money twice.
+        if (landed === "unknown") {
+          await this.settleUnsure(user, request, fields, detectedAt);
           return;
         }
         this.quoteRetryAt.set(user, now().getTime() + REFUSED_RETRY_MS);
@@ -436,7 +455,9 @@ export class Keeper {
    * because a false FAILED can send the money twice.
    */
   private async settleUnsure(user: string, request: RescueRequest, fields: RecordFields, detectedAt: number | null): Promise<void> {
-    const first = await this.pollStatus(request.depositAddress, UNSURE_GRACE_MS, null);
+    const unusableAt = Date.parse(request.quoteAt) + QUOTE_UNUSABLE_AFTER_MS;
+    const grace = Math.max(UNSURE_GRACE_MS, unusableAt - this.deps.now().getTime());
+    const first = await this.pollStatus(request.depositAddress, grace, null);
     if (first.final) {
       await this.writeOutcome(user, request, fields, detectedAt, first);
       return;

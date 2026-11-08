@@ -5,6 +5,11 @@ import { VaultRejectedError, type RescueRecord, type Vault } from "./ports";
 
 const RESCUE_GAS_TGAS = "100";
 const RESCUES_PAGE = 100;
+/** The daily cap looks back 24 h; an hour more covers clock differences. */
+const HISTORY_MS = 25 * 60 * 60 * 1000;
+const USERS_PAGE = 100;
+/** What the keeper says when `rescue` resolves to false: the vault refunded a failed transfer. */
+export const REFUNDED = "the transfer to 1Click failed, so the vault put the money back in the reserve";
 const VIEW_TIMEOUT_MS = 5_000; // a stuck read would stop the watch loop for this user
 const CALL_TIMEOUT_MS = 60_000; // longer than the RPC's own wait, and a timeout here means "unknown"
 const UNITS = /^\d+$/;
@@ -12,8 +17,11 @@ const UNITS = /^\d+$/;
 /** The two things the vault adapter needs from NEAR. */
 export type NearClient = {
   view(method: string, args: Record<string, unknown>): Promise<unknown>;
-  /** `failure` means the chain ran it and it failed. A throw means the outcome is unknown. */
-  call(method: string, args: Record<string, unknown>): Promise<{ txHash: string; failure: string | null }>;
+  /**
+   * `failure` means the chain ran it and it failed. A throw means the outcome is unknown.
+   * `value` is the JSON the call resolved to, if any.
+   */
+  call(method: string, args: Record<string, unknown>): Promise<{ txHash: string; failure: string | null; value?: unknown }>;
 };
 
 type Raw = Record<string, unknown>;
@@ -71,12 +79,24 @@ function chainTimeToIso(value: unknown): string {
   return new Date(ms).toISOString();
 }
 
-function parseRescue(raw: Raw): RescueRecord {
+/** null for a rescue whose transfer failed and was refunded: it moved no money. */
+function parseRescue(raw: Raw): RescueRecord | null {
+  if (raw.refunded === true) return null;
   const { amount } = raw;
   if (typeof amount !== "string" || !UNITS.test(amount)) throw new Error("unreadable rescue amount");
   const at = chainTimeToIso(pick(raw, "at", "timestamp", "at_ns", "timestamp_ns"));
   const quoteId = pick(raw, "quote_id", "quoteId");
   return typeof quoteId === "string" ? { amount, at, quoteId } : { amount, at };
+}
+
+/** A call's base64 return value as JSON, or undefined when it returned nothing readable. */
+function decodeValue(base64: string | undefined): unknown {
+  if (base64 === undefined || base64 === "") return undefined;
+  try {
+    return JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
+  } catch {
+    return undefined;
+  }
 }
 
 function withTimeout<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
@@ -87,37 +107,77 @@ function withTimeout<T>(work: Promise<T>, ms: number, what: string): Promise<T> 
   return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
 }
 
-/** The vault contract, as the shared method table describes it. */
-export function createNearVault(client: NearClient): Vault {
+/**
+ * The vault contract, as contracts/vault/README.md describes it. Given the keeper's own
+ * account, a user whose policy names a different keeper reads as having no policy:
+ * the vault would refuse this keeper's rescue anyway.
+ */
+export function createNearVault(
+  client: NearClient,
+  options: { keeperAccountId?: string; now?: () => Date } = {},
+): Required<Vault> {
+  const now = options.now ?? (() => new Date());
   return {
     async getPolicy(user) {
       const raw = await client.view("get_policy", { user });
-      return raw === null || raw === undefined ? null : parsePolicy(user, raw as Raw);
+      if (raw === null || raw === undefined) return null;
+      const keeper = (raw as Raw).keeper;
+      if (options.keeperAccountId !== undefined && keeper !== options.keeperAccountId) return null;
+      return parsePolicy(user, raw as Raw);
+    },
+
+    async getUsers() {
+      const users: string[] = [];
+      for (;;) {
+        const page = (await client.view("get_users", { from: users.length, limit: USERS_PAGE })) as unknown[] | null;
+        for (const user of page ?? []) {
+          if (typeof user !== "string" || user === "") throw new Error("unreadable user in get_users");
+          users.push(user);
+        }
+        if ((page?.length ?? 0) < USERS_PAGE) return users;
+      }
     },
 
     async getReserve(user, token) {
       return reserveOf(await client.view("get_reserve", { user }), token);
     },
 
+    /**
+     * The rescues of the last 25 hours, oldest first: every one the daily cap and the
+     * cooldown can count, and every recent quote id. Read back from the newest, so a long
+     * history doesn't make each check slower.
+     */
     async getRescues(user) {
-      const rescues: RescueRecord[] = [];
-      for (;;) {
-        const page = (await client.view("get_rescues", { user, from: rescues.length, limit: RESCUES_PAGE })) as Raw[] | null;
-        rescues.push(...(page ?? []).map(parseRescue));
-        if ((page?.length ?? 0) < RESCUES_PAGE) return rescues;
+      const count = await client.view("get_rescue_count", { user });
+      if (typeof count !== "number" || !Number.isInteger(count) || count < 0) throw new Error("unreadable rescue count");
+      const cutoff = now().getTime() - HISTORY_MS;
+      const pages: RescueRecord[][] = [];
+      let end = count;
+      while (end > 0) {
+        const from = Math.max(0, end - RESCUES_PAGE);
+        const page = ((await client.view("get_rescues", { user, from, limit: end - from })) as Raw[] | null) ?? [];
+        if (page.length === 0) break;
+        const times = page.map((raw) => Date.parse(chainTimeToIso(pick(raw, "at", "timestamp", "at_ns", "timestamp_ns"))));
+        pages.unshift(page.map(parseRescue).filter((rescue): rescue is RescueRecord => rescue !== null));
+        end = from;
+        if (Math.min(...times) < cutoff) break;
       }
+      return pages.flat();
     },
 
-    async rescue({ user, token, amount, depositAddress, recipient, quoteId }) {
-      const { txHash, failure } = await client.call("rescue", {
+    async rescue({ user, token, amount, depositAddress, recipient, quoteId, quote, signature }) {
+      const { txHash, failure, value } = await client.call("rescue", {
         user,
         token,
         amount,
         deposit_address: depositAddress,
         recipient,
         quote_id: quoteId,
+        quote,
+        signature,
       });
       if (failure !== null) throw new VaultRejectedError(failure);
+      if (value === false) throw new VaultRejectedError(REFUNDED);
       return { txHash };
     },
   };
@@ -155,9 +215,10 @@ export function connectNear(config: {
           callTimeoutMs,
           `NEAR ${method}`,
         );
-        const status = result.status as { Failure?: unknown } | string | undefined;
+        const status = result.status as { Failure?: unknown; SuccessValue?: string } | string | undefined;
         const failure = typeof status === "object" && status?.Failure !== undefined ? JSON.stringify(status.Failure) : null;
-        return { txHash: result.transaction.hash, failure };
+        const value = typeof status === "object" ? decodeValue(status.SuccessValue) : undefined;
+        return { txHash: result.transaction.hash, failure, ...(value === undefined ? {} : { value }) };
       } catch (error) {
         // The chain refused the transaction outright, so it can't have landed.
         if (error instanceof InvalidTransactionError || error instanceof TransactionExecutionError) {

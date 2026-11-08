@@ -7,7 +7,7 @@ export * from "./format";
 export * from "./intel-node";
 export * from "./keeper";
 export * from "./near";
-export * from "./oneclick";
+export { createOneClick, isSignedBy1Click, type OneClickOptions } from "@lifeline/intents";
 export * from "./pipeline";
 export * from "./ports";
 export * from "./sim";

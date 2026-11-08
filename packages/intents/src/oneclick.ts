@@ -1,8 +1,10 @@
-import { quoteHash, type verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
+import type { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { base58 } from "@scure/base";
+import { signedQuotePayload } from "./signed";
 import { ASSETS, MAX_QUOTE_SLIPPAGE_BPS } from "@lifeline/shared";
-import { QuoteRefusedError, SWAP_STATUSES, type Intents, type Quote, type SwapStatus } from "./ports";
+import { QuoteRefusedError, SWAP_STATUSES, type Intents, type Quote, type SwapStatus } from "./types";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const QUOTE_DEADLINE_MS = 5 * 60 * 1000;
@@ -33,15 +35,17 @@ const isString = (value: unknown): value is string => typeof value === "string" 
 const ONE_CLICK_MANAGER_KEY = base58.decode("reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc");
 
 /**
- * The SDK's verifyQuoteSignature, over the same message (its quoteHash), but with noble's
- * strict Ed25519 instead of tweetnacl's: about 1 ms of CPU instead of 12, which matters
- * where CPU per invocation is capped, like a Cloudflare Worker. Tests hold the two to
- * the same answer on real quotes and on every field a tamperer would change.
+ * The SDK's verifyQuoteSignature, over the same message (the base58 SHA-256 of the signed
+ * text, which is the SDK's quoteHash), but with noble's strict Ed25519 instead of
+ * tweetnacl's: about 1 ms of CPU instead of 12, which matters where CPU per invocation is
+ * capped, like a Cloudflare Worker. Tests hold the two to the same answer on real quotes
+ * and on every field a tamperer would change. The vault runs the same check on chain.
  */
 export function isSignedBy1Click(raw: Parameters<typeof verifyQuoteSignature>[0]): boolean {
   try {
     const signature = base58.decode(raw.signature.replace(/^ed25519:/, ""));
-    const message = new TextEncoder().encode(quoteHash(raw));
+    const hash = base58.encode(sha256(new TextEncoder().encode(signedQuotePayload(raw))));
+    const message = new TextEncoder().encode(hash);
     return ed25519.verify(signature, message, ONE_CLICK_MANAGER_KEY, { zip215: false });
   } catch {
     return false;
@@ -91,12 +95,13 @@ function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>): Quote {
     refundTo: quoteRequest.refundTo,
     destinationAsset: quoteRequest.destinationAsset,
     quotedAt: timestamp,
+    ...((sent.dry as boolean) ? {} : { signed: { payload: signedQuotePayload(raw), signature: raw.signature } }),
   };
 }
 
 /**
- * The keeper's 1Click calls: NEAR USDC to Hyperliquid USDC, nothing else. Written
- * here so the keeper can run before packages/intents lands; swap it in then.
+ * The keeper's 1Click calls: NEAR USDC to Hyperliquid USDC, nothing else. Every quote's
+ * signature and echoed request are checked before any field of it is read.
  */
 export function createOneClick(options: OneClickOptions): Intents {
   const { apiUrl, jwt, nearSenderAccount } = options;

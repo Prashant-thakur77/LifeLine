@@ -8,7 +8,8 @@ import { createExplainer } from "../explain";
 import { describeRecord } from "../format";
 import { Keeper } from "../keeper";
 import { connectNear, createNearVault } from "../near";
-import { createOneClick } from "../oneclick";
+import { canRescue, createUserList } from "../users";
+import { createOneClick } from "@lifeline/intents";
 import { createRecordPipeline } from "../pipeline";
 import type { Intents, ReadHealth, Vault } from "../ports";
 import { createSimLoop } from "../sim";
@@ -86,7 +87,8 @@ type Running = {
   engine: Engine;
   attestation: AttestationMonitor;
   pipeline: ReturnType<typeof createRecordPipeline>;
-  watching: number;
+  /** How many users the keeper is watching right now. */
+  watching: () => number;
 };
 
 export type KeeperHost = {
@@ -182,17 +184,25 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     if (saved !== null) attestation.restore(saved);
 
     let engine: Engine;
-    let watching: number;
+    let watching: () => number;
     if (config.live !== null) {
       const live = config.live;
+      const vault = seams.vault ?? createNearVault(connectNear(live), { keeperAccountId: live.keeperAccountId });
+      const userList = createUserList({
+        fixed: live.users,
+        load: async () => (await vault.getUsers?.()) ?? [],
+        accept: canRescue(vault),
+        now: () => now().getTime(),
+        log,
+      });
       const keeper = new Keeper({
         store,
-        vault: seams.vault ?? createNearVault(connectNear(live)),
+        vault,
         intents:
           seams.intents ??
           createOneClick({ apiUrl: live.oneClickUrl, nearSenderAccount: live.vaultId, ...(live.oneClickJwt ? { jwt: live.oneClickJwt } : {}) }),
         readHealth: seams.readHealth ?? ((address) => getHealth(address)),
-        users: () => live.users,
+        users: () => userList.users(),
         now,
         sleep,
         newId: () => crypto.randomUUID(),
@@ -201,7 +211,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
         onRecord,
       });
       engine = { tick: () => keeper.tick(), settled: () => keeper.settled(), recover: () => keeper.recover() };
-      watching = live.users.length;
+      watching = () => userList.users().length;
     } else {
       // No recover() here: a sim drop that a restart cut short had no money in it.
       engine = createSimLoop({
@@ -214,7 +224,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
         startPrice: seams.startPrice ?? (() => getMidPrice("ETH")),
         onRecord,
       });
-      watching = 1;
+      watching = () => 1;
     }
     return { config, store, bot, engine, attestation, pipeline, watching };
   };
@@ -261,7 +271,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
           mode: running.config.mode,
           network: running.config.network,
           version: deps.env.KEEPER_VERSION?.trim() || null,
-          watching: running.watching,
+          watching: running.watching(),
           startedAt: startedAt?.toISOString() ?? null,
           lastTickAt: lastTickAt?.toISOString() ?? null,
           nextAlarmAt: alarmAt === null ? null : new Date(alarmAt).toISOString(),
@@ -298,7 +308,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
         track(running.bot.registerWebhook(`${running.config.publicUrl}${WEBHOOK_PATH}`));
       }
       await attempt("arming the alarm", armIfIdle);
-      log(`keeper started: ${running.config.mode} on ${running.config.network}, watching ${running.watching}`);
+      log(`keeper started: ${running.config.mode} on ${running.config.network}, watching ${running.watching()}`);
   };
 
   return {

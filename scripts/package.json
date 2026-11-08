@@ -7,13 +7,18 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
     "demo:sim": "tsx src/demo-sim.ts",
-    "demo:attack": "tsx src/demo-attack.ts"
+    "demo:attack": "tsx src/demo-attack.ts",
+    "latency": "tsx src/latency.ts"
   },
   "dependencies": {
     "@lifeline/hyperliquid": "workspace:*",
+    "@lifeline/intents": "workspace:*",
     "@lifeline/keeper": "workspace:*",
     "@lifeline/policy": "workspace:*",
-    "@lifeline/shared": "workspace:*"
+    "@lifeline/shared": "workspace:*",
+    "@noble/curves": "2.2.0",
+    "@noble/hashes": "2.2.0",
+    "@scure/base": "2.2.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

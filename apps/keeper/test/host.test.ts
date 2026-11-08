@@ -280,6 +280,26 @@ describe("each alarm", () => {
     expect(t.storage.alarmAt()).toBe(T0 + ALARM_MS);
   });
 
+  it("also watches everyone who signed up in the vault, with no redeploy", async () => {
+    const seen = new Set<string>();
+    const t = setup(LIVE, {
+      seams: () => ({
+        vault: fakeVault({
+          getUsers: async () => ["carol.testnet"],
+          getPolicy: async (user) => {
+            seen.add(user);
+            return policy({ user, hlAddress: HL });
+          },
+        }),
+        readHealth: healthy,
+      }),
+    });
+    await t.host.start();
+    await t.alarms();
+    expect([...seen].sort()).toEqual(["carol.testnet", LIVE_USER].sort());
+    expect((await t.json<{ watching: number }>("/")).watching).toBe(2);
+  });
+
   it("keeps the keeper going after ticks that fail", async () => {
     const t = setup(LIVE, { seams: () => ({ vault: fakeVault({ getPolicy: async () => Promise.reject(new Error("rpc down")) }), readHealth: healthy }) });
     await t.host.start();

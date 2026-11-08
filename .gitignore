@@ -28,6 +28,7 @@ data/
 # Installed per machine with `npx skills add near/agent-skills`
 .agents/
 .claude/skills/
+.claude/worktrees/
 skills-lock.json
 
 # Local tooling
