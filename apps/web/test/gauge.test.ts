@@ -2,14 +2,10 @@ import type { HealthResponse } from "@lifeline/shared";
 import { fixtures } from "@lifeline/shared/fixtures";
 import { describe, expect, it } from "vitest";
 import {
-  DIAL,
   SIM_STALE_AFTER_MS,
   STALE_AFTER_MS,
   classifyHealth,
   cushionUsd,
-  dialArc,
-  dialBands,
-  dialPoint,
   healthToFraction,
   rescueNeededUsd,
 } from "../src/lib/gauge";
@@ -160,31 +156,5 @@ describe("cushion and rescue size", () => {
   it("sizes a rescue as target × MMU − account value, never negative", () => {
     expect(rescueNeededUsd({ accountValue: 50.32, maintenanceMarginUsed: 34 }, 2)).toBeCloseTo(17.68, 10);
     expect(rescueNeededUsd(snapshot, 2)).toBe(0);
-  });
-});
-
-describe("dial geometry", () => {
-  it("starts at the lower left and ends at the lower right of a 240° arc", () => {
-    const start = dialPoint(DIAL, 0);
-    const end = dialPoint(DIAL, 1);
-    expect(start.x).toBeLessThan(DIAL.cx);
-    expect(end.x).toBeGreaterThan(DIAL.cx);
-    expect(start.y).toBeCloseTo(end.y, 10);
-    expect(start.y).toBeGreaterThan(DIAL.cy);
-    const top = dialPoint(DIAL, 0.5);
-    expect(top.x).toBeCloseTo(DIAL.cx, 10);
-    expect(top.y).toBeCloseTo(DIAL.cy - DIAL.r, 10);
-  });
-  it("draws long arcs with the large-arc flag", () => {
-    expect(dialArc(DIAL, 0, 1)).toMatch(/ A 128 128 0 1 1 /);
-    expect(dialArc(DIAL, 0, 0.5)).toMatch(/ A 128 128 0 0 1 /);
-  });
-  it("splits the dial into rescue, warn and safe bands at the user's levels", () => {
-    const bands = dialBands({ warn: 1.8, trigger: 1.5 });
-    expect(bands.map((b) => b.zone)).toEqual(["rescue", "warn", "safe"]);
-    expect(bands[0]!.from).toBe(0);
-    expect(bands[0]!.to).toBeCloseTo(healthToFraction(1.5), 10);
-    expect(bands[1]!.to).toBeCloseTo(healthToFraction(1.8), 10);
-    expect(bands[2]!.to).toBe(1);
   });
 });

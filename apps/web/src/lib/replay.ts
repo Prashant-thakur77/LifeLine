@@ -16,6 +16,8 @@ export type RescueStory = {
   explanation: string | null;
   /** How many policy rules the rescue broke (0 when allowed), or null when the record doesn't say. */
   rulesBroken: number | null;
+  /** The Hyperliquid address the rescue paid. */
+  recipient: string;
 };
 
 /** A warning further back than this belongs to an earlier dip, not this rescue's story. */
@@ -56,6 +58,7 @@ export function lastRescueStory(records: readonly AuditRecord[]): RescueStory | 
     simulated: isSimulatedRecord(done),
     explanation: done.explanation ?? null,
     rulesBroken: (allowed?.decision ?? done.decision)?.reasons.length ?? null,
+    recipient: done.request.recipient,
   };
 }
 

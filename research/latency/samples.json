@@ -1,268 +1,264 @@
 {
-  "generatedAt": "2026-11-08T14:25:35.926Z",
+  "generatedAt": "2026-11-08T19:14:36.992Z",
   "decisions": [
     {
-      "at": "2026-11-08T14:18:46.935Z",
-      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
-      "readMs": 301,
-      "probeMs": 986,
-      "quoteMs": 834,
-      "freshMs": 190,
-      "totalMs": 2311,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:18:50.737Z",
+      "at": "2026-11-08T19:07:11.489Z",
       "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 186,
-      "probeMs": 765,
-      "quoteMs": 661,
-      "freshMs": 189,
-      "totalMs": 1801,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:18:54.673Z",
-      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
-      "readMs": 258,
-      "probeMs": 745,
-      "quoteMs": 711,
-      "freshMs": 222,
-      "totalMs": 1937,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:18:58.496Z",
-      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
       "readMs": 191,
-      "probeMs": 649,
-      "quoteMs": 788,
-      "freshMs": 194,
-      "totalMs": 1822,
+      "probeMs": 701,
+      "quoteMs": 704,
+      "freshMs": 185,
+      "totalMs": 1780,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:02.586Z",
-      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 257,
-      "probeMs": 922,
-      "quoteMs": 713,
-      "freshMs": 197,
-      "totalMs": 2090,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:19:06.779Z",
+      "at": "2026-11-08T19:07:15.342Z",
       "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
-      "readMs": 552,
-      "probeMs": 744,
-      "quoteMs": 691,
-      "freshMs": 206,
-      "totalMs": 2192,
+      "readMs": 191,
+      "probeMs": 697,
+      "quoteMs": 696,
+      "freshMs": 269,
+      "totalMs": 1853,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:10.628Z",
+      "at": "2026-11-08T19:07:19.558Z",
       "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
-      "readMs": 189,
-      "probeMs": 720,
-      "quoteMs": 749,
-      "freshMs": 191,
-      "totalMs": 1849,
+      "readMs": 526,
+      "probeMs": 741,
+      "quoteMs": 755,
+      "freshMs": 195,
+      "totalMs": 2216,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:14.989Z",
+      "at": "2026-11-08T19:07:23.363Z",
       "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 317,
-      "probeMs": 823,
-      "quoteMs": 786,
-      "freshMs": 435,
-      "totalMs": 2361,
+      "readMs": 182,
+      "probeMs": 754,
+      "quoteMs": 681,
+      "freshMs": 186,
+      "totalMs": 1804,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:18.717Z",
+      "at": "2026-11-08T19:07:27.236Z",
       "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
-      "readMs": 192,
-      "probeMs": 675,
-      "quoteMs": 663,
-      "freshMs": 197,
-      "totalMs": 1727,
+      "readMs": 216,
+      "probeMs": 687,
+      "quoteMs": 782,
+      "freshMs": 189,
+      "totalMs": 1873,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:22.679Z",
+      "at": "2026-11-08T19:07:30.980Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 188,
+      "probeMs": 684,
+      "quoteMs": 690,
+      "freshMs": 183,
+      "totalMs": 1744,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:35.522Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 728,
+      "probeMs": 889,
+      "quoteMs": 733,
+      "freshMs": 191,
+      "totalMs": 2541,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:39.373Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 216,
+      "probeMs": 714,
+      "quoteMs": 722,
+      "freshMs": 199,
+      "totalMs": 1850,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:43.245Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 184,
+      "probeMs": 746,
+      "quoteMs": 739,
+      "freshMs": 203,
+      "totalMs": 1873,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:47.052Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 187,
+      "probeMs": 756,
+      "quoteMs": 677,
+      "freshMs": 186,
+      "totalMs": 1806,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:50.850Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 183,
+      "probeMs": 668,
+      "quoteMs": 760,
+      "freshMs": 187,
+      "totalMs": 1797,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:54.699Z",
+      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
+      "readMs": 204,
+      "probeMs": 785,
+      "quoteMs": 674,
+      "freshMs": 183,
+      "totalMs": 1847,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:07:58.439Z",
+      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
+      "readMs": 192,
+      "probeMs": 692,
+      "quoteMs": 664,
+      "freshMs": 192,
+      "totalMs": 1740,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:08:02.599Z",
+      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
+      "readMs": 219,
+      "probeMs": 900,
+      "quoteMs": 830,
+      "freshMs": 210,
+      "totalMs": 2159,
+      "timeEstimateSec": 30
+    },
+    {
+      "at": "2026-11-08T19:08:06.369Z",
       "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
       "readMs": 193,
-      "probeMs": 672,
-      "quoteMs": 682,
-      "freshMs": 416,
-      "totalMs": 1963,
+      "probeMs": 657,
+      "quoteMs": 724,
+      "freshMs": 197,
+      "totalMs": 1771,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:26.523Z",
+      "at": "2026-11-08T19:08:10.293Z",
       "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 223,
-      "probeMs": 735,
-      "quoteMs": 695,
-      "freshMs": 190,
-      "totalMs": 1843,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:19:30.367Z",
-      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
-      "readMs": 189,
-      "probeMs": 714,
-      "quoteMs": 719,
-      "freshMs": 221,
-      "totalMs": 1843,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:19:34.251Z",
-      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
-      "readMs": 192,
-      "probeMs": 738,
-      "quoteMs": 766,
+      "readMs": 258,
+      "probeMs": 742,
+      "quoteMs": 735,
       "freshMs": 187,
-      "totalMs": 1884,
+      "totalMs": 1923,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:38.296Z",
-      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 188,
-      "probeMs": 713,
-      "quoteMs": 777,
-      "freshMs": 366,
-      "totalMs": 2045,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:19:42.280Z",
+      "at": "2026-11-08T19:08:14.130Z",
       "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
-      "readMs": 192,
-      "probeMs": 726,
-      "quoteMs": 780,
-      "freshMs": 286,
-      "totalMs": 1983,
+      "readMs": 191,
+      "probeMs": 739,
+      "quoteMs": 710,
+      "freshMs": 197,
+      "totalMs": 1837,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:46.129Z",
+      "at": "2026-11-08T19:08:18.293Z",
       "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
-      "readMs": 199,
-      "probeMs": 743,
-      "quoteMs": 719,
-      "freshMs": 188,
-      "totalMs": 1849,
+      "readMs": 448,
+      "probeMs": 802,
+      "quoteMs": 668,
+      "freshMs": 245,
+      "totalMs": 2162,
       "timeEstimateSec": 30
     },
     {
-      "at": "2026-11-08T14:19:49.894Z",
+      "at": "2026-11-08T19:08:22.400Z",
       "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 214,
-      "probeMs": 680,
-      "quoteMs": 685,
-      "freshMs": 186,
-      "totalMs": 1765,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:19:53.677Z",
-      "address": "0x4c6988b39fc0904628c2959e7606ef5f8518c152",
-      "readMs": 188,
-      "probeMs": 730,
-      "quoteMs": 672,
-      "freshMs": 193,
-      "totalMs": 1782,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:19:57.539Z",
-      "address": "0xfc2178237621b1ed667014212b9e525f8d3ca60e",
-      "readMs": 195,
-      "probeMs": 754,
-      "quoteMs": 721,
-      "freshMs": 193,
-      "totalMs": 1862,
-      "timeEstimateSec": 30
-    },
-    {
-      "at": "2026-11-08T14:20:01.445Z",
-      "address": "0xd93db9fc95c19c1eaab854281890e9e77b18ae3f",
-      "readMs": 195,
-      "probeMs": 718,
-      "quoteMs": 796,
-      "freshMs": 198,
-      "totalMs": 1906,
+      "readMs": 197,
+      "probeMs": 674,
+      "quoteMs": 1023,
+      "freshMs": 213,
+      "totalMs": 2107,
       "timeEstimateSec": 30
     }
   ],
-  "failed": [],
+  "failed": [
+    {
+      "at": "2026-11-08T19:07:07.707Z",
+      "error": "Hyperliquid couldn't be read for 0xfc2178237621b1ed667014212b9e525f8d3ca60e"
+    }
+  ],
   "near": [
     {
-      "at": "2026-11-08T14:20:08.689Z",
-      "txHash": "8awWAs84NnMWxqGeBX6YZ55dE2UxxJKB5P3aXZYjvhnz",
-      "ms": 4392,
+      "at": "2026-11-08T19:08:29.280Z",
+      "txHash": "3T3N7ie615SsB7kjrTNG1hDF3Qv1TfJagZtj44ahCzjq",
+      "ms": 4046,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:20:44.967Z",
-      "txHash": "8R6pffuKku3qFBhfbNDkXKrG6BGXfHoNvbRNVJFK5yXt",
-      "ms": 4248,
+      "at": "2026-11-08T19:09:46.256Z",
+      "txHash": "9LUWUFr1SVU3YZ58xFjCbftpGzY5f1P9fkDKj4RtFPvW",
+      "ms": 44950,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:21:21.094Z",
-      "txHash": "CaZsCojYiGVTbxEcE1YwK6fZE9yZgXgUZrbXUZdjRzAo",
-      "ms": 4097,
+      "at": "2026-11-08T19:10:22.506Z",
+      "txHash": "GsBKmM5s1cQNspfWnkmpGVKABwdK7P1dKsaixkP6LPW8",
+      "ms": 4221,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:21:56.892Z",
-      "txHash": "D2TibrQtL6meHi5gi1MAJqtZy7ZXksvSK7sWPn3wJQno",
-      "ms": 3766,
+      "at": "2026-11-08T19:10:58.525Z",
+      "txHash": "718RDjJDKNnacVQbhvd4y62rUc65j4GP14HkL4TjZvax",
+      "ms": 3991,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:22:33.334Z",
-      "txHash": "NBrErK4es8qUu8wcQDvYzbFYtHwPWszbRwiKt1ckQfA",
-      "ms": 4411,
+      "at": "2026-11-08T19:11:34.594Z",
+      "txHash": "cLzz1HZThvxahhQXHcr2oxReYPSL8uYPiUAKVfxVNcG",
+      "ms": 4040,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:23:09.834Z",
-      "txHash": "9ZsXx9aRyz7bf3JH7rKWHb2K57P3XKKgH7VFjZhmuQPP",
-      "ms": 4469,
+      "at": "2026-11-08T19:12:10.689Z",
+      "txHash": "2TJFkDQrUFBtQdSecbKd43ApKWK5zgX5xAht3mcuhBKf",
+      "ms": 4065,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:23:46.620Z",
-      "txHash": "FmgdaMdbfDv6bsMLpQsQdAXXJVDaCEkAVSpXKEdatKsp",
-      "ms": 4757,
+      "at": "2026-11-08T19:12:46.387Z",
+      "txHash": "3rcpX3LTv8FvznWNZBfFXEiu5NzAgJ93be3tiZTxV1U8",
+      "ms": 3669,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:24:23.287Z",
-      "txHash": "FSU7m24p6Laj3in7rjWeL8TUxBze9JfjuR3rbtZudoeW",
-      "ms": 4636,
+      "at": "2026-11-08T19:13:22.124Z",
+      "txHash": "728b3qWwoUiHazTgsnmeFtykXYVMNqA7u8JHFLuXXM5r",
+      "ms": 3709,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:24:59.740Z",
-      "txHash": "AF3rGYPVEfPaUFYu3Xuz4Zfq6Mz8JujS17rJqe4uCh7Q",
-      "ms": 4436,
+      "at": "2026-11-08T19:13:58.572Z",
+      "txHash": "HhP9cEmsZzGunu8K71WQ94Ykp3sgc1DFD3ABsoVDWER7",
+      "ms": 4417,
       "network": "testnet"
     },
     {
-      "at": "2026-11-08T14:25:35.925Z",
-      "txHash": "5jfcXxjXhJ4L4Acy15F3BPcPUU6oWTmyKda84vv89j2e",
-      "ms": 4154,
+      "at": "2026-11-08T19:14:36.991Z",
+      "txHash": "8rAMC7j5JzjR3FaZT8WR31sK2VntwvnbxKgTbYeUsAkg",
+      "ms": 6413,
       "network": "testnet"
     }
-  ]
+  ],
+  "nearFailed": []
 }

@@ -11,6 +11,7 @@ const story: RescueStory = {
   simulated: true,
   explanation: null,
   rulesBroken: 0,
+  recipient: "0x1111111111111111111111111111111111111111",
 };
 
 describe("settle", () => {
@@ -77,5 +78,14 @@ describe("hullY", () => {
   it("draws no open positions at the bottom and pins below-liquidation readings to the top", () => {
     expect(hullY(Number.POSITIVE_INFINITY, 0.14)).toBe(1);
     expect(hullY(0.7, 0.14)).toBeCloseTo(0.14);
+  });
+});
+
+describe("hullY with a shorter scale", () => {
+  it("can stop the scale at a lower health, so a short phone panel has no empty deep water", () => {
+    expect(hullY(2.4, 0.12, 2.4)).toBeCloseTo(1);
+    expect(hullY(3.5, 0.12, 2.4)).toBe(1);
+    expect(hullY(2.0, 0.12, 2.4)).toBeGreaterThan(hullY(2.0, 0.12));
+    expect(hullY(1, 0.12, 2.4)).toBeCloseTo(0.12);
   });
 });

@@ -3,10 +3,11 @@
 import { KEEPER_POLL_INTERVAL_SEC, POLICY_DEFAULTS } from "@lifeline/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNow, usePoll } from "../hooks/usePoll";
+import { useMinWidth } from "../hooks/useMinWidth";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { DEMO_USER } from "../lib/config";
 import { config } from "../lib/env";
-import { formatHealth, timeAgo } from "../lib/format";
+import { formatHealth, shortMiddle, timeAgo } from "../lib/format";
 import { SIM_STALE_AFTER_MS, classifyHealth, type Zone } from "../lib/gauge";
 import { keeper } from "../lib/keeper";
 import { pageHref } from "../lib/links";
@@ -23,8 +24,8 @@ const toneForHealth = (health: number, levels: { warn: number; trigger: number }
   health <= 1 ? "liquidation" : health < levels.trigger ? "rescue" : health < levels.warn ? "warn" : "safe";
 
 const BEAT_LABEL: Record<Beat["kind"], string> = {
-  warn: "Below the warn line",
-  trigger: "Below the trigger",
+  warn: "Below warn",
+  trigger: "Below trigger",
   throw: "Rescue sent",
   restored: "Refilled",
 };
@@ -100,18 +101,39 @@ export function HeroWater() {
     />
   );
 
+  // The text column's right edge, as a fraction of the width: the water's surface line stays quiet behind it.
+  const wide = useMinWidth(1024);
+  const textColumn = useRef<HTMLDivElement>(null);
+  const [quietLeft, setQuietLeft] = useState(0);
+  useEffect(() => {
+    const el = textColumn.current;
+    if (!el || !wide) {
+      setQuietLeft(0);
+      return;
+    }
+    const measure = () => setQuietLeft(Math.min(0.7, (el.getBoundingClientRect().right + 24) / window.innerWidth));
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
+    return () => observer.disconnect();
+  }, [wide]);
+
   return (
     <section aria-labelledby="hero-title" className="relative -mt-8 sm:-mt-12">
       <div className="relative flex flex-col lg:block lg:h-[calc(100svh-56px)] lg:max-h-[940px] lg:min-h-[700px]">
         <Waterline
-          className="relative order-2 -mx-4 mt-6 h-[min(60svh,500px)] min-h-[380px] sm:-mx-6 lg:absolute lg:inset-0 lg:mx-[calc(50%-50vw)] lg:mt-0 lg:h-auto lg:min-h-0"
+          className="relative order-2 -mx-4 mt-6 h-[42svh] max-h-[420px] min-h-[290px] sm:-mx-6 lg:absolute lg:inset-0 lg:mx-[calc(50%-50vw)] lg:mt-0 lg:h-auto lg:max-h-none lg:min-h-0"
           health={shown}
           levels={levels}
           tone={tone}
           throwSignal={throwSignal}
           pingSignal={pingSignal}
           reduced={reduced}
-          throwLabel={story ? `+${story.amount}` : null}
+          scaleTop={wide ? 0.14 : 0.1}
+          scaleMax={wide ? 4 : 2.4}
+          quietLeft={quietLeft}
+          anchorLabel={wide ? (story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)") : "Reserve"}
+          throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
           surface={
             <div className="absolute left-4 -translate-y-full pb-3 sm:left-6 lg:left-auto lg:right-[calc(var(--ladder-r)+var(--ladder-w)+var(--disc-w)+28px)] lg:text-right">
               <p className="font-readout text-[clamp(52px,6.4vw,104px)] font-light leading-[0.9] tracking-[-0.04em] text-paper tabular-nums">
@@ -122,19 +144,22 @@ export function HeroWater() {
           }
         />
 
-        <div className="relative z-10 order-1 flex flex-col pt-6 sm:pt-10 lg:h-full lg:max-w-[540px] lg:pt-[clamp(40px,7vh,88px)]">
+        <div ref={textColumn} className="relative z-10 order-1 pt-6 sm:pt-10 lg:max-w-[540px] lg:pt-[clamp(40px,7vh,88px)]">
           <p className="font-readout text-[12px] text-mist-300">Hyperliquid margin protection · funded from any chain</p>
           <h1
             id="hero-title"
-            className="mt-5 font-stencil text-[clamp(50px,6.6vw,104px)] font-bold uppercase leading-[0.86] tracking-[-0.01em] text-paper [font-stretch:78%]"
+            className="mt-5 font-stencil text-[clamp(46px,6.6vw,104px)] font-bold uppercase leading-[0.86] tracking-[-0.01em] text-paper [font-stretch:78%]"
           >
             Topped up before liquidation.
           </h1>
-          <p className="mt-6 max-w-[33rem] text-[16.5px] leading-relaxed text-mist-200 sm:text-[17px] lg:max-w-[30rem]">
+        </div>
+
+        <div className="relative z-10 order-3 flex flex-col lg:max-w-[540px]">
+          <p className="order-2 mt-6 max-w-[33rem] text-[16.5px] leading-relaxed text-mist-200 sm:text-[17px] lg:order-1 lg:max-w-[30rem]">
             Lifeline reads your account health every {KEEPER_POLL_INTERVAL_SEC} seconds. Below the line you set, a vault on NEAR sends USDC from your
-            reserve to your perps balance through NEAR Intents. <span className="hidden sm:inline">The vault only ever pays your own Hyperliquid address.</span>
+            reserve to your perps balance through NEAR Intents. The vault only ever pays your own Hyperliquid address.
           </p>
-          <div className="mt-7 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:gap-3">
+          <div className="order-1 mt-5 flex flex-col gap-2.5 sm:flex-row sm:gap-3 lg:order-2 lg:mt-8">
             <ButtonLink href={pageHref("/position", DEMO_USER)} variant="primary" size="lg">
               Watch the live demo
             </ButtonLink>
@@ -142,17 +167,16 @@ export function HeroWater() {
               Protect my position
             </ButtonLink>
           </div>
-          <div className="mt-auto hidden pb-6 pt-8 lg:block">{panel}</div>
         </div>
 
-        <div className="relative z-10 order-3 pt-4 lg:hidden">{panel}</div>
+        <div className="relative z-10 order-4 pt-8 lg:absolute lg:bottom-0 lg:left-0 lg:max-w-[540px] lg:pb-6 lg:pt-8">{panel}</div>
       </div>
     </section>
   );
 }
 
 const TAG_TEXT: Record<LogLine["tag"], string> = {
-  READ: "text-mist-300",
+  READ: "text-mist-200",
   QUOTE: "text-paper",
   POLICY: "text-safe",
   VAULT: "text-rescue",
@@ -176,7 +200,7 @@ function InstrumentPanel(props: {
   const { online, status, lines, beat, canReplay, onReplay } = props;
   const upTo = beat ? BEAT_ORDER.indexOf(beat.kind) : BEAT_ORDER.length;
   return (
-    <div className="font-readout text-[11.5px] text-mist-300">
+    <div className="font-readout text-[11.5px] text-mist-200">
       <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="flex items-center gap-2 text-paper">
           <span className={cx("size-1.5 rounded-full", online ? "bg-safe" : "bg-warn")} aria-hidden />
@@ -185,7 +209,7 @@ function InstrumentPanel(props: {
         <span className="rounded-sm border border-sim/50 px-1.5 py-0.5 text-sim">Simulation</span>
         <span>{status}</span>
         {canReplay ? (
-          <button type="button" onClick={onReplay} className="text-paper underline decoration-ink-500 underline-offset-4 hover:decoration-rescue">
+          <button type="button" onClick={onReplay} className="py-1 text-paper underline decoration-mist-400 underline-offset-4 hover:decoration-rescue">
             Replay the last rescue
           </button>
         ) : null}
@@ -195,10 +219,14 @@ function InstrumentPanel(props: {
           {lines.map((line, i) => (
             <li
               key={`${line.tag}-${i}`}
-              className={cx("flex gap-2.5 transition-opacity duration-300", BEAT_ORDER.indexOf(line.beat) <= upTo ? "opacity-100" : "opacity-0")}
+              className={cx(
+                "flex gap-2.5 transition-opacity duration-300",
+                BEAT_ORDER.indexOf(line.beat) <= upTo ? "opacity-100" : "opacity-0",
+                i < 2 && line.tag === "READ" && "log-trim",
+              )}
             >
               <span className={cx("w-[68px] shrink-0", TAG_TEXT[line.tag])}>[{line.tag}]</span>
-              <span className="text-mist-200">{line.text}</span>
+              <span className="text-mist-100">{line.text}</span>
             </li>
           ))}
         </ol>

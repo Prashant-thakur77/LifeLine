@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { formatHealth } from "../lib/format";
 import { GAUGE_MAX } from "../lib/gauge";
 import { hullY, settle, type Spring } from "../lib/waterline";
+import { Mark } from "./Shell";
 import { cx } from "./ui";
 
 export type Levels = { warn: number; trigger: number; target: number };
@@ -32,6 +33,14 @@ type Props = {
   throwLabel?: string | null;
   /** Fraction of the height where health 1.0 sits. */
   scaleTop?: number;
+  /** The health at the bottom of the scale: 4.0, or less for a short panel. */
+  scaleMax?: number;
+  /** Fraction of the width covered by text: the surface line and hairlines stay quiet there. */
+  quietLeft?: number;
+  /** Names where the line is thrown from, such as the vault. */
+  anchorLabel?: string;
+  /** "hero" spans the viewport; "panel" fits inside a card. */
+  size?: "hero" | "panel";
   /** Rides the surface: the readout. */
   surface?: ReactNode;
   className?: string;
@@ -50,18 +59,36 @@ const PING_MS = 1300;
  * reserve and the water drops back. One animation loop draws the canvas and moves the
  * surface layer directly, so React only renders when the reading changes.
  */
-export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduced, throwLabel, scaleTop = 0.14, surface, className }: Props) {
+export function Waterline({
+  health,
+  levels,
+  tone,
+  throwSignal,
+  pingSignal,
+  reduced,
+  throwLabel,
+  scaleTop = 0.14,
+  scaleMax = GAUGE_MAX,
+  quietLeft = 0,
+  anchorLabel,
+  size = "hero",
+  surface,
+  className,
+}: Props) {
   const box = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const rope = useRef<SVGSVGElement>(null);
   const ropePath = useRef<SVGPathElement>(null);
   const ropeTwist = useRef<SVGPathElement>(null);
   const ropeTag = useRef<HTMLDivElement>(null);
+  const ladder = useRef<HTMLDivElement>(null);
+  const anchorSquare = useRef<HTMLSpanElement>(null);
+  const tag = useRef<HTMLSpanElement>(null);
   const rider = useRef<HTMLDivElement>(null);
 
   // Everything the loop reads lives in one ref, so props can change without restarting it.
   const live = useRef({
-    target: health === null ? null : hullY(health, scaleTop),
+    target: health === null ? null : hullY(health, scaleTop, scaleMax),
     tone,
     reduced,
     scaleTop,
@@ -71,19 +98,23 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
     size: { w: 0, h: 0, dpr: 1 },
     /** Where the line lands and the ping rings: just right of the readout. */
     focusX: 0,
+    /** Where the line is thrown from: the top of the load line's spine. */
+    anchor: { x: 0, y: 0 },
+    quietLeft,
     sea: SEA_STATE[tone],
     wake: () => {},
   });
 
   useEffect(() => {
     const s = live.current;
-    s.target = health === null ? null : hullY(health, scaleTop);
+    s.target = health === null ? null : hullY(health, scaleTop, scaleMax);
+    s.quietLeft = quietLeft;
     s.tone = tone;
     s.reduced = reduced;
     s.scaleTop = scaleTop;
     if (s.spring === null && s.target !== null) s.spring = { value: s.target, velocity: 0 };
     s.wake();
-  }, [health, tone, reduced, scaleTop]);
+  }, [health, tone, reduced, scaleTop, scaleMax, quietLeft]);
 
   const lastThrow = useRef(throwSignal);
   useEffect(() => {
@@ -91,7 +122,7 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
     lastThrow.current = throwSignal;
     const rect = box.current?.getBoundingClientRect();
     const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-    if (rect && readout && readout.width > 0) live.current.focusX = Math.min(rect.width - 24, readout.right - rect.left + 18);
+    if (rect && readout && readout.width > 0) live.current.focusX = Math.min(rect.width - 24, readout.right - rect.left + 14);
     live.current.throwAt = performance.now();
     live.current.wake();
   }, [throwSignal]);
@@ -119,7 +150,14 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
       cv.height = Math.round(rect.height * dpr);
       rope.current?.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
       const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-      s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 18) : rect.width * 0.6;
+      s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 14) : rect.width * 0.6;
+      const square = anchorSquare.current?.getBoundingClientRect();
+      const spine = ladder.current?.getBoundingClientRect();
+      s.anchor = square
+        ? { x: square.left + square.width / 2 - rect.left, y: square.top + square.height / 2 - rect.top }
+        : spine
+          ? { x: spine.left - rect.left, y: spine.top - rect.top - 30 }
+          : { x: rect.width * 0.95, y: 12 };
       s.wake();
     };
     const observer = new ResizeObserver(resize);
@@ -179,7 +217,17 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
           if (x === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = `rgb(${TONE[s.tone]} / ${trusted ? 0.9 : 0.6})`;
+        const strong = trusted ? 0.9 : 0.6;
+        if (s.quietLeft > 0) {
+          const fadeTo = Math.min(1, s.quietLeft + 0.08);
+          const stroke = ctx.createLinearGradient(0, 0, w, 0);
+          stroke.addColorStop(0, `rgb(${TONE[s.tone]} / 0.16)`);
+          stroke.addColorStop(s.quietLeft, `rgb(${TONE[s.tone]} / 0.16)`);
+          stroke.addColorStop(fadeTo, `rgb(${TONE[s.tone]} / ${strong})`);
+          ctx.strokeStyle = stroke;
+        } else {
+          ctx.strokeStyle = `rgb(${TONE[s.tone]} / ${strong})`;
+        }
         ctx.lineWidth = 1.5;
         ctx.setLineDash(trusted ? [] : [6, 6]);
         ctx.stroke();
@@ -211,15 +259,18 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
         if (ropeOn) {
           const ex = s.focusX;
           const ey = level + wave(ex, 0, 0.016);
-          const sx = w * 0.985;
-          const sy = -12;
+          const sx = s.anchor.x;
+          const sy = s.anchor.y;
           const reveal = s.reduced ? 1 : Math.min(1, since / ROPE_REVEAL_MS);
           const easeOut = 1 - (1 - reveal) ** 3;
           const taut = s.reduced ? 1 : Math.min(1, Math.max(0, (since - ROPE_REVEAL_MS) / 700));
-          // A thrown line sags between deck and water, then pulls straight. It never dips under the surface.
-          const sag = h * (0.2 - 0.18 * taut);
-          const cy = Math.min(ey - 6, (sy + ey) / 2 + sag);
-          const d = `M ${sx} ${sy} Q ${(sx + ex) / 2 - w * 0.04} ${cy} ${ex} ${ey}`;
+          // The line arcs out from the reserve over the top, then drops into the gap beside the
+          // readout: it never crosses the load-line labels, the disc or the readout. It starts
+          // slack and pulls taut; it never dips under the surface.
+          const slack = h * 0.16 * (1 - taut);
+          const cx = ex + (sx - ex) * 0.08;
+          const cy = Math.min(ey - 6, sy + (ey - sy) * 0.12 + slack);
+          const d = `M ${sx} ${sy} Q ${cx} ${cy} ${ex} ${ey}`;
           const fade = since > ROPE_HOLD_MS ? 1 - (since - ROPE_HOLD_MS) / ROPE_FADE_MS : 1;
           ropePath.current.setAttribute("d", d);
           ropeTwist.current.setAttribute("d", d);
@@ -233,6 +284,12 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
           if (ropeTag.current) {
             ropeTag.current.style.opacity = String(easeOut >= 1 ? Math.max(0, fade) : 0);
             ropeTag.current.style.transform = `translate3d(${ex}px, ${ey}px, 0)`;
+          }
+          if (tag.current) {
+            // Below and left of the buoy, but never off the panel's edge.
+            const tw = tag.current.offsetWidth;
+            const tx = Math.max(12, Math.min(w - tw - 12, ex - tw - 10));
+            tag.current.style.transform = `translate3d(${tx - ex}px, 18px, 0)`;
           }
         } else {
           rope.current.style.opacity = "0";
@@ -276,7 +333,7 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
     };
   }, []);
 
-  const within = (health: number) => (hullY(health, scaleTop) - scaleTop) / (1 - scaleTop);
+  const within = (health: number) => (hullY(health, scaleTop, scaleMax) - scaleTop) / (1 - scaleTop);
   const marks = [
     { key: "liq", label: "Liquidation", value: 1, tone: "danger" },
     { key: "trigger", label: "Rescue", value: levels.trigger, tone: "rescue" },
@@ -285,25 +342,50 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
   ] as const;
 
   return (
-    <div ref={box} className={cx(
-        "overflow-hidden [--disc-w:84px] [--ladder-r:12px] [--ladder-w:128px] sm:[--ladder-w:190px] lg:[--disc-w:110px] lg:[--ladder-r:4%] lg:[--ladder-w:170px] xl:[--disc-w:150px] xl:[--ladder-w:250px]",
+    <div
+      ref={box}
+      className={cx(
+        "overflow-hidden",
+        size === "hero"
+          ? "[--disc-w:84px] [--ladder-r:12px] [--ladder-w:128px] sm:[--ladder-w:190px] lg:[--disc-w:110px] lg:[--ladder-r:4%] lg:[--ladder-w:170px] xl:[--disc-w:150px] xl:[--ladder-w:250px]"
+          : "[--disc-w:84px] [--ladder-r:16px] [--ladder-w:128px] sm:[--ladder-w:210px]",
         className ?? "relative",
-      )}>
+      )}
+    >
       {/* The load line, painted on the hull. Below the surface it shows through the water, dimmed. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         {[
           { value: 1, className: "bg-danger/25" },
           { value: levels.trigger, className: "bg-rescue/25" },
         ].map((line) => (
-          <div key={line.value} className={cx("absolute inset-x-0 h-px", line.className)} style={{ top: pct(hullY(line.value, scaleTop)) }} />
+          <div
+            key={line.value}
+            className={cx("absolute right-0 h-px", line.className)}
+            style={{ top: pct(hullY(line.value, scaleTop, scaleMax)), left: pct(quietLeft) }}
+          />
         ))}
-        <div className="absolute bottom-0 right-[var(--ladder-r)] w-[var(--ladder-w)]" style={{ top: pct(scaleTop) }}>
+        <div ref={ladder} className="absolute bottom-0 right-[var(--ladder-r)] w-[var(--ladder-w)]" style={{ top: pct(scaleTop) }}>
+          {anchorLabel ? (
+            <div className="absolute bottom-full left-0 mb-5 flex -translate-x-[5px] items-center gap-2 whitespace-nowrap">
+              <span ref={anchorSquare} className="size-[10px] bg-rescue" />
+              <span className="font-readout text-[11px] text-paper/80">{anchorLabel}</span>
+            </div>
+          ) : null}
           <div className="absolute inset-y-0 left-0 w-[3px] -translate-x-1/2 bg-paper/45" />
           {marks.map((mark) => (
-            <div key={mark.key} className="absolute inset-x-0 flex -translate-y-1/2 items-center gap-3" style={{ top: pct(within(mark.value)) }}>
-              <div className={cx("h-[4px] w-[24%] shrink-0 sm:w-[30%]", MARK_BAR[mark.tone])} />
-              <div className="flex min-w-0 flex-col gap-1 leading-none xl:flex-row xl:items-baseline xl:gap-2">
-                <span className="font-stencil text-[12px] uppercase tracking-[0.04em] text-paper/75 sm:text-[15px]">{mark.label}</span>
+            <div key={mark.key} className="absolute inset-x-0 flex -translate-y-1/2 items-center gap-2 sm:gap-3" style={{ top: pct(within(mark.value)) }}>
+              <div className={cx("h-[4px] w-[18%] shrink-0 sm:w-[30%]", MARK_BAR[mark.tone])} />
+              <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap leading-none sm:gap-2">
+                <span className="font-stencil text-[12px] uppercase tracking-[0.04em] text-paper/80 sm:text-[15px]">
+                  {mark.key === "liq" ? (
+                    <>
+                      <span className="sm:hidden">Liq.</span>
+                      <span className="hidden sm:inline">{mark.label}</span>
+                    </>
+                  ) : (
+                    mark.label
+                  )}
+                </span>
                 <span className={cx("num text-[12px] sm:text-[14px]", MARK_TEXT[mark.tone])}>{formatHealth(mark.value)}</span>
               </div>
             </div>
@@ -311,12 +393,15 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
           {/* The disc, as on a ship's hull: a ring crossed by a bar, on the line the user set. */}
           <div className="absolute right-full hidden w-[var(--disc-w)] -translate-y-1/2 pr-[6%] sm:block" style={{ top: pct(within(levels.trigger)) }}>
             <svg viewBox="0 0 160 120" className="block w-full overflow-visible">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-paper)" strokeOpacity="0.6" strokeWidth="9" />
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-rescue)" strokeOpacity="0.85" strokeWidth="9" />
               <rect x="-4" y="55.5" width="128" height="9" fill="var(--color-rescue)" />
               <line x1="124" y1="60" x2="172" y2="60" stroke="var(--color-rescue)" strokeOpacity="0.55" strokeWidth="3" strokeDasharray="6 5" />
             </svg>
+            <p className="absolute left-0 top-full mt-2 w-[75%] text-center font-stencil text-[12px] uppercase tracking-[0.06em] text-rescue lg:text-[13px]">
+              Your trigger
+            </p>
           </div>
-          <div className="num absolute bottom-3 left-4 text-[11px] text-mist-400">{formatHealth(GAUGE_MAX)}+</div>
+          <div className="num absolute bottom-3 left-3 text-[11px] text-mist-100">{formatHealth(scaleMax)}+</div>
         </div>
       </div>
 
@@ -328,7 +413,13 @@ export function Waterline({ health, levels, tone, throwSignal, pingSignal, reduc
       </svg>
       {throwLabel ? (
         <div ref={ropeTag} className="pointer-events-none absolute left-0 top-0 opacity-0" aria-hidden>
-          <span className="num -ml-4 -mt-12 block whitespace-nowrap rounded-sm bg-rescue px-2 py-1 text-[13px] font-medium text-ink-950">{throwLabel}</span>
+          {/* The line ends at a lifebuoy on the water, tagged with what it carries and where it goes. */}
+          <span className="absolute -left-[13px] -top-[13px] block size-[26px] rounded-full bg-ink-950/60">
+            <Mark className="size-full" />
+          </span>
+          <span ref={tag} className="num absolute left-0 top-0 block whitespace-nowrap rounded-sm bg-rescue px-2 py-1 text-[12.5px] font-semibold text-ink-950">
+            {throwLabel}
+          </span>
         </div>
       ) : null}
 

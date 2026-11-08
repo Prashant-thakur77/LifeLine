@@ -43,6 +43,7 @@ describe("lastRescueStory", () => {
       simulated: true,
       explanation: "Lifeline moved 3.47 USDC.",
       rulesBroken: 0,
+      recipient: "0x1111111111111111111111111111111111111111",
     });
   });
 

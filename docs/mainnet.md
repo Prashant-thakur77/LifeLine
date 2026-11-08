@@ -46,7 +46,7 @@ near account add-key keeper.$TEAM grant-function-call-access --allowance unlimit
 near account list-keys keeper.$TEAM network-config mainnet now
 ```
 
-The A6 check: `get_policy` and `get_reserve` answer, and the keeper's key list shows only the function-call key.
+The check: `get_policy` and `get_reserve` answer, and the keeper's key list shows only the function-call key.
 
 ## 3. The demo user
 

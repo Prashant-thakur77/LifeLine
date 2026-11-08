@@ -20,7 +20,7 @@ Direction: **Load line.** Your account health is a sea level painted against a s
 | `--color-rescue` | #ff7a3d | Only where Lifeline acts: the trigger line, the thrown line, the primary button, refusal codes |
 | `--color-safe` / `warn` / `danger` | #3ed3a2 / #f4b63f / #ff5266 | Health zones only |
 | `--color-sim` | #a99bff | The simulation, and nothing else |
-| `--font-stencil`, `--font-display` | Saira Stencil (OFL), condensed to 84 % by default | Headlines, section titles, the load-line labels, the wordmark |
+| `--font-stencil`, `--font-display` | Saira Stencil (OFL), condensed to 84 % by default | h1 and h2 only, the load-line labels, the wordmark. Never h3: smaller titles are Plex Sans 600 in sentence case, so the stencil keeps its authority |
 | `--font-readout` | Martian Mono (OFL) | Big readouts, the status line, the keeper's log |
 | `--font-sans` / `--font-mono` | IBM Plex Sans / Mono (OFL) | Body copy, tables, figures in the tool pages |
 | `--radius-md…3xl` | 4 / 5 / 6 / 8 / 10 px | Hull plating: corners stay tight at every size |
@@ -49,15 +49,19 @@ Reduced motion: no waves, no ping, no auto-replay; levels jump straight to the r
 - Timeline: warning level (recorded) → 2.4 s → trigger level (recorded) → 0.5 s → the line is thrown, `+amount` tag → 0.38 s → the restored level (recorded) → 2.6 s hold → live reading.
 - The readout only ever shows recorded or live values; the water moves smoothly between them.
 - Untrusted or missing readings: the water stays where it was, hatched and dashed, never lowered toward "safe".
-- Mobile: the water becomes its own panel under the headline; the disc is hidden; the ladder narrows to 128 px.
+- The line is thrown from a labelled point at the top of the load line's spine ("Reserve · vault (simulated)") and ends at a lifebuoy on the surface, tagged with the amount and the Hyperliquid address it paid. Its sag hangs left of the spine, so it never crosses the labels. The disc is orange and labelled "Your trigger".
+- Over the text column the surface line drops to 16 % and the level hairlines start after the column, so the water never slices the copy.
+- Mobile: kicker, headline, then the water as its own 42svh panel with the scale cut at 2.4 (no empty deep water), then the buttons, the paragraph and the log. The disc is hidden; marks read inline ("Liq. 1.00").
+- The position page uses the same instrument in a card (`size="panel"`): a ping on each reading, the line thrown when a newer rescue lands.
 
 ## Components
 
 - Header: stencil wordmark beside the lifebuoy mark; the active page is marked with a 3 px orange bar, like a load-line mark.
 - Hero: kicker in mono, stencil headline, one paragraph, two buttons, the instrument panel (status line + the keeper's log) at the bottom of the left column.
 - Readout rail: five readings between hairlines, no cards.
-- Sounding line: how a rescue happens as four marks on a lead line that fills on scroll.
-- Certificate: the attestation result on a paper panel with a rotated stamp in the result's colour.
+- Sounding line: how a rescue happens as four lifebuoy marks on a rope (orange with a paper twist) that fills on scroll.
+- Certificate: the attestation result on a paper panel with an upright status plate in the result's colour.
 - Livery stripe: one orange band and a paper pinstripe at −3°, the turn into the safety section.
-- Spec sheet: what a hacked keeper can't do, with the contract's refusal codes and a link to the on-chain refusal.
+- Spec sheet: what a hacked keeper can't do, with the contract's refusal codes, beside a receipt of the real on-chain refusal (from, called, answer, time, transaction), held equal to `scripts/attack-proof-testnet.json` by a test.
+- Order below the hero: readouts, how a rescue happens, the livery stripe, what a hacked keeper can't do, then the certificate.
 - Tool pages keep their layouts and cards; they inherit the tokens, the stencil titles and the tight corners.

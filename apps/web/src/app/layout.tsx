@@ -36,9 +36,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${stencil.variable} ${readout.variable}`}>
       <body>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:bg-paper focus:px-3 focus:py-2 focus:text-[14px] focus:font-semibold focus:text-ink-950"
+        >
+          Skip to content
+        </a>
         <WalletProvider>
           <Header />
-          <main className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">{children}</main>
+          <main id="main" className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">
+            {children}
+          </main>
           <Footer />
         </WalletProvider>
       </body>

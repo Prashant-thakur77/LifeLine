@@ -1,4 +1,4 @@
-import { healthToFraction } from "./gauge";
+import { GAUGE_MAX, GAUGE_MIN, healthToFraction } from "./gauge";
 import type { RescueStory } from "./replay";
 
 /**
@@ -74,10 +74,11 @@ export function levelAt(beats: readonly Beat[], ms: number): number {
 
 /**
  * Where on the hull a health sits, from 0 (top) to 1 (bottom): liquidation at
- * `scaleTop`, 4.0 and above at the bottom. Falling health is rising water. No open
+ * `scaleTop`, `scaleMax` (4.0 unless a short panel asks for less) and above at the bottom. Falling health is rising water. No open
  * positions (Infinity) draws the sea at the bottom; NaN is the caller's to refuse.
  */
-export function hullY(health: number, scaleTop: number): number {
-  const f = health === Number.POSITIVE_INFINITY ? 1 : healthToFraction(health);
+export function hullY(health: number, scaleTop: number, scaleMax: number = GAUGE_MAX): number {
+  const f =
+    health >= scaleMax ? 1 : health <= GAUGE_MIN ? 0 : scaleMax === GAUGE_MAX ? healthToFraction(health) : Math.log(health) / Math.log(scaleMax);
   return scaleTop + (1 - scaleTop) * f;
 }

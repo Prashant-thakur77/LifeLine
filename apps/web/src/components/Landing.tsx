@@ -7,11 +7,11 @@ import { config } from "../lib/env";
 import { formatLatency, formatUsd, timeAgo } from "../lib/format";
 import { keeper } from "../lib/keeper";
 import { nearblocksTx } from "../lib/links";
+import { REFUSED_RESCUE } from "../lib/proof";
 import { HeroWater } from "./HeroWater";
+import { Mark } from "./Shell";
 import { Skeleton, cx } from "./ui";
 
-/** The vault's own refusal of a hacked keeper's redirect, on testnet. Re-checked on chain by `pnpm demo:attack`. */
-const ATTACK_REFUSED_TX = "A9QZC5bVA1iQUo2CEhksRNFvj77951GrmmJq835joKCn";
 
 export function Landing() {
   return (
@@ -19,9 +19,9 @@ export function Landing() {
       <HeroWater />
       <Readouts />
       <SoundingLine />
-      <Certificate />
       <Livery />
       <Safety />
+      <Certificate />
     </div>
   );
 }
@@ -124,15 +124,21 @@ function SoundingLine() {
         </div>
       </div>
       <ol className="relative lg:col-span-8">
-        <span className="absolute inset-y-2 left-[7px] w-[2px] bg-ink-600" aria-hidden />
-        <span className="lead-fill absolute inset-y-2 left-[7px] w-[2px] origin-top bg-rescue" aria-hidden />
+        <span className="absolute inset-y-2 left-[10px] w-[3px] bg-ink-600" aria-hidden />
+        <span className="lead-fill absolute inset-y-2 left-[10px] w-[3px] origin-top bg-rescue" aria-hidden />
+        <span
+          className="lead-fill absolute inset-y-2 left-[11px] w-px origin-top bg-[repeating-linear-gradient(180deg,var(--color-paper)_0_2px,transparent_2px_9px)] opacity-70"
+          aria-hidden
+        />
         {STEPS.map((step, i) => (
           <li key={step.mark} className="relative pb-14 pl-12 last:pb-0 sm:pl-16">
-            <span className="absolute left-0 top-1.5 size-4 border-2 border-rescue bg-ink-900" aria-hidden />
+            <span className="absolute left-0 top-0.5 grid size-[23px] place-items-center rounded-full bg-ink-900" aria-hidden>
+              <Mark className="size-[23px]" />
+            </span>
             <p className="font-readout text-[12px] text-rescue">
               {i + 1} · {step.mark}
             </p>
-            <h3 className="mt-2 font-stencil text-[clamp(26px,3vw,40px)] font-bold uppercase leading-[0.95] text-paper">{step.title}</h3>
+            <h3 className="mt-2 text-[21px] font-semibold leading-snug text-paper sm:text-[22px]">{step.title}</h3>
             <p className="mt-3 max-w-xl text-[15.5px] leading-relaxed text-mist-300">{step.body}</p>
           </li>
         ))}
@@ -151,10 +157,10 @@ function Certificate() {
 
   return (
     <section aria-labelledby="cert-title" className="relative bg-paper text-ink-950">
-      <div className="grid grid-cols-1 gap-8 p-6 sm:p-10 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 lg:grid-cols-12">
         <div className="lg:col-span-6">
           <p className="font-readout text-[11px] uppercase tracking-[0.1em] text-ink-600">Inspection · NEAR AI Cloud</p>
-          <h2 id="cert-title" className="mt-3 font-stencil text-[clamp(30px,3.8vw,52px)] font-bold uppercase leading-[0.92]">
+          <h2 id="cert-title" className="mt-3 font-stencil text-[clamp(26px,3vw,40px)] font-bold uppercase leading-[0.92]">
             The explainer&apos;s hardware, checked
           </h2>
           <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-ink-700">
@@ -166,7 +172,7 @@ function Certificate() {
         <div className="relative lg:col-span-6">
           <div
             className={cx(
-              "absolute -top-2 right-0 rotate-[-7deg] border-[3px] px-3 py-1 font-stencil text-[22px] font-bold uppercase tracking-[0.04em] sm:text-[26px]",
+              "absolute right-0 top-0 border-2 px-3 py-1 font-stencil text-[20px] font-bold uppercase tracking-[0.04em] sm:text-[22px]",
               data?.status === "verified" ? "border-[#0d7a55] text-[#0d7a55]" : data?.status === "failed" ? "border-[#c22b3e] text-[#c22b3e]" : "border-ink-500 text-ink-500",
             )}
             aria-hidden
@@ -208,7 +214,7 @@ function Certificate() {
 /** Rescue livery: the stripe painted on lifeboats, here as the turn from how it works to why it's safe. */
 function Livery() {
   return (
-    <div className="relative -mx-4 h-24 overflow-hidden sm:-mx-6 lg:mx-[calc(50%-50vw)]" aria-hidden>
+    <div className="relative -mx-4 h-[calc(5.3vw+44px)] overflow-hidden sm:-mx-6 lg:mx-[calc(50%-50vw)]" aria-hidden>
       <div className="absolute inset-x-[-10%] top-1/2 flex -translate-y-1/2 -rotate-[3deg] flex-col gap-2">
         <div className="h-9 bg-rescue" />
         <div className="h-[5px] bg-paper" />
@@ -249,37 +255,66 @@ function Safety() {
           The rules live in the vault contract on NEAR, where a hacked keeper still can&apos;t break them. Each refusal below is a code the contract
           returns.
         </p>
-        <div className="mt-6 flex flex-col gap-2 text-[14px]">
-          <a
-            href={nearblocksTx(ATTACK_REFUSED_TX, "testnet")}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="font-medium text-paper underline decoration-ink-500 underline-offset-4 hover:decoration-rescue"
-          >
-            See the vault refuse a redirected rescue on testnet ↗
-          </a>
-          <Link href="/ledger" className="font-medium text-paper underline decoration-ink-500 underline-offset-4 hover:decoration-rescue">
-            Read the public ledger →
-          </Link>
-        </div>
+        <Link href="/ledger" className="mt-6 inline-block text-[14px] font-medium text-paper underline decoration-ink-500 underline-offset-4 hover:decoration-rescue">
+          Read the public ledger&nbsp;→
+        </Link>
       </div>
-      <dl className="border-t border-ink-600 lg:col-span-8">
-        {GUARANTEES.map((g) => (
-          <div key={g.title} className="grid grid-cols-1 gap-3 border-b border-ink-600 py-6 sm:grid-cols-12 sm:gap-6">
-            <dt className="font-stencil text-[22px] font-bold uppercase leading-[1] text-paper sm:col-span-5">{g.title}</dt>
-            <dd className="sm:col-span-7">
-              <p className="text-[15px] leading-relaxed text-mist-300">{g.body}</p>
-              <p className="mt-3 flex flex-wrap gap-2">
-                {g.codes.map((code) => (
-                  <code key={code} className="border border-ink-500 px-1.5 py-0.5 font-readout text-[11.5px] text-rescue">
-                    {code}
-                  </code>
-                ))}
-              </p>
-            </dd>
+      <div className="border-t border-ink-600 lg:col-span-8">
+        {GUARANTEES.map((g, i) => (
+          <div key={g.title} className="border-b border-ink-600 py-6">
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-12 sm:gap-6">
+              <dt className="text-[19px] font-semibold leading-snug text-paper sm:col-span-5 sm:text-[20px]">{g.title}</dt>
+              <dd className="sm:col-span-7">
+                <p className="text-[15px] leading-relaxed text-mist-300">{g.body}</p>
+                <p className="mt-3 flex flex-wrap gap-2">
+                  {g.codes.map((code) => (
+                    <code key={code} className="border border-ink-500 px-1.5 py-0.5 font-readout text-[11.5px] text-rescue">
+                      {code}
+                    </code>
+                  ))}
+                </p>
+              </dd>
+            </dl>
+            {i === 0 ? <Refusal /> : null}
           </div>
         ))}
-      </dl>
+      </div>
     </section>
+  );
+}
+
+/** The vault refusing a hacked keeper on chain, shown as a receipt: who called what, what came back, and the proof. */
+function Refusal() {
+  const r = REFUSED_RESCUE;
+  return (
+    <figure className="mt-6 border border-ink-500 bg-ink-950/60">
+      <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-ink-600 px-4 py-3">
+        <span className="font-readout text-[15px] text-rescue">Refused: {r.panic.split(":")[0]}</span>
+        <span className="font-readout text-[11px] text-mist-300">
+          on chain · {r.network} · {new Date(r.at).toISOString().slice(0, 16).replace("T", " ")} UTC
+        </span>
+      </figcaption>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-4 py-4 font-readout text-[12px]">
+        <dt className="text-mist-400">From</dt>
+        <dd className="break-all text-mist-100">{r.signer}</dd>
+        <dt className="text-mist-400">Called</dt>
+        <dd className="break-all text-mist-100">
+          {r.vault} · {r.method}
+        </dd>
+        <dt className="text-mist-400">Answer</dt>
+        <dd className="text-rescue">{r.panic}</dd>
+      </dl>
+      <p className="border-t border-ink-600 px-4 py-3 text-[13px]">
+        <a
+          href={nearblocksTx(r.txHash, r.network)}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="font-medium text-paper underline decoration-ink-500 underline-offset-4 hover:decoration-rescue"
+        >
+          See the transaction&nbsp;↗
+        </a>
+        <span className="text-mist-400"> · the keeper&apos;s own key, a correctly signed quote, the money pointed at itself</span>
+      </p>
+    </figure>
   );
 }

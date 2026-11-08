@@ -1,26 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ASSETS, KEEPER_POLL_INTERVAL_SEC, POLICY_DEFAULTS, type HealthResponse } from "@lifeline/shared";
 import { usePoll, useNow } from "../hooks/usePoll";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { DEMO_USER } from "../lib/config";
 import { config } from "../lib/env";
-import { formatPrice, formatSeconds, formatUnits, formatUsd, parseUnits, shortMiddle, timeAgo } from "../lib/format";
+import { formatHealth, formatPrice, formatSeconds, formatUnits, formatUsd, parseUnits, shortMiddle, timeAgo } from "../lib/format";
 import { SIM_STALE_AFTER_MS, STALE_AFTER_MS, classifyHealth, cushionUsd, rescueNeededUsd, type Reading } from "../lib/gauge";
 import { KeeperError, keeper } from "../lib/keeper";
 import { hyperliquidAddress, pageHref } from "../lib/links";
 import { RpcError } from "../lib/near-rpc";
 import { groupRecords, tokenMeta } from "../lib/records";
+import { lastRescueStory, type RescueStory } from "../lib/replay";
 import { simRestCountdown } from "../lib/sim";
 import { withdrawRefunded } from "../lib/tx";
 import { pauseTx, tokenViews, unpauseTx, vaultViews, withdrawTx } from "../lib/vault";
 import { EventList } from "./EventList";
-import { GaugeLegend, HealthGauge } from "./HealthGauge";
+import { GaugeLegend } from "./GaugeLegend";
 import { TxStatus, useTx } from "./Tx";
 import { AccountChooser, SimBanner, useIsSimulation, useViewedUser } from "./Viewing";
 import { Badge, Button, ButtonLink, Card, CardHeader, ExternalLink, Field, inputClass, Notice, PageHeader, Skeleton, Stat, cx } from "./ui";
 import { useWallet } from "./WalletProvider";
+import { Waterline, type WaterTone } from "./Waterline";
 
 const POLL_MS = KEEPER_POLL_INTERVAL_SEC * 1000;
 
@@ -51,6 +54,7 @@ function Position({ user }: { user: string }) {
   const policy = health.data?.policy ?? null;
   const levels = policy ?? { warn: POLICY_DEFAULTS.warn, trigger: POLICY_DEFAULTS.trigger, target: POLICY_DEFAULTS.target };
   const events = useMemo(() => groupRecords(audit.data ?? []).slice(0, 3), [audit.data]);
+  const story = useMemo(() => (audit.data ? lastRescueStory(audit.data) : null), [audit.data]);
 
   return (
     <>
@@ -85,7 +89,14 @@ function Position({ user }: { user: string }) {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <Card className="p-5 sm:p-6 lg:col-span-7">
-            <GaugePanel reading={reading} loading={health.loading} levels={levels} error={health.error} />
+            <GaugePanel
+              reading={reading}
+              loading={health.loading}
+              levels={levels}
+              error={health.error}
+              updatedAt={health.updatedAt}
+              story={story}
+            />
           </Card>
           <div className="flex flex-col gap-4 lg:col-span-5">
             <MarginCard reading={reading} />
@@ -156,10 +167,88 @@ function LiveLine({
   );
 }
 
-function GaugePanel({ reading, loading, levels, error }: { reading: Reading | null; loading: boolean; levels: { warn: number; trigger: number; target: number }; error: Error | undefined }) {
+const WATER_TONE: Record<Reading["zone"], WaterTone> = {
+  safe: "safe",
+  warn: "warn",
+  rescue: "rescue",
+  liquidation: "liquidation",
+  none: "none",
+  unknown: "unknown",
+  stale: "unknown",
+};
+
+const ZONE_TEXT: Record<WaterTone, string> = {
+  safe: "text-safe",
+  warn: "text-warn",
+  rescue: "text-rescue",
+  liquidation: "text-danger",
+  none: "text-mist-300",
+  unknown: "text-warn",
+};
+
+/**
+ * Health as the sea level against this account's own load line, the same instrument as
+ * the landing page. A ping marks each fresh reading; when a newer rescue lands while the
+ * page is open, the line is thrown.
+ */
+function GaugePanel(props: {
+  reading: Reading | null;
+  loading: boolean;
+  levels: { warn: number; trigger: number; target: number };
+  error: Error | undefined;
+  updatedAt: number | undefined;
+  story: RescueStory | null;
+}) {
+  const { reading, loading, levels, error, updatedAt, story } = props;
+  const reduced = useReducedMotion();
+  const [ping, setPing] = useState(0);
+  useEffect(() => {
+    if (updatedAt !== undefined) setPing((n) => n + 1);
+  }, [updatedAt]);
+  const seen = useRef<string | null | undefined>(undefined);
+  const [thrown, setThrown] = useState(0);
+  useEffect(() => {
+    const at = story?.restored.at ?? null;
+    if (seen.current === undefined) {
+      if (story) seen.current = at;
+      return;
+    }
+    if (at !== null && at !== seen.current) {
+      seen.current = at;
+      setThrown((n) => n + 1);
+    }
+  }, [story]);
+
+  const zone: Reading["zone"] = loading || reading === null ? "unknown" : reading.zone;
+  const trusted = !loading && reading !== null && reading.health !== null && zone !== "unknown" && zone !== "stale";
+  const shown = trusted ? reading!.health : null;
+  const label = loading ? "Loading" : (reading?.headline ?? "Unknown");
   return (
     <div className="flex flex-col gap-5">
-      <HealthGauge reading={loading ? null : reading} levels={levels} />
+      <Waterline
+        size="panel"
+        className="relative -mx-5 -mt-5 h-[340px] sm:-mx-6 sm:-mt-6 sm:h-[380px]"
+        health={shown}
+        levels={levels}
+        tone={WATER_TONE[zone]}
+        throwSignal={thrown}
+        pingSignal={ping}
+        reduced={reduced}
+        scaleTop={0.18}
+        anchorLabel="Reserve"
+        throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
+        surface={
+          <div className="absolute left-5 -translate-y-full pb-2.5 sm:left-6">
+            <p className="font-readout text-[clamp(48px,6vw,76px)] font-light leading-[0.9] tracking-[-0.04em] text-paper tabular-nums">
+              {shown === null ? "—" : formatHealth(shown)}
+            </p>
+            <p className={cx("mt-2 whitespace-nowrap font-readout text-[11px] uppercase tracking-[0.12em]", ZONE_TEXT[WATER_TONE[zone]])}>Health · {label}</p>
+          </div>
+        }
+      />
+      <p className="sr-only" aria-live="polite">
+        Health {shown === null ? "unknown" : formatHealth(shown)}. {label}.
+      </p>
       <GaugeLegend levels={levels} />
       {reading ? (
         <Notice
