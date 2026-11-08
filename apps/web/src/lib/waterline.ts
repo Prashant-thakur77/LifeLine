@@ -82,3 +82,24 @@ export function hullY(health: number, scaleTop: number, scaleMax: number = GAUGE
     health >= scaleMax ? 1 : health <= GAUGE_MIN ? 0 : scaleMax === GAUGE_MAX ? healthToFraction(health) : Math.log(health) / Math.log(scaleMax);
   return scaleTop + (1 - scaleTop) * f;
 }
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * One cut-paper wave: a closed path whose top edge rises and falls once per `period`,
+ * drawn one period wider than `width` and down to `height`, so sliding it left by one
+ * period loops seamlessly. Each period starts and ends at `top`.
+ */
+export function wavePath(o: { width: number; height: number; period: number; amp: number; top: number }): string {
+  const { width, height, period, amp, top } = o;
+  const k = amp * 1.33;
+  const periods = Math.ceil((width + period) / period);
+  let d = `M 0 ${r2(top)}`;
+  for (let i = 0; i < periods; i++) {
+    const x = i * period;
+    d += ` C ${r2(x + period / 6)} ${r2(top - k)} ${r2(x + period / 3)} ${r2(top - k)} ${r2(x + period / 2)} ${r2(top)}`;
+    d += ` C ${r2(x + (2 * period) / 3)} ${r2(top + k)} ${r2(x + (5 * period) / 6)} ${r2(top + k)} ${r2(x + period)} ${r2(top)}`;
+  }
+  const end = periods * period;
+  return `${d} L ${end} ${r2(height)} L 0 ${r2(height)} Z`;
+}

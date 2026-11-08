@@ -7,7 +7,7 @@ import { formatHealth, formatLatency, timeAgo } from "../lib/format";
 import { eventLinks, pageHref } from "../lib/links";
 import { OUTCOME_LABEL, describeReason, eventTitle, type LedgerEvent, type Outcome } from "../lib/records";
 import { useNow } from "../hooks/usePoll";
-import { Badge, ExternalLink, cx, type Tone } from "./ui";
+import { Badge, Button, ExternalLink, type Tone } from "./ui";
 
 const OUTCOME_TONE: Record<Outcome, Tone> = {
   done: "safe",
@@ -15,14 +15,6 @@ const OUTCOME_TONE: Record<Outcome, Tone> = {
   failed: "danger",
   blocked: "warn",
   warn: "neutral",
-};
-
-const RAIL: Record<Outcome, string> = {
-  done: "bg-safe",
-  "in-progress": "bg-rescue",
-  failed: "bg-danger",
-  blocked: "bg-warn",
-  warn: "bg-mist-400",
 };
 
 const STEP_LABEL: Record<string, string> = {
@@ -37,126 +29,142 @@ const clock = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 function HealthChange({ before, after }: { before: number | null; after: number | null }) {
-  if (before === null && after === null) return null;
+  if (before === null && after === null) return <span className="text-muted">—</span>;
   return (
-    <span className="num inline-flex items-center gap-1.5 rounded-lg border border-ink-600 bg-ink-850 px-2 py-0.5 text-[13px]">
-      <span className="text-mist-400">health</span>
-      <span className="text-rescue">{formatHealth(before)}</span>
+    <span className="num whitespace-nowrap text-[13px]">
+      <span className="text-rescue-ink">{formatHealth(before)}</span>
       {after !== null ? (
         <>
-          <span className="text-mist-400" aria-label="to">
+          <span className="mx-1 text-muted" aria-label="to">
             →
           </span>
-          <span className="text-safe">{formatHealth(after)}</span>
+          <span className="text-safe-ink">{formatHealth(after)}</span>
         </>
       ) : null}
     </span>
   );
 }
 
-function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boolean; now: number }) {
+/** One event as one row of the proof table; its steps, explanation and links open beneath it. */
+function EventRow({ event, showUser, now }: { event: LedgerEvent; showUser: boolean; now: number }) {
   const [open, setOpen] = useState(false);
   const links = eventLinks(event, config.network);
+  const id = `ev-${event.key.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   return (
-    <li className="relative pl-7">
-      <span className={cx("absolute left-[7px] top-[9px] size-[11px] rounded-full ring-4 ring-ink-900", RAIL[event.outcome])} aria-hidden />
-      <article className="rounded-2xl border border-ink-600/70 bg-ink-800/70 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
+    <li className="group">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 px-4 py-3.5 sm:grid-cols-[110px_120px_1fr_120px_96px_auto] sm:px-5">
+        <time dateTime={event.at} title={clock(event.at)} className="order-2 font-readout text-[12px] text-muted sm:order-none">
+          {timeAgo(event.at, now)}
+        </time>
+        <span className="order-1 flex flex-wrap items-center gap-1.5 sm:order-none">
           <Badge tone={OUTCOME_TONE[event.outcome]}>{OUTCOME_LABEL[event.outcome]}</Badge>
           {event.simulated ? <Badge tone="sim">Sim</Badge> : null}
-          <time dateTime={event.at} title={clock(event.at)} className="ml-auto text-[12.5px] text-mist-400">
-            {timeAgo(event.at, now)}
-          </time>
-        </div>
-        <h3 className="mt-2.5 text-[16px] font-semibold leading-snug text-paper">{eventTitle(event, config.usdcContractId)}</h3>
-        {showUser ? (
-          <Link href={pageHref("/history", event.user)} className="mt-0.5 inline-block text-[13px] text-mist-300 hover:text-paper">
-            {event.user}
-          </Link>
-        ) : null}
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        </span>
+        <span className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
+          <span className="block text-[15px] font-semibold leading-snug text-ink">{eventTitle(event, config.usdcContractId)}</span>
+          {showUser ? (
+            <Link href={pageHref("/history", event.user)} className="text-[13px] text-body underline decoration-line-strong underline-offset-2 hover:text-ink">
+              {event.user}
+            </Link>
+          ) : null}
+        </span>
+        <span className="order-4 sm:order-none">
           <HealthChange before={event.healthBefore} after={event.outcome === "done" || event.outcome === "failed" ? event.healthAfter : null} />
-          {event.latencyMs !== null && event.outcome === "done" ? (
-            <span className="num rounded-lg border border-ink-600 bg-ink-850 px-2 py-0.5 text-[13px] text-mist-200">
-              {formatLatency(event.latencyMs)} {event.simulated ? "(simulated)" : "end to end"}
-            </span>
-          ) : null}
-          {event.oneClickStatus && event.oneClickStatus !== "SUCCESS" ? (
-            <span className="num rounded-lg border border-ink-600 bg-ink-850 px-2 py-0.5 text-[13px] text-mist-200">1Click: {event.oneClickStatus}</span>
-          ) : null}
-        </div>
-
-        {event.outcome === "blocked" && event.reasons.length > 0 ? (
-          <ul className="mt-3 space-y-1.5 text-[14px] text-mist-200">
-            {event.reasons.map((reason) => (
-              <li key={reason} className="flex gap-2">
-                <span className="num mt-[3px] shrink-0 rounded bg-warn/10 px-1.5 text-[11px] text-warn">{reason}</span>
-                <span>{describeReason(reason)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        {event.explanation ? (
-          <blockquote className="mt-3 border-l-2 border-rescue/50 pl-3 text-[14.5px] leading-relaxed text-mist-100">
-            {event.explanation}
-            <footer className="mt-1 text-[12px] text-mist-400">Written from the record. A keeper with a NEAR AI key adds a sentence from a model in attested hardware.</footer>
-          </blockquote>
-        ) : null}
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-mist-300">
-          {links.map((link) => (
-            <ExternalLink key={link.label} href={link.href}>
-              {link.label}
-            </ExternalLink>
-          ))}
-          {event.simulated && event.outcome !== "warn" ? <span className="text-mist-400">Simulated: nothing on chain to link to.</span> : null}
-          {event.records.length > 1 || event.request ? (
-            <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="ml-auto text-mist-300 underline decoration-ink-500 underline-offset-[3px] hover:text-paper">
-              {open ? "Hide steps" : "Steps"}
-            </button>
-          ) : null}
-        </div>
-
-        {open ? (
-          <div className="mt-3 rounded-xl border border-ink-600/70 bg-ink-850/80 p-3 text-[13px]">
-            <ol className="space-y-1.5">
-              {event.records.map((record) => (
-                <li key={record.id} className="flex flex-wrap justify-between gap-x-3">
-                  <span className="text-mist-200">{STEP_LABEL[record.kind] ?? record.kind}</span>
-                  <time className="num text-mist-400" dateTime={record.at}>
-                    {clock(record.at)}
-                  </time>
+        </span>
+        <span className="order-5 font-readout text-[12.5px] text-ink-2 sm:order-none">
+          {event.latencyMs !== null && event.outcome === "done" ? formatLatency(event.latencyMs) : ""}
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={id}
+          className="order-6 justify-self-end rounded-md border-2 border-ink px-2.5 py-1 text-[12.5px] font-semibold text-ink hover:bg-sun sm:order-none"
+        >
+          {open ? "Hide" : "Details"}
+        </button>
+      </div>
+      {open ? (
+        <div id={id} className="border-t-2 border-dashed border-ink/15 bg-paper/60 px-4 py-4 text-[13.5px] sm:px-5">
+          {event.outcome === "blocked" && event.reasons.length > 0 ? (
+            <ul className="mb-3 space-y-1.5 text-ink-2">
+              {event.reasons.map((reason) => (
+                <li key={reason} className="flex gap-2">
+                  <code className="shrink-0 rounded-sm bg-sun px-1.5 font-readout text-[11px] text-ink">{reason}</code>
+                  <span>{describeReason(reason)}</span>
                 </li>
               ))}
-            </ol>
-            {event.request ? (
-              <dl className="mt-3 grid gap-1.5 border-t border-ink-600/70 pt-3 sm:grid-cols-[auto_1fr] sm:gap-x-4">
-                <dt className="text-mist-400">Recipient</dt>
-                <dd className="num break-all text-mist-200">{event.request.recipient}</dd>
-                <dt className="text-mist-400">Deposit address</dt>
-                <dd className="num break-all text-mist-200">{event.request.depositAddress}</dd>
-                <dt className="text-mist-400">Quote</dt>
-                <dd className="num break-all text-mist-200">{event.request.quoteId}</dd>
-                <dt className="text-mist-400">Needed</dt>
-                <dd className="num text-mist-200">${event.request.usdNeeded.toFixed(2)}</dd>
-              </dl>
-            ) : null}
+            </ul>
+          ) : null}
+          {event.explanation ? <p className="mb-3 max-w-3xl border-l-[3px] border-rescue pl-3 text-[14.5px] leading-relaxed text-ink">{event.explanation}</p> : null}
+          <ol className="space-y-1.5">
+            {event.records.map((record) => (
+              <li key={record.id} className="flex flex-wrap justify-between gap-x-3">
+                <span className="text-ink-2">{STEP_LABEL[record.kind] ?? record.kind}</span>
+                <time className="num text-muted" dateTime={record.at}>
+                  {clock(record.at)}
+                </time>
+              </li>
+            ))}
+          </ol>
+          {event.request ? (
+            <dl className="mt-3 grid gap-1.5 border-t-2 border-ink/10 pt-3 sm:grid-cols-[auto_1fr] sm:gap-x-4">
+              <dt className="text-muted">Recipient</dt>
+              <dd className="num break-all text-ink-2">{event.request.recipient}</dd>
+              <dt className="text-muted">Deposit address</dt>
+              <dd className="num break-all text-ink-2">{event.request.depositAddress}</dd>
+              <dt className="text-muted">Quote</dt>
+              <dd className="num break-all text-ink-2">{event.request.quoteId}</dd>
+              <dt className="text-muted">Needed</dt>
+              <dd className="num text-ink-2">${event.request.usdNeeded.toFixed(2)}</dd>
+              {event.oneClickStatus ? (
+                <>
+                  <dt className="text-muted">1Click status</dt>
+                  <dd className="num text-ink-2">{event.oneClickStatus}</dd>
+                </>
+              ) : null}
+            </dl>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {links.map((link) => (
+              <ExternalLink key={link.label} href={link.href}>
+                {link.label}
+              </ExternalLink>
+            ))}
+            {event.simulated && event.outcome !== "warn" ? <span className="text-muted">Simulated: nothing on chain to link to.</span> : null}
           </div>
-        ) : null}
-      </article>
+        </div>
+      ) : null}
     </li>
   );
 }
 
+const PAGE = 25;
+
+/** The proof table: newest first, 25 rows at a time. */
 export function EventList({ events, showUser = false }: { events: LedgerEvent[]; showUser?: boolean }) {
   const now = useNow(5000);
+  const [count, setCount] = useState(PAGE);
+  const shown = events.slice(0, count);
+  const explained = events.some((e) => e.explanation);
   return (
-    <ol className="relative space-y-3 before:absolute before:bottom-4 before:left-[12px] before:top-4 before:w-px before:bg-ink-600">
-      {events.map((event) => (
-        <EventItem key={event.key} event={event} showUser={showUser} now={now} />
-      ))}
-    </ol>
+    <div>
+      <ol className="divide-y-2 divide-ink/10 overflow-hidden rounded-xl border-2 border-ink bg-card">
+        {shown.map((event) => (
+          <EventRow key={event.key} event={event} showUser={showUser} now={now} />
+        ))}
+      </ol>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-muted">
+        <span>
+          {shown.length} of {events.length} shown.
+          {explained ? " Explanations are written from each record; a keeper with a NEAR AI key adds a sentence from a model in attested hardware." : ""}
+        </span>
+        {count < events.length ? (
+          <Button size="sm" variant="secondary" onClick={() => setCount((c) => c + PAGE)}>
+            Show {Math.min(PAGE, events.length - count)} more
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }

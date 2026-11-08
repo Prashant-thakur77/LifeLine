@@ -51,10 +51,10 @@ export function FundView() {
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <Card className="self-start p-6 lg:order-2 lg:col-span-5">
-          <h2 className="font-display text-[22px] text-paper">Connect the account that will hold the reserve</h2>
-          <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-mist-300">
+          <h2 className="text-[20px] font-bold leading-snug text-ink">Connect the account that will hold the reserve</h2>
+          <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-body">
             1Click delivers USDC to your NEAR account, and the vault credits the reserve to whoever deposits it, so funding needs your wallet. To see Lifeline
-            work without one, <a className="text-paper underline decoration-ink-500 underline-offset-2" href={pageHref("/position", "demo.near")}>open the live demo</a>.
+            work without one, <a className="text-ink underline decoration-line-strong underline-offset-2" href={pageHref("/position", "demo.near")}>open the live demo</a>.
           </p>
           <Button
             variant="primary"
@@ -71,7 +71,7 @@ export function FundView() {
           >
             Connect wallet
           </Button>
-          {error ? <p className="mt-2 text-[13px] text-[#ff8a98]">{error}</p> : null}
+          {error ? <p className="mt-2 text-[13px] text-danger-ink">{error}</p> : null}
         </Card>
         <div className="lg:order-1 lg:col-span-7">
           <PayFromAnyChain account={null} />
@@ -273,10 +273,10 @@ function PayFromAnyChain({ account }: { account: string | null }) {
                 }}
               />
             </Field>
-            <p className="text-[13px] text-mist-400">
+            <p className="text-[13px] text-muted">
               {account ? (
                 <>
-                  USDC goes to <span className="text-mist-200">{account}</span>, the account you&apos;re connected with.
+                  USDC goes to <span className="text-ink-2">{account}</span>, the account you&apos;re connected with.
                 </>
               ) : (
                 "Without a wallet this only prices the swap. Connect one to get a deposit address that pays your own account."
@@ -284,13 +284,13 @@ function PayFromAnyChain({ account }: { account: string | null }) {
             </p>
 
             {preview ? (
-              <div className="rounded-xl border border-ink-500 bg-ink-850 p-4">
-                <p className="text-[13px] text-mist-400">1Click&apos;s quote</p>
-                <p className="mt-1 text-[15px] text-mist-100">
-                  Send <span className="num text-paper">{preview.quote.amountInFormatted} {token?.symbol}</span>, receive about{" "}
-                  <span className="num text-safe">{formatUnits(preview.quote.amountOut, USDC_DECIMALS)} USDC</span>
+              <div className="rounded-lg border-2 border-ink bg-card p-4">
+                <p className="text-[13px] text-muted">1Click&apos;s quote</p>
+                <p className="mt-1 text-[15px] text-ink">
+                  Send <span className="num text-ink">{preview.quote.amountInFormatted} {token?.symbol}</span>, receive about{" "}
+                  <span className="num text-safe-ink">{formatUnits(preview.quote.amountOut, USDC_DECIMALS)} USDC</span>
                 </p>
-                <p className="mt-1 text-[13px] text-mist-400">
+                <p className="mt-1 text-[13px] text-muted">
                   At least <span className="num">{formatUnits(preview.quote.minAmountOut, USDC_DECIMALS)} USDC</span> after 1% slippage, about{" "}
                   {preview.quote.timeEstimate} s after your deposit confirms.
                 </p>
@@ -299,7 +299,7 @@ function PayFromAnyChain({ account }: { account: string | null }) {
                     Get my deposit address
                   </Button>
                 ) : (
-                  <p className="mt-3 text-[13px] text-mist-300">Connect a wallet to turn this into a real deposit address.</p>
+                  <p className="mt-3 text-[13px] text-body">Connect a wallet to turn this into a real deposit address.</p>
                 )}
               </div>
             ) : (
@@ -361,29 +361,29 @@ function DepositTracker({ deposit, account, onReset }: { deposit: ActiveDeposit;
     <Card>
       <CardHeader eyebrow="Step 1 · through 1Click" title={`Send ${symbol} on ${chainName(chain)}`} />
       <div className="flex flex-col gap-5 p-5">
-        <div className="rounded-xl border border-rescue/40 bg-rescue/[0.06] p-4">
-          <p className="text-[13px] text-mist-300">Send exactly</p>
-          <p className="num mt-0.5 text-[22px] text-paper">
+        <div className="rounded-lg border-2 border-ink bg-[#ffe1d4] p-4">
+          <p className="text-[13px] text-body">Send exactly</p>
+          <p className="num mt-0.5 text-[22px] text-ink">
             {quote.quote.amountInFormatted} {symbol}
           </p>
-          <p className="mt-3 text-[13px] text-mist-300">on {chainName(chain)}, to this deposit address</p>
-          <p className="num mt-1 break-all text-[15px] text-paper">{address}</p>
+          <p className="mt-3 text-[13px] text-body">on {chainName(chain)}, to this deposit address</p>
+          <p className="num mt-1 break-all text-[15px] text-ink">{address}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <CopyButton value={address} label="Copy address" />
             <CopyButton value={quote.quote.amountInFormatted} label="Copy amount" />
           </div>
           {memo ? (
             <div className="mt-4 rounded-lg border border-warn/50 bg-warn/10 p-3">
-              <p className="text-[13px] font-semibold text-warn">Include this memo, or the deposit is lost</p>
-              <p className="num mt-1 break-all text-paper">{memo}</p>
+              <p className="text-[13px] font-semibold text-warn-ink">Include this memo, or the deposit is lost</p>
+              <p className="num mt-1 break-all text-ink">{memo}</p>
               <div className="mt-2">
                 <CopyButton value={memo} label="Copy memo" />
               </div>
             </div>
           ) : null}
-          <p className="mt-4 text-[13px] leading-relaxed text-mist-400">
+          <p className="mt-4 text-[13px] leading-relaxed text-muted">
             Only {symbol} on {chainName(chain)}. Anything else sent here can be lost. You&apos;ll receive at least{" "}
-            <span className="num text-mist-200">{formatUnits(quote.quote.minAmountOut, USDC_DECIMALS)} USDC</span> in {quote.quoteRequest.recipient}. Deposit before{" "}
+            <span className="num text-ink-2">{formatUnits(quote.quote.minAmountOut, USDC_DECIMALS)} USDC</span> in {quote.quoteRequest.recipient}. Deposit before{" "}
             {new Date(deadline).toLocaleString()}, or 1Click refunds what it received.
           </p>
         </div>
@@ -394,8 +394,8 @@ function DepositTracker({ deposit, account, onReset }: { deposit: ActiveDeposit;
             const now = stepIndex === i && current !== "SUCCESS";
             return (
               <li key={label} className="flex flex-col gap-1.5">
-                <span className={cx("h-1.5 rounded-full", reached ? (current === "SUCCESS" ? "bg-safe" : "bg-rescue") : "bg-ink-600", now && "animate-pulse-soft")} />
-                <span className={cx("text-[12px]", reached ? "text-mist-100" : "text-mist-400")}>{label}</span>
+                <span className={cx("h-1.5 rounded-full", reached ? (current === "SUCCESS" ? "bg-safe" : "bg-rescue") : "bg-shade", now && "animate-pulse-soft")} />
+                <span className={cx("text-[12px]", reached ? "text-ink" : "text-muted")}>{label}</span>
               </li>
             );
           })}
@@ -410,7 +410,7 @@ function DepositTracker({ deposit, account, onReset }: { deposit: ActiveDeposit;
             </p>
           ) : null}
         </Notice>
-        {statusError ? <p className="text-[13px] text-warn">Couldn&apos;t check the status just now ({statusError}). Retrying every 5 s.</p> : null}
+        {statusError ? <p className="text-[13px] text-warn-ink">Couldn&apos;t check the status just now ({statusError}). Retrying every 5 s.</p> : null}
 
         {current === "PENDING_DEPOSIT" || current === "INCOMPLETE_DEPOSIT" ? (
           <form
@@ -435,16 +435,16 @@ function DepositTracker({ deposit, account, onReset }: { deposit: ActiveDeposit;
                 </Button>
               </div>
             </Field>
-            {submitState === "sent" ? <p className="text-[13px] text-safe">Passed to 1Click.</p> : null}
-            {submitState !== "idle" && submitState !== "busy" && submitState !== "sent" ? <p className="text-[13px] text-[#ff8a98]">{submitState}</p> : null}
+            {submitState === "sent" ? <p className="text-[13px] text-safe-ink">Passed to 1Click.</p> : null}
+            {submitState !== "idle" && submitState !== "busy" && submitState !== "sent" ? <p className="text-[13px] text-danger-ink">{submitState}</p> : null}
           </form>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-600/70 pt-4 text-[13px] text-mist-400">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-ink/10 pt-4 text-[13px] text-muted">
           <span>
-            Quote <span className="num text-mist-300">{quote.correlationId}</span>
+            Quote <span className="num text-body">{quote.correlationId}</span>
           </span>
-          <ExternalLink href={intentsExplorer(address)} className="text-mist-200">
+          <ExternalLink href={intentsExplorer(address)} className="text-ink-2">
             Follow it on the NEAR Intents explorer
           </ExternalLink>
         </div>
@@ -464,7 +464,7 @@ function DepositTracker({ deposit, account, onReset }: { deposit: ActiveDeposit;
             finds it later.
           </Notice>
         ) : (
-          <button type="button" onClick={() => setConfirmReset(true)} className="self-start text-[13px] text-mist-400 underline decoration-ink-500 underline-offset-[3px] hover:text-paper">
+          <button type="button" onClick={() => setConfirmReset(true)} className="self-start text-[13px] text-muted underline decoration-line-strong underline-offset-[3px] hover:text-ink">
             Start a different deposit
           </button>
         )}
@@ -497,18 +497,18 @@ function MoveIntoReserve({ account }: { account: string }) {
       <CardHeader eyebrow="Step 2 · into the vault" title="Move USDC into your reserve" />
       <div className="flex flex-col gap-4 p-5">
         <dl className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-ink-600 bg-ink-850 p-3">
-            <dt className="text-[12px] text-mist-400">In your NEAR account</dt>
-            <dd className="num mt-1 text-[20px] text-paper">{balance.loading ? "…" : balance.error ? "?" : formatUnits(walletUsdc, USDC_DECIMALS)}</dd>
-            <dd className="text-[12px] text-mist-400">USDC</dd>
+          <div className="rounded-lg border-2 border-ink bg-card p-3">
+            <dt className="text-[12px] text-muted">In your NEAR account</dt>
+            <dd className="num mt-1 text-[20px] text-ink">{balance.loading ? "…" : balance.error ? "?" : formatUnits(walletUsdc, USDC_DECIMALS)}</dd>
+            <dd className="text-[12px] text-muted">USDC</dd>
           </div>
-          <div className="rounded-xl border border-ink-600 bg-ink-850 p-3">
-            <dt className="text-[12px] text-mist-400">In your reserve</dt>
-            <dd className="num mt-1 text-[20px] text-safe">{!vault ? "—" : reserve.loading ? "…" : reserve.error ? "?" : formatUnits(reserveUsdc, USDC_DECIMALS)}</dd>
-            <dd className="text-[12px] text-mist-400">USDC</dd>
+          <div className="rounded-lg border-2 border-ink bg-card p-3">
+            <dt className="text-[12px] text-muted">In your reserve</dt>
+            <dd className="num mt-1 text-[20px] text-safe-ink">{!vault ? "—" : reserve.loading ? "…" : reserve.error ? "?" : formatUnits(reserveUsdc, USDC_DECIMALS)}</dd>
+            <dd className="text-[12px] text-muted">USDC</dd>
           </div>
         </dl>
-        {balance.error ? <p className="text-[13px] text-warn">Couldn&apos;t read your USDC balance: {balance.error.message}</p> : null}
+        {balance.error ? <p className="text-[13px] text-warn-ink">Couldn&apos;t read your USDC balance: {balance.error.message}</p> : null}
 
         {notRegistered ? (
           <Notice
@@ -537,7 +537,7 @@ function MoveIntoReserve({ account }: { account: string }) {
             somewhere to land.
             <div className="mt-2">
               <TxStatus state={register.state} doneTitle="Registered with USDC" />
-              {registerError ? <p className="text-[13px] text-[#ff8a98]">{registerError}</p> : null}
+              {registerError ? <p className="text-[13px] text-danger-ink">{registerError}</p> : null}
             </div>
           </Notice>
         ) : null}
@@ -597,7 +597,7 @@ function MoveIntoReserve({ account }: { account: string }) {
             <Button type="submit" variant="primary" className="self-start" busy={deposit.busy} disabled={BigInt(walletUsdc) === 0n}>
               Move into reserve
             </Button>
-            {BigInt(walletUsdc) === 0n && !balance.loading ? <p className="text-[13px] text-mist-400">No USDC in your account yet. Fund it with step 1.</p> : null}
+            {BigInt(walletUsdc) === 0n && !balance.loading ? <p className="text-[13px] text-muted">No USDC in your account yet. Fund it with step 1.</p> : null}
             <TxStatus state={deposit.state} doneTitle="Deposited" />
           </form>
         )}

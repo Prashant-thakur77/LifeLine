@@ -26,11 +26,12 @@ Show a liquidation being prevented, live, on the first screen, and make the "a h
 - Motion in this world: water rises slowly and heavily; a throw line snaps out fast and pulls taut; an instrument pings on a steady beat (the keeper's 5 s poll); a rescued thing settles, it doesn't bounce.
 - Sound: sonar ping, rope whip (none by default; no audio planned).
 
-## Dials
+## Dials (v2, 2026-11-09)
 
-- CRAZINESS 8 on the landing page; 4 on the tool pages (position, history, ledger, fund, set up, alerts), which must stay fast to read.
-- MOTION 7.
+- CRAZINESS 8 on the landing page; 5 on the tool pages, which must stay fast to read.
+- MOTION 8.
 - DENSITY 4 on the landing page; 6 on the tool pages.
+- v2 brief from Prashant: a full redesign of every page, bright daylight palette, printed illustration plus paper cut-out art, kinetic type and motion, easy navigation, "high class professional". No 3D models.
 
 ## Hard constraints
 
@@ -39,6 +40,6 @@ Show a liquidation being prevented, live, on the first screen, and make the "a h
 - Must appear on the landing page: live demo health from the sim keeper, keeper stats, the NEAR AI attestation result, how it works, the safety guarantees, links to the ledger and the source.
 - Honesty: anything from the simulation is labelled as simulation (violet). No decorative chart may look like real data. Nothing may promise that liquidation can't happen.
 - Performance: Lighthouse mobile performance 85+, accessibility 95+, CLS < 0.1. Works from 360 px to 1920 px, keyboard usable, `prefers-reduced-motion` respected.
-- New dependencies only where the design needs them. No WebGL scene library for one effect.
+- New dependencies only where the design needs them (GSAP is fine for the kinetic type and paper parallax). No WebGL scene library.
 - Deadline: submission by 14 Nov 2026, 20:00 IST. The redesign must not risk the live demo.
 - No credits or reference names anywhere in the repo or the site.

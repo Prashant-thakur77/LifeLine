@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RescueStory } from "../src/lib/replay";
-import { REPLAY, hullY, replayBeats, settle, levelAt } from "../src/lib/waterline";
+import { REPLAY, hullY, replayBeats, settle, levelAt, wavePath } from "../src/lib/waterline";
 
 const story: RescueStory = {
   warn: { health: 1.7857, at: "2026-11-08T18:22:09.478Z" },
@@ -87,5 +87,22 @@ describe("hullY with a shorter scale", () => {
     expect(hullY(3.5, 0.12, 2.4)).toBe(1);
     expect(hullY(2.0, 0.12, 2.4)).toBeGreaterThan(hullY(2.0, 0.12));
     expect(hullY(1, 0.12, 2.4)).toBeCloseTo(0.12);
+  });
+});
+
+describe("wavePath", () => {
+  it("draws a closed, periodic paper wave that covers the width plus one period, down to the bottom", () => {
+    const d = wavePath({ width: 1000, height: 400, period: 250, amp: 10, top: 20 });
+    expect(d.startsWith("M 0 ")).toBe(true);
+    expect(d.endsWith("Z")).toBe(true);
+    const xs = [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) => Number(m[1]));
+    expect(Math.max(...xs)).toBeGreaterThanOrEqual(1250);
+    expect(d).toContain(" L 1250 400 L 0 400 Z");
+  });
+  it("starts each period at the same height, so sliding it by one period is seamless", () => {
+    const d = wavePath({ width: 500, height: 300, period: 100, amp: 8, top: 40 });
+    const starts = [...d.matchAll(/C [^C]*? (\d+) (-?[\d.]+)(?= C| L)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const atPeriods = starts.filter(([x]) => x! % 100 === 0).map(([, y]) => y);
+    expect(new Set(atPeriods).size).toBe(1);
   });
 });

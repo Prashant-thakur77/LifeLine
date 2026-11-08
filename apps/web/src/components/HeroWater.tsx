@@ -14,6 +14,7 @@ import { pageHref } from "../lib/links";
 import { lastRescueStory, storyLog, type LogLine } from "../lib/replay";
 import { simRestCountdown } from "../lib/sim";
 import { replayBeats, type Beat } from "../lib/waterline";
+import { Mark } from "./Shell";
 import { ButtonLink, cx } from "./ui";
 import { Waterline, type WaterTone } from "./Waterline";
 
@@ -90,76 +91,53 @@ export function HeroWater() {
   const status = beat && story
     ? `Replay of the last rescue, ${timeAgo(story.restored.at, now)}, at ${clock(beat.at)} UTC`
     : `${health.updatedAt ? `Read ${timeAgo(new Date(health.updatedAt).toISOString(), now)}` : "Reading…"}${rest ? ` · next price drop in ${rest}` : ""}${story ? ` · last rescue ${timeAgo(story.restored.at, now)}` : ""}`;
-  const panel = (
-    <InstrumentPanel
-      online={!(health.error && !health.data)}
-      status={status}
-      lines={story ? storyLog(story, levels) : []}
-      beat={beat}
-      canReplay={story !== null}
-      onReplay={play}
-    />
-  );
-
-  // The text column's right edge, as a fraction of the width: the water's surface line stays quiet behind it.
   const wide = useMinWidth(1024);
-  const textColumn = useRef<HTMLDivElement>(null);
-  const [quietLeft, setQuietLeft] = useState(0);
-  useEffect(() => {
-    const el = textColumn.current;
-    if (!el || !wide) {
-      setQuietLeft(0);
-      return;
-    }
-    const measure = () => setQuietLeft(Math.min(0.7, (el.getBoundingClientRect().right + 24) / window.innerWidth));
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    measure();
-    return () => observer.disconnect();
-  }, [wide]);
+  const lines = story ? storyLog(story, levels) : [];
 
   return (
     <section aria-labelledby="hero-title" className="relative -mt-8 sm:-mt-12">
-      <div className="relative flex flex-col lg:block lg:h-[calc(100svh-56px)] lg:max-h-[940px] lg:min-h-[700px]">
-        <Waterline
-          className="relative order-2 -mx-4 mt-6 h-[42svh] max-h-[420px] min-h-[290px] sm:-mx-6 lg:absolute lg:inset-0 lg:mx-[calc(50%-50vw)] lg:mt-0 lg:h-auto lg:max-h-none lg:min-h-0"
-          health={shown}
-          levels={levels}
-          tone={tone}
-          throwSignal={throwSignal}
-          pingSignal={pingSignal}
-          reduced={reduced}
-          scaleTop={wide ? 0.14 : 0.1}
-          scaleMax={wide ? 4 : 2.4}
-          quietLeft={quietLeft}
-          anchorLabel={wide ? (story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)") : "Reserve"}
-          throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
-          surface={
-            <div className="absolute left-4 -translate-y-full pb-3 sm:left-6 lg:left-auto lg:right-[calc(var(--ladder-r)+var(--ladder-w)+var(--disc-w)+46px)] lg:text-right">
-              <p className="font-readout text-[clamp(52px,6.4vw,104px)] font-light leading-[0.9] tracking-[-0.04em] text-paper tabular-nums">
-                {shown === null ? "—" : formatHealth(shown)}
-              </p>
-              <p className={cx("mt-2 whitespace-nowrap font-readout text-[11px] uppercase tracking-[0.12em]", TONE_TEXT[tone])}>Health · {headline}</p>
-            </div>
-          }
-        />
-
-        <div ref={textColumn} className="relative z-10 order-1 pt-6 sm:pt-10 lg:max-w-[540px] lg:pt-[clamp(40px,7vh,88px)]">
-          <p className="font-readout text-[12px] text-mist-300">Hyperliquid margin protection · funded from any chain</p>
+      <div className="grid grid-cols-1 items-end gap-x-10 gap-y-6 pt-6 sm:pt-10 lg:grid-cols-12 lg:pt-10">
+        <div className="lg:col-span-7">
+          <p className="font-readout text-[12px] text-body">Hyperliquid margin protection · funded from any chain</p>
           <h1
             id="hero-title"
-            className="hero-title mt-5 font-stencil text-[clamp(46px,6.6vw,104px)] font-bold uppercase leading-[0.86] tracking-[-0.01em] text-paper [font-stretch:78%]"
+            data-list={tone === "rescue" || tone === "liquidation" ? "on" : "off"}
+            className="listing mt-4 text-[clamp(52px,7.2vw,108px)] font-extrabold uppercase leading-[0.84] tracking-[-0.015em] text-ink [font-variation-settings:'wdth'_70]"
           >
-            Topped up before liquidation.
+            <span className="kin-line">
+              <span style={{ animationDelay: "40ms" }}>Topped up</span>
+            </span>
+            <span className="kin-line">
+              <span style={{ animationDelay: "130ms" }}>before</span>
+            </span>
+            <span className="kin-line">
+              <span className="riso text-[#ee4b12]" style={{ animationDelay: "220ms" }}>
+                {/* The O is the lifebuoy itself. */}
+                <span aria-hidden>
+                  liquidati
+                  <span className="buoy-o">
+                    <Mark className="size-full" />
+                  </span>
+                  n.
+                </span>
+                <span className="sr-only">liquidation.</span>
+              </span>
+            </span>
           </h1>
         </div>
-
-        <div className="relative z-10 order-3 flex flex-col lg:max-w-[540px]">
-          <p className="order-2 mt-6 max-w-[33rem] text-[16.5px] leading-relaxed text-mist-200 sm:text-[17px] lg:order-1 lg:max-w-[30rem]">
+        <div className="lg:col-span-5 lg:pb-3">
+          <p className="max-w-[34rem] text-[17px] leading-relaxed text-body">
             Lifeline reads your account health every {KEEPER_POLL_INTERVAL_SEC} seconds. Below the line you set, a vault on NEAR sends USDC from your
-            reserve to your perps balance through NEAR Intents. The vault only ever pays your own Hyperliquid address.
+            reserve to your perps balance through NEAR Intents. The vault only ever pays{" "}
+            <span className="pen-under">
+              your own Hyperliquid address
+              <svg viewBox="0 0 300 14" preserveAspectRatio="none" aria-hidden>
+                <path pathLength={1} d="M 3 9 C 60 3, 120 12, 180 6 S 270 4, 297 8" />
+              </svg>
+            </span>
+            .
           </p>
-          <div className="order-1 mt-5 flex flex-col gap-2.5 sm:flex-row sm:gap-3 lg:order-2 lg:mt-8">
+          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:gap-3">
             <ButtonLink href={pageHref("/position", DEMO_USER)} variant="primary" size="lg">
               Watch the live demo
             </ButtonLink>
@@ -168,15 +146,58 @@ export function HeroWater() {
             </ButtonLink>
           </div>
         </div>
+      </div>
 
-        <div className="relative z-10 order-4 pt-8 lg:absolute lg:bottom-0 lg:left-0 lg:max-w-[540px] lg:pb-6 lg:pt-8">{panel}</div>
+      <div className="relative mt-8 sm:mt-10">
+        <Waterline
+          className="relative -mx-4 h-[clamp(380px,54vh,560px)] sm:-mx-6 lg:mx-[calc(50%-50vw)]"
+          health={shown}
+          levels={levels}
+          tone={tone}
+          throwSignal={throwSignal}
+          pingSignal={pingSignal}
+          reduced={reduced}
+          scaleTop={wide ? 0.28 : 0.26}
+          scaleMax={wide ? 3 : 2.4}
+          anchorLabel={wide ? (story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)") : "Reserve"}
+          throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
+          surface={
+            <div className="absolute left-4 -translate-y-full pb-[64px] sm:left-6 lg:left-[max(24px,calc(50vw-552px))]">
+              <p className="font-readout text-[clamp(56px,7vw,112px)] font-light leading-[0.9] tracking-[-0.05em] text-ink tabular-nums">
+                {shown === null ? "—" : formatHealth(shown)}
+              </p>
+              <p className={cx("mt-2 inline-block whitespace-nowrap rounded-sm px-1.5 py-0.5 font-readout text-[11px] uppercase tracking-[0.1em]", TONE_CHIP[tone])}>
+                Health · {headline}
+              </p>
+            </div>
+          }
+        />
+        <div className="relative z-10 -mt-10 ml-3 mr-3 sm:mx-6 lg:-mt-24 lg:ml-0 lg:mr-0 lg:w-[min(470px,42%)]">
+          <LogTicket
+            online={!(health.error && !health.data)}
+            status={status}
+            lines={lines}
+            beat={beat}
+            canReplay={story !== null}
+            onReplay={play}
+          />
+        </div>
       </div>
     </section>
   );
 }
 
+const TONE_CHIP: Record<WaterTone, string> = {
+  safe: "bg-safe text-ink",
+  warn: "bg-sun text-ink",
+  rescue: "bg-rescue text-ink",
+  liquidation: "bg-danger text-paper",
+  none: "bg-shade text-ink",
+  unknown: "bg-sun text-ink",
+};
+
 const TAG_TEXT: Record<LogLine["tag"], string> = {
-  READ: "text-mist-200",
+  READ: "text-sea-light",
   QUOTE: "text-paper",
   POLICY: "text-safe",
   VAULT: "text-rescue",
@@ -186,47 +207,36 @@ const TAG_TEXT: Record<LogLine["tag"], string> = {
 const BEAT_ORDER: Beat["kind"][] = ["warn", "trigger", "throw", "restored"];
 
 /**
- * The status line and the keeper's log of the last rescue. During the replay the lines
- * appear with their beats; they hold their space while hidden, so nothing shifts.
+ * The keeper's log of the last rescue, printed on an ink ticket. During the replay the
+ * lines appear with their beats; they hold their space while hidden, so nothing shifts.
  */
-function InstrumentPanel(props: {
-  online: boolean;
-  status: string;
-  lines: LogLine[];
-  beat: Beat | null;
-  canReplay: boolean;
-  onReplay: () => void;
-}) {
+function LogTicket(props: { online: boolean; status: string; lines: LogLine[]; beat: Beat | null; canReplay: boolean; onReplay: () => void }) {
   const { online, status, lines, beat, canReplay, onReplay } = props;
   const upTo = beat ? BEAT_ORDER.indexOf(beat.kind) : BEAT_ORDER.length;
   return (
-    <div className="font-readout text-[11.5px] text-mist-200">
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="flex items-center gap-2 text-paper">
+    <div className="ticket relative rounded-md bg-ink px-4 pb-4 pt-3.5 font-readout text-[11.5px] text-paper shadow-[0_18px_40px_-22px_rgb(11_21_51/0.7)]">
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="flex items-center gap-2">
           <span className={cx("size-1.5 rounded-full", online ? "bg-safe" : "bg-warn")} aria-hidden />
           {DEMO_USER}
         </span>
-        <span className="rounded-sm border border-sim/50 px-1.5 py-0.5 text-sim">Simulation</span>
-        <span>{status}</span>
+        <span className="rounded-sm bg-sim-ink px-1.5 py-0.5 text-paper">Simulation</span>
         {canReplay ? (
-          <button type="button" onClick={onReplay} className="py-1 text-paper underline decoration-mist-400 underline-offset-4 hover:decoration-rescue">
+          <button type="button" onClick={onReplay} className="ml-auto py-1 text-sun underline decoration-sun/50 underline-offset-4 hover:decoration-sun">
             Replay the last rescue
           </button>
         ) : null}
       </p>
+      <p className="mt-1.5 text-paper/70">{status}</p>
       {lines.length > 0 ? (
-        <ol className="mt-3 space-y-1" aria-label="The keeper's log of the last rescue">
+        <ol className="mt-3 space-y-1 border-t border-dashed border-paper/25 pt-3" aria-label="The keeper's log of the last rescue">
           {lines.map((line, i) => (
             <li
               key={`${line.tag}-${i}`}
-              className={cx(
-                "flex gap-2.5 transition-opacity duration-300",
-                BEAT_ORDER.indexOf(line.beat) <= upTo ? "opacity-100" : "opacity-0",
-                i < 2 && line.tag === "READ" && "log-trim",
-              )}
+              className={cx("flex gap-2.5 transition-opacity duration-300", BEAT_ORDER.indexOf(line.beat) <= upTo ? "opacity-100" : "opacity-0")}
             >
               <span className={cx("w-[68px] shrink-0", TAG_TEXT[line.tag])}>[{line.tag}]</span>
-              <span className="text-mist-100">{line.text}</span>
+              <span className="text-paper">{line.text}</span>
             </li>
           ))}
         </ol>
@@ -234,12 +244,3 @@ function InstrumentPanel(props: {
     </div>
   );
 }
-
-const TONE_TEXT: Record<WaterTone, string> = {
-  safe: "text-safe",
-  warn: "text-warn",
-  rescue: "text-rescue",
-  liquidation: "text-danger",
-  none: "text-mist-300",
-  unknown: "text-warn",
-};

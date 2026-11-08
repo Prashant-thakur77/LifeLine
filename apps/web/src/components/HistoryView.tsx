@@ -42,7 +42,7 @@ function History({ user }: { user: string }) {
         eyebrow="History"
         title={user}
         aside={
-          <Link href={pageHref("/position", user)} className="text-[14px] text-mist-300 hover:text-paper">
+          <Link href={pageHref("/position", user)} className="text-[14px] text-body hover:text-ink">
             ← Back to position
           </Link>
         }
@@ -61,7 +61,7 @@ function History({ user }: { user: string }) {
           <Skeleton className="h-36" />
         </div>
       ) : audit.error && !audit.data ? (
-        <Notice tone="danger" title="Couldn't load the history" action={<button className="text-paper underline" onClick={audit.refresh}>Try again</button>}>
+        <Notice tone="danger" title="Couldn't load the history" action={<button className="text-ink underline" onClick={audit.refresh}>Try again</button>}>
           {audit.error.message}
         </Notice>
       ) : shown.length === 0 ? (
@@ -80,16 +80,16 @@ function History({ user }: { user: string }) {
 function Summary({ events, loading }: { events: LedgerEvent[]; loading: boolean }) {
   const count = (outcome: LedgerEvent["outcome"]) => events.filter((e) => e.outcome === outcome).length;
   const items = [
-    { label: "Rescued", value: count("done"), color: "text-safe" },
-    { label: "Blocked", value: count("blocked"), color: "text-warn" },
-    { label: "Failed", value: count("failed"), color: "text-[#ff8a98]" },
-    { label: "Warnings", value: count("warn"), color: "text-mist-100" },
+    { label: "Rescued", value: count("done"), color: "text-safe-ink" },
+    { label: "Blocked", value: count("blocked"), color: "text-warn-ink" },
+    { label: "Failed", value: count("failed"), color: "text-danger-ink" },
+    { label: "Warnings", value: count("warn"), color: "text-ink" },
   ];
   return (
     <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="rounded-2xl border border-ink-600/70 bg-ink-800/70 px-4 py-3">
-          <dt className="text-[12px] text-mist-400">{item.label}</dt>
+        <div key={item.label} className="rounded-xl border-2 border-ink bg-card px-4 py-3">
+          <dt className="text-[12px] text-muted">{item.label}</dt>
           <dd className={cx("num mt-1 text-[24px]", item.color)}>{loading ? "…" : item.value}</dd>
         </div>
       ))}
@@ -109,11 +109,11 @@ export function FilterBar({ filter, onChange, events }: { filter: LedgerFilter; 
             onClick={() => onChange(f.id)}
             aria-pressed={filter === f.id}
             className={cx(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors",
-              filter === f.id ? "border-rescue/60 bg-rescue/10 text-paper" : "border-ink-500 text-mist-300 hover:border-mist-400 hover:text-paper",
+              "shrink-0 rounded-md border-2 border-ink px-3 py-1.5 text-[13.5px] font-semibold transition-colors",
+              filter === f.id ? "bg-ink text-paper [&_.num]:text-sun" : "bg-card text-ink hover:bg-sun",
             )}
           >
-            {f.label} <span className="num ml-1 text-mist-400">{n}</span>
+            {f.label} <span className="num ml-1 text-muted">{n}</span>
           </button>
         );
       })}
@@ -130,22 +130,22 @@ function OnChainRescues({ user }: { user: string }) {
       <CardHeader
         eyebrow="Straight from the vault contract"
         title="On-chain rescues"
-        action={vault ? <ExternalLink href={nearblocksAccount(vault, config.network)} className="text-[13px] text-mist-300">Vault on NearBlocks</ExternalLink> : null}
+        action={vault ? <ExternalLink href={nearblocksAccount(vault, config.network)} className="text-[13px] text-body">Vault on NearBlocks</ExternalLink> : null}
       />
       <div className="p-5 text-[14px]">
         {!vault ? (
-          <p className="text-mist-300">The vault isn&apos;t deployed yet. Once it is, every rescue it paid out shows here, read from the chain rather than the keeper.</p>
+          <p className="text-body">The vault isn&apos;t deployed yet. Once it is, every rescue it paid out shows here, read from the chain rather than the keeper.</p>
         ) : rescues.loading ? (
           <Skeleton className="h-16" />
         ) : rescues.error ? (
-          <p className="text-[#ff8a98]">{rescues.error.message}</p>
+          <p className="text-danger-ink">{rescues.error.message}</p>
         ) : (rescues.data ?? []).length === 0 ? (
-          <p className="text-mist-300">The vault has paid no rescues for this account.</p>
+          <p className="text-body">The vault has paid no rescues for this account.</p>
         ) : (
           <div className="-mx-2 overflow-x-auto">
             <table className="w-full min-w-[520px] text-left">
               <thead>
-                <tr className="text-[12px] uppercase tracking-[0.08em] text-mist-400">
+                <tr className="text-[12px] uppercase tracking-[0.08em] text-muted">
                   <th className="px-2 py-2 font-medium">When</th>
                   <th className="px-2 py-2 text-right font-medium">Amount</th>
                   <th className="px-2 py-2 font-medium">To</th>
@@ -157,15 +157,15 @@ function OnChainRescues({ user }: { user: string }) {
                   const meta = tokenMeta(r.token, config.usdcContractId);
                   const at = nsToIso(r.at);
                   return (
-                    <tr key={`${r.quote_id}-${r.at}`} className="border-t border-ink-600/60">
-                      <td className="px-2 py-2.5 text-mist-200">{at ? new Date(at).toLocaleString() : "—"}</td>
-                      <td className="num px-2 py-2.5 text-right text-paper">
+                    <tr key={`${r.quote_id}-${r.at}`} className="border-t-2 border-ink/10">
+                      <td className="px-2 py-2.5 text-ink-2">{at ? new Date(at).toLocaleString() : "—"}</td>
+                      <td className="num px-2 py-2.5 text-right text-ink">
                         {formatUnits(r.amount, meta.decimals)} {meta.symbol}
                         {r.refunded ? <Badge tone="warn" className="ml-2">Refunded</Badge> : null}
                       </td>
-                      <td className="num px-2 py-2.5 text-mist-200">{shortMiddle(r.recipient)}</td>
+                      <td className="num px-2 py-2.5 text-ink-2">{shortMiddle(r.recipient)}</td>
                       <td className="num px-2 py-2.5">
-                        <ExternalLink href={intentsExplorer(r.deposit_address)} className="text-mist-200">
+                        <ExternalLink href={intentsExplorer(r.deposit_address)} className="text-ink-2">
                           {shortMiddle(r.deposit_address, 8, 6)}
                         </ExternalLink>
                       </td>

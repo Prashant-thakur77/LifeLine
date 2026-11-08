@@ -32,19 +32,30 @@ export function useIsSimulation(user: string | null): { simulation: boolean; kee
 
 export function SimBanner({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="mb-6 flex items-start gap-3 rounded-xl border border-sim/35 bg-sim/[0.07] px-4 py-3 text-[14px] leading-relaxed text-mist-200">
-      <Badge tone="sim" className="mt-0.5">Simulation</Badge>
-      <p className="min-w-0">
-        {compact ? (
-          "Simulated data from the always-on sim keeper."
-        ) : (
-          <>
-            You&apos;re watching <span className="font-medium text-paper">{DEMO_USER}</span> on the always-on sim keeper. The ETH price and the 1Click quotes are
-            live; the position, the reserve and the rescues are pretend, so nothing here moves money or appears on an explorer. About every 15 minutes the
-            price drops below the trigger and the keeper rescues it.
-          </>
-        )}
-      </p>
+    <div className="mb-6 rounded-lg border-2 border-ink bg-[#ece6ff] px-4 py-2.5 text-[14px] leading-relaxed text-ink-2">
+      {compact ? (
+        <p className="flex items-center gap-3">
+          <Badge tone="sim">Simulation</Badge>
+          Simulated data from the always-on sim keeper.
+        </p>
+      ) : (
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
+            <Badge tone="sim">Simulation</Badge>
+            <span className="min-w-0 flex-1">
+              You&apos;re watching <span className="font-semibold text-ink">{DEMO_USER}</span>, a pretend account.
+            </span>
+            <span className="shrink-0 text-[13px] font-semibold text-ink underline decoration-rescue decoration-2 underline-offset-4">
+              <span className="group-open:hidden">What&apos;s simulated?</span>
+              <span className="hidden group-open:inline">Hide</span>
+            </span>
+          </summary>
+          <p className="mt-2 border-t-2 border-dashed border-ink/15 pt-2">
+            The ETH price and the 1Click quotes are live; the position, the reserve and the rescues are pretend, so nothing here moves money or appears on an
+            explorer. About every 15 minutes the price drops below the trigger and the keeper rescues it.
+          </p>
+        </details>
+      )}
     </div>
   );
 }
@@ -61,8 +72,8 @@ export function AccountChooser({ path, purpose }: { path: string; purpose: strin
       <Card className="relative overflow-hidden p-6">
         <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-sim/10 blur-3xl" aria-hidden />
         <Badge tone="sim">No wallet needed</Badge>
-        <h2 className="mt-4 font-display text-[24px] leading-tight text-paper">Watch the live demo</h2>
-        <p className="mt-2 text-[14.5px] leading-relaxed text-mist-300">
+        <h2 className="mt-4 text-[22px] font-bold leading-snug text-ink">Watch the live demo</h2>
+        <p className="mt-2 text-[14.5px] leading-relaxed text-body">
           {DEMO_USER} runs on the sim keeper around the clock: a live ETH price, a position that drifts toward liquidation, and a rescue every
           quarter hour.
         </p>
@@ -71,8 +82,8 @@ export function AccountChooser({ path, purpose }: { path: string; purpose: strin
         </ButtonLink>
       </Card>
       <Card className="p-6">
-        <h2 className="font-display text-[22px] leading-tight text-paper">Or use your own account</h2>
-        <p className="mt-2 text-[14.5px] leading-relaxed text-mist-300">{purpose}</p>
+        <h2 className="text-[20px] font-bold leading-snug text-ink">Or use your own account</h2>
+        <p className="mt-2 text-[14.5px] leading-relaxed text-body">{purpose}</p>
         {accountId ? null : (
           <Button
             variant="secondary"

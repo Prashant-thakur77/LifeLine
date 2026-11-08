@@ -8,6 +8,7 @@ import { config } from "../lib/env";
 import { keeper } from "../lib/keeper";
 import { groupRecords, matchesFilter, type LedgerFilter } from "../lib/records";
 import { EventList } from "./EventList";
+import { RefusalReceipt } from "./RefusalReceipt";
 import { FilterBar } from "./HistoryView";
 import { SimBanner } from "./Viewing";
 import { Notice, PageHeader, Skeleton, cx } from "./ui";
@@ -29,17 +30,17 @@ export function LedgerView() {
 
   return (
     <>
-      {simulation ? <SimBanner compact /> : null}
+      {simulation ? <SimBanner compact /> : info.loading && !separateSim ? <div className="mb-6 h-[49px]" aria-hidden /> : null}
       <PageHeader
         eyebrow="Public ledger"
         title="Every rescue and every refusal"
         aside={
           separateSim ? (
-            <div className="inline-flex rounded-xl border border-ink-500 bg-ink-850 p-1 text-[13px] font-medium" role="group" aria-label="Keeper">
-              <Link href="/ledger" className={cx("rounded-lg px-3 py-1.5", !wantsSim ? "bg-ink-700 text-paper" : "text-mist-300 hover:text-paper")}>
+            <div className="inline-flex rounded-lg border-2 border-ink bg-card p-1 text-[13px] font-medium" role="group" aria-label="Keeper">
+              <Link href="/ledger" className={cx("rounded-lg px-3 py-1.5", !wantsSim ? "bg-shade text-ink" : "text-body hover:text-ink")}>
                 Live keeper
               </Link>
-              <Link href="/ledger?source=sim" className={cx("rounded-lg px-3 py-1.5", wantsSim ? "bg-ink-700 text-paper" : "text-mist-300 hover:text-paper")}>
+              <Link href="/ledger?source=sim" className={cx("rounded-lg px-3 py-1.5", wantsSim ? "bg-shade text-ink" : "text-body hover:text-ink")}>
                 Simulation
               </Link>
             </div>
@@ -50,13 +51,33 @@ export function LedgerView() {
         Anyone can check it. Nothing in it can be changed afterwards.
       </PageHeader>
 
-      {ledger.data ? (
-        <p className="mb-4 text-[13px] text-mist-400">
-          {events.length} events across {users} {users === 1 ? "account" : "accounts"}, from the latest 200 records. Refreshes every 15 s.
-        </p>
-      ) : null}
+
+      <section aria-labelledby="pinned-title" className="mb-8 grid grid-cols-1 items-start gap-5 rounded-xl border-2 border-ink bg-sea p-5 text-paper sm:p-6 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <p className="font-readout text-[11px] uppercase tracking-[0.1em] text-paper">Pinned · on chain</p>
+          <h2 id="pinned-title" className="mt-2 text-[clamp(26px,3vw,38px)] font-extrabold uppercase leading-[0.92] [font-variation-settings:'wdth'_72]">
+            The vault refusing a hacked keeper
+          </h2>
+          <p className="mt-3 text-[14.5px] leading-relaxed text-paper/90">
+            The keeper&apos;s own restricted key called rescue with the user&apos;s real address and a correctly signed quote, but pointed the money at itself. The
+            contract refused. On testnet the vault trusts a team key in place of 1Click&apos;s, because 1Click has no testnet; <code className="font-readout text-[12.5px]">pnpm demo:attack</code> re-checks this
+            transaction on a public node.
+          </p>
+        </div>
+        <RefusalReceipt className="lg:col-span-7" />
+      </section>
 
       <FilterBar filter={filter} onChange={setFilter} events={events} />
+
+      <p className="mb-4 min-h-[20px] text-[13px] text-muted">
+        {ledger.data ? (
+          <>
+          {events.length} events across {users} {users === 1 ? "account" : "accounts"}, from the latest 200 records. Refreshes every 15 s.
+          </>
+        ) : (
+          "Loading the ledger…"
+        )}
+      </p>
 
       {ledger.loading ? (
         <div className="space-y-3">
@@ -65,7 +86,7 @@ export function LedgerView() {
           <Skeleton className="h-36" />
         </div>
       ) : ledger.error && !ledger.data ? (
-        <Notice tone="danger" title="Couldn't load the ledger" action={<button className="text-paper underline" onClick={ledger.refresh}>Try again</button>}>
+        <Notice tone="danger" title="Couldn't load the ledger" action={<button className="text-ink underline" onClick={ledger.refresh}>Try again</button>}>
           {ledger.error.message}
         </Notice>
       ) : shown.length === 0 ? (

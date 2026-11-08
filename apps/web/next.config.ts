@@ -5,7 +5,7 @@ import type { NextConfig } from "next";
 // an account read it from the query string (?user=…) instead of a dynamic route.
 const config: NextConfig = {
   output: "export",
-  transpilePackages: ["@lifeline/shared"],
+  transpilePackages: ["@lifeline/shared", "@lifeline/hyperliquid"],
   images: { unoptimized: true },
   // `pnpm typecheck` runs tsc on this package with the repo's TypeScript, so the build
   // doesn't type-check a second time.
