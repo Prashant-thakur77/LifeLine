@@ -1,6 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pollDelay } from "../lib/poll";
+
+/** When someone last used the page. Polls slow down after 10 idle minutes, and catch up on the next touch. */
+let lastActivity = Date.now();
+const idleListeners = new Set<() => void>();
+if (typeof window !== "undefined") {
+  const wake = () => {
+    const wasIdle = pollDelay(1, Date.now() - lastActivity) !== 1;
+    lastActivity = Date.now();
+    if (wasIdle) for (const listener of idleListeners) listener();
+  };
+  for (const event of ["pointerdown", "pointermove", "keydown", "scroll", "touchstart", "focus"]) {
+    window.addEventListener(event, wake, { passive: true });
+  }
+}
 
 export type PollState<T> = {
   data: T | undefined;
@@ -20,7 +35,8 @@ const empty = <T,>(key: string | null): Stored<T> => ({ key, data: undefined, er
 /**
  * Fetches when `key` changes, then every `intervalMs` (null fetches once). A failed
  * fetch keeps the last good data, so the page can say "this is old" instead of going
- * blank. Polling waits while the tab is hidden and catches up when it comes back.
+ * blank. Polling waits while the tab is hidden and catches up when it comes back, and
+ * slows to once a minute after 10 minutes with nobody using the page.
  *
  * Data is stored with the key it was fetched for, and only returned for that key: on
  * the render where the key changes (say, a different account), the old account's data
@@ -48,7 +64,7 @@ export function usePoll<T>(key: string | null, fetcher: () => Promise<T>, interv
     const schedule = () => {
       if (cancelled || intervalMs === null) return;
       clearTimeout(timer);
-      timer = setTimeout(tick, intervalMs);
+      timer = setTimeout(tick, pollDelay(intervalMs, Date.now() - lastActivity));
     };
 
     const tick = async () => {
@@ -83,10 +99,13 @@ export function usePoll<T>(key: string | null, fetcher: () => Promise<T>, interv
     tickRef.current = () => void tick();
     void tick();
     document.addEventListener("visibilitychange", onVisible);
+    const onWake = () => void tick();
+    idleListeners.add(onWake);
     return () => {
       cancelled = true;
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      idleListeners.delete(onWake);
     };
   }, [key, intervalMs]);
 
