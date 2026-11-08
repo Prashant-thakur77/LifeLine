@@ -705,6 +705,18 @@ describe("when the rescue goes wrong", () => {
     expect(w.sent).toHaveLength(1);
   });
 
+  it("still rescues if recording a warning fails, like when a storage quota runs out", async () => {
+    const { w, step, store } = makeWorld();
+    w.accountValue = TRIGGER_VALUE;
+    const latest = store.latest.bind(store);
+    store.latest = (user, kind) => {
+      if (kind === "WARN") throw new Error("rows read limit exceeded");
+      return latest(user, kind);
+    };
+    await step();
+    expect(w.sent).toHaveLength(1);
+  });
+
   it("stores a real number when the position closes mid-rescue", async () => {
     const world = makeWorld();
     world.w.accountValue = TRIGGER_VALUE;

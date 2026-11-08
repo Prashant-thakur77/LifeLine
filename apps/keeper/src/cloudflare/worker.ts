@@ -1,3 +1,4 @@
+import { serveWithEdgeCache } from "./edge-cache";
 import { KeeperObject, type Env } from "./keeper-object";
 
 export { KeeperObject };
@@ -6,8 +7,14 @@ export { KeeperObject };
 const keeper = (env: Env) => env.KEEPER.get(env.KEEPER.idFromName("keeper"));
 
 export default {
-  fetch: (request, env) => keeper(env).fetch(request),
-  // The alarm keeps itself going. This wakes the object after a deploy, and re-arms it if the loop ever stops.
+  fetch: (request, env, ctx) =>
+    serveWithEdgeCache(request, {
+      cache: caches.default,
+      upstream: () => keeper(env).fetch(request),
+      waitUntil: (work) => ctx.waitUntil(work),
+    }),
+  // The alarm keeps itself going. This wakes the object after a deploy, re-arms an alarm
+  // that's stuck, and retries a start that failed for a passing reason.
   scheduled: async (_controller, env) => {
     await keeper(env).ensureRunning();
   },

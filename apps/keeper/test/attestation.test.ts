@@ -685,4 +685,22 @@ describe("AttestationMonitor on a host that ticks, like a Durable Object", () =>
     await t.monitor.refreshIfDue(6 * HOUR);
     expect(t.monitor.latest().status).toBe("not available");
   });
+
+  it("starts from a saved result and schedule, so a restart doesn't check again early", async () => {
+    const t = counting(async () => verified);
+    t.monitor.restore({ result: verified, nextCheckAt: 6 * HOUR });
+    expect(t.monitor.latest().status).toBe("verified");
+    await t.monitor.refreshIfDue(6 * HOUR - 1);
+    expect(t.checks()).toBe(0);
+    await t.monitor.refreshIfDue(6 * HOUR);
+    expect(t.checks()).toBe(1);
+  });
+
+  it("reports each finished check and its next time, so the host can save them", async () => {
+    const saved: unknown[] = [];
+    const monitor = new AttestationMonitor(async () => verified, { sleep: async () => {}, onChecked: (state) => saved.push(state) });
+    await monitor.refreshIfDue(1_000);
+    expect(saved).toEqual([{ result: verified, nextCheckAt: 1_000 + 6 * HOUR }]);
+  });
 });
+

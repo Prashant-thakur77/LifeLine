@@ -6,6 +6,8 @@
 //
 // The top level is the real keeper. It needs its secrets set first (see README), and
 // mainnet still needs KEEPER_ALLOW_MAINNET=yes, so deploying it unset only serves a 503.
+// Give each deployment its own Telegram bot: Telegram keeps one webhook per bot, so two
+// deployments sharing a token would take it from each other.
 {
   "name": "lifeline-keeper",
   "main": "src/cloudflare/worker.ts",

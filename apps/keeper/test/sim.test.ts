@@ -246,4 +246,61 @@ describe("the hosted sim loop", () => {
     expect(t.seen.length).toBeGreaterThan(0);
     expect(t.seen.every((params) => params.dry === true)).toBe(true);
   });
+
+  it("asks to sleep between drops: ticks until the rescue is done and shown for a minute, then not until the rest is over", async () => {
+    let nowMs = AT_MS;
+    const store = openStore(":memory:");
+    const loop = createSimLoop({
+      store,
+      quotes: fakeQuotes([], () => new Date(nowMs)),
+      now: () => new Date(nowMs),
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+      restMs: REST_MS,
+    });
+    expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS);
+    let lastStepAt = 0;
+    for (let i = 0; i < PRICE_DROP.length; i += 1) {
+      await loop.tick();
+      await loop.settled();
+      expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS);
+      lastStepAt = nowMs;
+      nowMs += TICK_MS;
+    }
+    // The rescue was done by the drop's last step, so the minute and the rest run from there.
+    nowMs = lastStepAt + 59_000;
+    await loop.tick();
+    expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS); // still showing the rescued health
+    nowMs = lastStepAt + 60_000;
+    await loop.tick();
+    expect(loop.nextTickInMs(TICK_MS)).toBe(REST_MS - 60_000); // asleep until the rest is over
+  });
+
+  it("ignores a tick that arrives while the last one is still running, so the script can't skip ahead", async () => {
+    let release: (price: number) => void = () => {};
+    let priceCalls = 0;
+    const store = openStore(":memory:");
+    const loop = createSimLoop({
+      store,
+      quotes: fakeQuotes(),
+      now: () => new Date(AT_MS),
+      sleep: async () => {},
+      log: () => {},
+      restMs: REST_MS,
+      startPrice: () => {
+        priceCalls += 1;
+        return new Promise((resolve) => (release = resolve));
+      },
+    });
+    const first = loop.tick();
+    await loop.tick(); // arrives while the first is still waiting for the price
+    release(3000);
+    await first;
+    expect(priceCalls).toBe(1);
+    expect(store.health(SIM_USER)?.snapshot?.health).toBeCloseTo(5, 1); // the script's first step, not its second
+  });
 });
+

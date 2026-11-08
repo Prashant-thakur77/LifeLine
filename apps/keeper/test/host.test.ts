@@ -14,6 +14,7 @@ import { HL, policy, rescueRequest, snapshot, USER } from "./helpers";
 
 const T0 = Date.parse("2026-11-08T15:00:00.000Z");
 const TICK_MS = 5_000;
+const ALARM_MS = 60_000; // one alarm a minute, with a tick every 5 s inside it
 const SECRET_KEY = "ed25519:5SECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET";
 
 const BOT_INFO = {
@@ -98,7 +99,10 @@ function setup(env: Record<string, string>, options: { seams?: (now: () => numbe
   };
   const request = (path: string, init?: RequestInit) => host.fetch(new Request(`https://keeper.test${path}`, init));
   const json = async <T>(path: string) => (await (await request(path)).json()) as T;
-  return { host, storage, logs, alarms, request, json, clock };
+  const jumpTo = (ms: number) => {
+    nowMs = ms;
+  };
+  return { host, storage, logs, alarms, request, json, clock, jumpTo };
 }
 
 const SIM = { KEEPER_MODE: "sim" };
@@ -156,7 +160,7 @@ describe("starting the hosted keeper", () => {
     expect(t.storage.alarmAt()).toBeNull();
   });
 
-  it("arms its alarm 5 s out, and keeps one already set", async () => {
+  it("arms its alarm 5 s out, and keeps one that's due", async () => {
     const t = setup(SIM);
     await t.host.start();
     expect(t.storage.alarmAt()).toBe(T0 + TICK_MS);
@@ -169,28 +173,118 @@ describe("starting the hosted keeper", () => {
     expect(storage.alarmAt()).toBe(T0 + 999);
   });
 
-  it("says what's running at /", async () => {
-    const t = setup(SIM);
+  it("re-arms an alarm that's long overdue, so a stuck one can't leave the keeper dead", async () => {
+    for (const wake of ["start", "ensureRunning"] as const) {
+      const storage = fakeStorage();
+      const t = setup(SIM, { storage });
+      if (wake === "ensureRunning") await t.host.start();
+      await storage.setAlarm(T0 - 10 * 60_000);
+      await t.host[wake]();
+      expect(storage.alarmAt()).toBe(T0 + TICK_MS);
+    }
+  });
+
+  it("keeps starting when picking up old work fails, and still arms its alarm", async () => {
+    const storage = fakeStorage();
+    const exec = storage.sql.exec.bind(storage.sql);
+    storage.sql.exec = (query, ...bindings) => {
+      if (query.includes("'RESCUE_ALLOWED' AND NOT EXISTS")) throw new Error("rows read limit exceeded");
+      return exec(query, ...bindings);
+    };
+    const t = setup(LIVE, { storage, seams: () => ({ vault: fakeVault(), readHealth: healthy }) });
     await t.host.start();
-    expect(await t.json("/")).toMatchObject({ service: "lifeline-keeper", mode: "sim" });
+    expect(t.storage.alarmAt()).toBe(T0 + TICK_MS);
+    expect((await t.request("/api/stats")).status).toBe(200);
+    expect(t.logs.join("\n")).toMatch(/rows read limit exceeded/);
+  });
+
+  it("tries starting again on the next cron when it failed for a reason other than its settings", async () => {
+    const storage = fakeStorage();
+    const exec = storage.sql.exec.bind(storage.sql);
+    let failing = true;
+    storage.sql.exec = (query, ...bindings) => {
+      if (failing && query.includes("CREATE TABLE")) throw new Error("rows written limit exceeded");
+      return exec(query, ...bindings);
+    };
+    const t = setup(SIM, { storage });
+    await t.host.start();
+    expect((await t.request("/api/stats")).status).toBe(503);
+    expect(storage.alarmAt()).toBeNull();
+    failing = false; // midnight UTC: the quota is back
+    await t.host.ensureRunning();
+    expect((await t.request("/api/stats")).status).toBe(200);
+    expect(storage.alarmAt()).toBe(T0 + TICK_MS);
+  });
+
+  it("answers a library's error with a fixed message, never its text", async () => {
+    const t = setup({ ...LIVE, KEEPER_PRIVATE_KEY: "ed25519:0OIl0OIl" });
+    await t.host.start();
+    const response = await t.request("/api/stats");
+    expect(response.status).toBe(503);
+    const body = await response.text();
+    expect(body).toMatch(/couldn't start/);
+    expect(body).not.toMatch(/0OIl|letter/i);
+  });
+
+  it("says what's running at /, and when it last ticked", async () => {
+    const t = setup({ ...SIM, KEEPER_VERSION: "abc1234" });
+    await t.host.start();
+    expect(await t.json("/")).toMatchObject({ service: "lifeline-keeper", mode: "sim", version: "abc1234", lastTickAt: null });
+    await t.alarms();
+    const info = await t.json<{ lastTickAt: string; nextAlarmAt: string }>("/");
+    expect(Date.parse(info.lastTickAt)).toBeGreaterThan(T0);
+    expect(Date.parse(info.nextAlarmAt)).toBe(t.storage.alarmAt());
   });
 });
 
 describe("each alarm", () => {
-  it("arms the next one before doing anything, so a hung tick can't stop the keeper", async () => {
-    const t = setup(LIVE, { seams: () => ({ vault: fakeVault({ getPolicy: () => new Promise(() => {}) }), readHealth: healthy }) });
+  it("runs a tick every 5 s, twelve to an alarm, and sets the next alarm a minute on", async () => {
+    let reads = 0;
+    const t = setup(LIVE, {
+      seams: () => ({
+        vault: fakeVault({
+          getPolicy: async (user) => {
+            reads += 1;
+            return policy({ user, hlAddress: HL });
+          },
+        }),
+        readHealth: healthy,
+      }),
+    });
     await t.host.start();
-    await t.storage.setAlarm(-1); // the alarm has fired: that's why alarm() is running
-    void t.host.alarm();
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(t.storage.alarmAt()).toBe(T0 + TICK_MS);
+    await t.alarms();
+    expect(reads).toBe(ALARM_MS / TICK_MS);
+    expect(t.storage.alarmAt()).toBe(T0 + ALARM_MS);
   });
 
-  it("keeps the keeper going after a tick that fails", async () => {
+  it("doesn't wait for a tick that hangs, so one stuck user can't hold up the others or the next alarm", async () => {
+    let bobReads = 0;
+    const t = setup(
+      { ...LIVE, KEEPER_USERS: `${LIVE_USER},bob.testnet` },
+      {
+        seams: () => ({
+          vault: fakeVault({
+            getPolicy: (user) => {
+              if (user === LIVE_USER) return new Promise(() => {});
+              bobReads += 1;
+              return Promise.resolve(policy({ user, hlAddress: HL }));
+            },
+          }),
+          readHealth: healthy,
+        }),
+      },
+    );
+    await t.host.start();
+    await t.host.alarm(); // resolves although alice's read never does
+    expect(bobReads).toBe(ALARM_MS / TICK_MS);
+    expect(t.storage.alarmAt()).toBe(T0 + ALARM_MS);
+  });
+
+  it("keeps the keeper going after ticks that fail", async () => {
     const t = setup(LIVE, { seams: () => ({ vault: fakeVault({ getPolicy: async () => Promise.reject(new Error("rpc down")) }), readHealth: healthy }) });
     await t.host.start();
     await t.alarms(2);
-    expect(t.storage.alarmAt()).toBe(T0 + 2 * TICK_MS);
+    expect(t.storage.alarmAt()).toBe(T0 + 2 * ALARM_MS);
   });
 });
 
@@ -198,18 +292,29 @@ describe("sim mode", () => {
   it("runs the demo: one rescue per drop, which the API shows", async () => {
     const t = setup(SIM);
     await t.host.start();
-    await t.alarms(PRICE_DROP.length + 5);
+    await t.alarms(2);
     expect((await t.json<StatsResponse>("/api/stats")).totalRescues).toBe(1);
     expect((await t.request(`/api/health/${SIM_USER}`)).status).toBe(200);
     const ledger = await t.json<AuditRecord[]>(`/api/audit?user=${SIM_USER}`);
     expect(ledger.find((r) => r.kind === "RESCUE_DONE")?.explanation).toBeTruthy();
   });
 
+  it("lets the object sleep between drops, with its alarm set for the end of the rest", async () => {
+    const t = setup(SIM);
+    await t.host.start();
+    await t.alarms(3); // the drop, then a minute showing the rescued health
+    expect((t.storage.alarmAt() ?? 0) - t.clock()).toBeGreaterThan(10 * 60_000);
+    const restEndsAt = t.storage.alarmAt() ?? 0;
+    t.jumpTo(restEndsAt);
+    await t.alarms(); // the alarm at the end of the rest starts the next drop, ticking again
+    expect(t.storage.alarmAt()).toBe(restEndsAt + ALARM_MS);
+  });
+
   it("keeps the ledger in the object's own storage, so a restart or a deploy loses nothing", async () => {
     const storage = fakeStorage();
     const first = setup(SIM, { storage });
     await first.host.start();
-    await first.alarms(PRICE_DROP.length + 5);
+    await first.alarms(2);
     const before = await first.json<AuditRecord[]>("/api/ledger");
 
     const second = setup(SIM, { storage });
@@ -260,6 +365,28 @@ describe("live mode", () => {
 });
 
 describe("attestation", () => {
+  it("keeps the latest check across a restart, and doesn't check again early", async () => {
+    const storage = fakeStorage();
+    const first = setup(SIM, { storage, seams: () => ({ checkAttestation: async () => fixtures.attestation }) });
+    await first.host.start();
+    await first.host.settled();
+
+    let checks = 0;
+    const second = setup(SIM, {
+      storage,
+      seams: () => ({
+        checkAttestation: async () => {
+          checks += 1;
+          return NOT_AVAILABLE_ATTESTATION;
+        },
+      }),
+    });
+    await second.host.start();
+    await second.host.settled();
+    expect(await second.json("/api/attestation")).toEqual(fixtures.attestation);
+    expect(checks).toBe(0);
+  });
+
   it("serves the latest check", async () => {
     const result: AttestationResponse = fixtures.attestation;
     const t = setup(SIM, { seams: () => ({ checkAttestation: async () => result }) });

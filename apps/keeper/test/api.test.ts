@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import type { AuditResponse, HealthResponse, StatsResponse, TelegramLinkResponse } from "@lifeline/shared";
 import { fixtures } from "@lifeline/shared/fixtures";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { handleApi, NOT_AVAILABLE_ATTESTATION, type ApiDeps } from "../src/api";
+import { createLinkLimiter, handleApi, NOT_AVAILABLE_ATTESTATION, type ApiDeps } from "../src/api";
 import { createApi } from "../src/api-node";
 import { openStore } from "../src/sql-node";
 import type { Store } from "../src/store";
@@ -198,6 +198,25 @@ describe.each(TRANSPORTS)("the API through %s", (_transport, makeTransport) => {
 
     it("refuses an oversized body", async () => {
       expect((await post("/api/telegram/link", `{"user":"${"a".repeat(5000)}"}`)).status).toBe(413);
+    });
+
+    it("limits codes to 5 per account every 10 minutes, so nobody can burn the storage quota", async () => {
+      let nowMs = Date.parse(AT);
+      await start({ now: () => new Date(nowMs), allowLink: createLinkLimiter() });
+      for (let i = 0; i < 5; i += 1) expect((await post("/api/telegram/link", JSON.stringify({ user: USER }))).status).toBe(200);
+      const refused = await post("/api/telegram/link", JSON.stringify({ user: USER }));
+      expect(refused.status).toBe(429);
+      expect(((await refused.json()) as { error: string }).error).toMatch(/try again/i);
+      nowMs += 10 * 60_000;
+      expect((await post("/api/telegram/link", JSON.stringify({ user: USER }))).status).toBe(200);
+    });
+
+    it("limits codes to 30 a minute across all accounts", async () => {
+      const limiter = createLinkLimiter();
+      const now = Date.parse(AT);
+      for (let i = 0; i < 30; i += 1) expect(limiter(`user${i}.near`, now)).toBe(true);
+      expect(limiter("user99.near", now)).toBe(false);
+      expect(limiter("user99.near", now + 60_000)).toBe(true);
     });
 
     it("is a 503 when no bot is set up", async () => {

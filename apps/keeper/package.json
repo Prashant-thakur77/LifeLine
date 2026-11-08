@@ -13,9 +13,9 @@
     "sim": "tsx src/main.ts --sim",
     "live": "tsx src/main.ts --live",
     "attest": "tsx src/attest.ts",
-    "cf:dev": "wrangler dev --env sim",
-    "cf:deploy:sim": "wrangler deploy --env sim",
-    "cf:deploy": "wrangler deploy"
+    "cf:dev": "pnpm dlx wrangler@4.158.0 dev --env sim",
+    "cf:deploy:sim": "pnpm dlx wrangler@4.158.0 deploy --env sim --var KEEPER_VERSION:$(git rev-parse --short HEAD)",
+    "cf:deploy": "pnpm dlx wrangler@4.158.0 deploy --var KEEPER_VERSION:$(git rev-parse --short HEAD)"
   },
   "dependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",

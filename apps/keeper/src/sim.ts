@@ -150,14 +150,21 @@ export async function runSim(options: {
   return { sent: world.sent, reserveBefore, reserveAfter: world.reserve() };
 }
 
+const SHOW_RESCUED_MS = 60_000; // after a rescue, keep reading for a minute so the API shows the new health
+
 export type SimLoop = {
   /** One alarm's worth: moves the script on a step, or holds, then runs one keeper tick. */
   tick(): Promise<void>;
+  /**
+   * When the next tick is needed. Between drops nothing changes, so the host can sleep
+   * until the rest is over: an always-awake Durable Object costs duration all day.
+   */
+  nextTickInMs(tickMs: number): number;
   /** Resolves once the current drop's rescue, if any, has finished. */
   settled(): Promise<void>;
 };
 
-type Cycle = { world: SimWorld; keeper: Keeper; scale: number; step: number; heldSince: number | null; done: boolean };
+type Cycle = { world: SimWorld; keeper: Keeper; scale: number; step: number; doneAt: number | null };
 
 /**
  * The scripted drop on repeat, for a hosted demo. Each tick moves the price one step;
@@ -179,6 +186,7 @@ export function createSimLoop(options: {
 }): SimLoop {
   const { store, quotes, now, sleep, log, restMs, startPrice, onRecord } = options;
   let cycle: Cycle | null = null;
+  let busy = false;
 
   const begin = async (): Promise<Cycle> => {
     let entry = BASE_PRICE;
@@ -202,27 +210,38 @@ export function createSimLoop(options: {
       log,
       ...(onRecord ? { onRecord } : {}),
     });
-    return { world, keeper, scale: entry / BASE_PRICE, step: 0, heldSince: null, done: false };
+    return { world, keeper, scale: entry / BASE_PRICE, step: 0, doneAt: null };
   };
 
   return {
     async tick() {
-      const rested = cycle !== null && cycle.done && cycle.heldSince !== null && now().getTime() - cycle.heldSince >= restMs;
-      if (cycle === null || rested) cycle = await begin();
-      const current = cycle;
-      const scripted = PRICE_DROP[current.step];
-      if (scripted !== undefined) {
-        current.world.setPrice(scripted * current.scale);
-        current.step += 1;
-        if (current.step === PRICE_DROP.length) {
-          current.heldSince = now().getTime();
-          // The rest only counts once this drop's rescue has finished.
-          void current.keeper.settled().then(() => {
-            current.done = true;
-          });
+      // The host doesn't wait for a tick, so one can arrive before the last has finished.
+      if (busy) return;
+      busy = true;
+      try {
+        const rested = cycle !== null && cycle.doneAt !== null && now().getTime() - cycle.doneAt >= restMs;
+        if (cycle === null || rested) cycle = await begin();
+        const current = cycle;
+        const scripted = PRICE_DROP[current.step];
+        if (scripted !== undefined) {
+          current.world.setPrice(scripted * current.scale);
+          current.step += 1;
+          if (current.step === PRICE_DROP.length) {
+            // The rest only counts once this drop's rescue has finished.
+            void current.keeper.settled().then(() => {
+              current.doneAt = now().getTime();
+            });
+          }
         }
+        await current.keeper.tick();
+      } finally {
+        busy = false;
       }
-      await current.keeper.tick();
+    },
+    nextTickInMs(tickMs) {
+      if (cycle === null || cycle.doneAt === null) return tickMs;
+      const sinceDone = now().getTime() - cycle.doneAt;
+      return sinceDone < SHOW_RESCUED_MS ? tickMs : Math.max(tickMs, restMs - sinceDone);
     },
     settled: () => cycle?.keeper.settled() ?? Promise.resolve(),
   };

@@ -188,3 +188,27 @@ describe("the quote signature check", () => {
     expect(isSignedBy1Click({} as never)).toBe(false);
   });
 });
+
+describe("a signed quote that doesn't answer what was asked", () => {
+  it("refuses a signed dry quote served for a live request, even with a deposit address added", async () => {
+    // A dry quote's signature leaves out the deposit address and fee, so this would otherwise pass.
+    const replayed = { ...structuredClone(dry), quote: { ...structuredClone(dry).quote, depositAddress: "attacker.near", withdrawFee: "1" } };
+    const { oneClick } = client(() => json(replayed));
+    await expect(oneClick.getQuote({ ...params, dry: false })).rejects.toThrow(/dry/);
+  });
+
+  it("refuses a live quote served for a dry request", async () => {
+    const { oneClick } = client(() => json(real));
+    await expect(oneClick.getQuote({ ...params, dry: true })).rejects.toThrow(/dry/);
+  });
+
+  it.each([
+    ["amount", { amount: "9000000" }],
+    ["recipient", { recipient: "0x2222222222222222222222222222222222222222" }],
+    ["refundTo", { refundTo: "someone-else.near" }],
+  ])("refuses a genuine quote for a different %s", async (field, changed) => {
+    const { oneClick } = client(() => json(real));
+    await expect(oneClick.getQuote({ ...params, ...changed, dry: false })).rejects.toThrow(new RegExp(field));
+  });
+});
+

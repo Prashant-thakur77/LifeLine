@@ -198,6 +198,33 @@ describe.each(DRIVERS)("the store on %s", (_driver, open) => {
     });
   });
 
+  describe("saved state", () => {
+    it("keeps small state across a restart, and has nothing for a key never saved", () => {
+      expect(store.loadState("attestation")).toBeNull();
+      store.saveState("attestation", { nextCheckAt: 5 });
+      store.saveState("attestation", { nextCheckAt: 6 });
+      expect(new Store(store.db).loadState("attestation")).toEqual({ nextCheckAt: 6 });
+    });
+  });
+
+  describe("stats, read on every dashboard poll", () => {
+    it("doesn't rescan the log until something new is written", () => {
+      let scans = 0;
+      const get = store.db.get.bind(store.db);
+      store.db.get = <T>(query: string, ...params: (string | number | null)[]) => {
+        if (query.includes("AS rescues")) scans += 1;
+        return get<T>(query, ...params);
+      };
+      store.append(record({ id: "a", kind: "RESCUE_BLOCKED" }));
+      expect(store.stats().blockedCount).toBe(1);
+      expect(store.stats().blockedCount).toBe(1);
+      expect(scans).toBe(1);
+      store.append(record({ id: "b", kind: "RESCUE_BLOCKED" }));
+      expect(store.stats().blockedCount).toBe(2);
+      expect(scans).toBe(2);
+    });
+  });
+
   describe("latest health", () => {
     const response = (health: HealthResponse["status"]): HealthResponse => ({
       status: health,
@@ -214,6 +241,43 @@ describe.each(DRIVERS)("the store on %s", (_driver, open) => {
       store.saveHealth(USER, response("unknown"));
       expect(store.health(USER)?.status).toBe("unknown");
       expect(store.health(USER)?.snapshot).toBeNull();
+    });
+
+    /** Counts the writes that reach the database, since the free plan allows 100,000 rows a day. */
+    const countHealthWrites = () => {
+      const counter = { writes: 0 };
+      const run = store.db.run.bind(store.db);
+      store.db.run = (query, ...params) => {
+        if (query.includes("INTO health")) counter.writes += 1;
+        run(query, ...params);
+      };
+      return counter;
+    };
+    const at = (accountValue: number) => ({ ...response("ok"), snapshot: snapshot(accountValue, 34) });
+
+    it("writes a user's health to the database at most once a minute, but always serves the newest", () => {
+      const counter = countHealthWrites();
+      for (let i = 0; i < 12; i += 1) {
+        store.saveHealth(USER, at(50 + i), i * 5_000);
+        expect(store.health(USER)?.snapshot?.accountValue).toBe(50 + i);
+      }
+      expect(counter.writes).toBe(1);
+      store.saveHealth(USER, at(70), 60_000);
+      expect(counter.writes).toBe(2);
+    });
+
+    it("writes at once when the status or the policy changes", () => {
+      const counter = countHealthWrites();
+      store.saveHealth(USER, at(50), 0);
+      store.saveHealth(USER, response("unknown"), 1_000);
+      store.saveHealth(USER, { ...response("unknown"), policy: policy({ paused: true }) }, 2_000);
+      expect(counter.writes).toBe(3);
+    });
+
+    it("after a restart, serves the last health written", () => {
+      store.saveHealth(USER, at(50), 0);
+      store.saveHealth(USER, at(51), 5_000); // newer, but not yet written
+      expect(new Store(store.db).health(USER)?.snapshot?.accountValue).toBe(50);
     });
 
     it("writes an account with no positions as null health, as the API promises", () => {

@@ -48,9 +48,25 @@ export function isSignedBy1Click(raw: Parameters<typeof verifyQuoteSignature>[0]
   }
 }
 
-function parseQuote(raw: QuoteResponse): Quote {
+/**
+ * Every field the keeper sent must come back, signed, unchanged. A valid signature alone
+ * isn't enough: a dry quote's signature leaves out the deposit address and fee, so a
+ * genuine dry quote with an attacker's deposit address added would otherwise pass as a
+ * live one. The deadline is the one field left out: a stale quote fails the policy
+ * engine's 60 s age check anyway.
+ */
+function checkEcho(raw: QuoteResponse, sent: Record<string, unknown>): void {
+  const echoed = (raw.quoteRequest ?? {}) as Record<string, unknown>;
+  for (const [field, value] of Object.entries(sent)) {
+    if (field === "deadline") continue;
+    if (echoed[field] !== value) throw new QuoteRefusedError(`the quote doesn't answer what was asked: ${field} differs`);
+  }
+}
+
+function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>): Quote {
   // Checked before anything is read, so a tampered field can never be used.
   if (!isSignedBy1Click(raw)) throw new QuoteRefusedError("the quote's signature is invalid");
+  checkEcho(raw, sent);
 
   const { correlationId, timestamp, quote, quoteRequest } = raw;
   const fields = [
@@ -127,7 +143,7 @@ export function createOneClick(options: OneClickOptions): Intents {
         deadline: new Date(now().getTime() + QUOTE_DEADLINE_MS).toISOString(),
       };
       const raw = await request("/v0/quote", { method: "POST", body: JSON.stringify(body) });
-      return parseQuote(raw as QuoteResponse);
+      return parseQuote(raw as QuoteResponse, body);
     },
 
     async getStatus(depositAddress) {

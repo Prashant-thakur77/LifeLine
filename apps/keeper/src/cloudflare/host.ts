@@ -1,8 +1,8 @@
 import { createLifelineBot, type BotOptions, type LifelineBot } from "@lifeline/bot";
 import { getHealth, getMidPrice } from "@lifeline/hyperliquid";
 import { KEEPER_POLL_INTERVAL_SEC, type AttestationResponse, type AuditRecord } from "@lifeline/shared";
-import { handleApi, jsonResponse } from "../api";
-import { AttestationMonitor, checkAttestation, type IntelDcap } from "../attestation";
+import { createLinkLimiter, handleApi, jsonResponse } from "../api";
+import { AttestationMonitor, checkAttestation, type IntelDcap, type SavedAttestation } from "../attestation";
 import { readLiveConfig, readServiceSettings, type LiveConfig, type ServiceSettings } from "../config";
 import { createExplainer } from "../explain";
 import { describeRecord } from "../format";
@@ -16,8 +16,14 @@ import { durableSql, type DurableSqlStorage } from "../sql-durable";
 import { Store } from "../store";
 
 const TICK_MS = KEEPER_POLL_INTERVAL_SEC * 1000;
+// One alarm a minute, with a tick every 5 s inside it. Each setAlarm is a row written,
+// and the free plan allows 100,000 a day: an alarm every 5 s alone would use 17,280.
+const ALARM_MS = 60_000;
+const TICKS_PER_ALARM = ALARM_MS / TICK_MS;
+const STALE_ALARM_MS = 2 * ALARM_MS; // an alarm this far overdue isn't going to fire by itself
 const SIM_REST_MS = 15 * 60_000; // between demo drops: about four rescues an hour
 const WEBHOOK_PATH = "/telegram/webhook";
+const ATTESTATION_KEY = "attestation";
 
 /** A Durable Object's storage: its SQLite and its one alarm. */
 export type HostStorage = DurableSqlStorage & {
@@ -71,7 +77,7 @@ export function readHostConfig(env: Record<string, string | undefined>): HostCon
   throw new Error("KEEPER_MODE must be sim or live");
 }
 
-type Engine = { tick(): Promise<void>; settled(): Promise<void>; recover?(): void };
+type Engine = { tick(): Promise<void>; settled(): Promise<void>; recover?(): void; nextTickInMs?(tickMs: number): number };
 
 type Running = {
   config: HostConfig;
@@ -95,7 +101,13 @@ export type KeeperHost = {
   settled(): Promise<void>;
 };
 
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+/** Errors can quote a URL, and a URL can carry a key, so logs never get one. */
+const messageOf = (error: unknown) =>
+  (error instanceof Error ? error.message : String(error)).replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, "<url>");
+
+/** A settings error names settings, never their values (see readLiveConfig), so it's safe to show. */
+class SettingsError extends Error {}
+const COULDNT_START = "the keeper couldn't start; its logs say why";
 
 /**
  * The keeper as it runs inside a Cloudflare Durable Object: the same Keeper, store,
@@ -109,7 +121,8 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
   const log = deps.log ?? ((line: string) => console.log(line));
   const seams = deps.seams ?? {};
   const background = new Set<Promise<unknown>>();
-  let state: Running | { broken: string } | null = null;
+  // A broken keeper that can retry failed for a passing reason, like a daily quota; bad settings need a redeploy.
+  let state: Running | { broken: string; canRetry: boolean } | null = null;
 
   const track = (work: Promise<unknown>) => {
     const tracked: Promise<unknown> = work.catch((error) => log(`background work failed: ${messageOf(error)}`)).finally(() => background.delete(tracked));
@@ -117,7 +130,12 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
   };
 
   const build = (): Running => {
-    const config = readHostConfig(deps.env);
+    let config: HostConfig;
+    try {
+      config = readHostConfig(deps.env);
+    } catch (error) {
+      throw new SettingsError(messageOf(error));
+    }
     const store = new Store(durableSql(deps.storage));
 
     let bot: LifelineBot | null = null;
@@ -149,8 +167,19 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     const attestation = new AttestationMonitor(
       seams.checkAttestation ??
         (() => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: deps.intel })),
-      { sleep },
+      {
+        sleep,
+        onChecked: (saved) => {
+          try {
+            store.saveState(ATTESTATION_KEY, saved);
+          } catch (error) {
+            log(`couldn't save the attestation check: ${messageOf(error)}`);
+          }
+        },
+      },
     );
+    const saved = store.loadState<SavedAttestation>(ATTESTATION_KEY);
+    if (saved !== null) attestation.restore(saved);
 
     let engine: Engine;
     let watching: number;
@@ -190,24 +219,52 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     return { config, store, bot, engine, attestation, pipeline, watching };
   };
 
+  const allowLink = createLinkLimiter();
+  let startedAt: Date | null = null;
+  let lastTickAt: Date | null = null;
+
+  /** Arms an alarm if there's none, or if the one there is long overdue and evidently stuck. */
   const armIfIdle = async () => {
     if (state === null || "broken" in state) return;
-    if ((await deps.storage.getAlarm()) === null) await deps.storage.setAlarm(now().getTime() + TICK_MS);
+    const at = await deps.storage.getAlarm();
+    if (at === null || at < now().getTime() - STALE_ALARM_MS) await deps.storage.setAlarm(now().getTime() + TICK_MS);
   };
 
   const refreshAttestation = (running: Running) => track(running.attestation.refreshIfDue(now().getTime()));
+
+  /** Not awaited: a slow or hung tick mustn't hold up the next one. The Keeper never reads a user twice at once. */
+  const startTick = (running: Running) =>
+    track(
+      running.engine.tick().then(() => {
+        lastTickAt = now();
+      }),
+    );
+
+  /** Each step is caught on its own: one failing mustn't leave the keeper without an alarm. */
+  const attempt = async (what: string, work: () => unknown) => {
+    try {
+      await work();
+    } catch (error) {
+      log(`${what} failed: ${messageOf(error)}`);
+    }
+  };
 
   const route = async (running: Running, request: Request): Promise<Response> => {
     const { pathname } = new URL(request.url);
     if (pathname === WEBHOOK_PATH && running.bot !== null) return running.bot.handleWebhook(request);
     if (pathname === "/") {
+      const alarmAt = await deps.storage.getAlarm();
       return jsonResponse(
         200,
         {
           service: "lifeline-keeper",
           mode: running.config.mode,
           network: running.config.network,
+          version: deps.env.KEEPER_VERSION?.trim() || null,
           watching: running.watching,
+          startedAt: startedAt?.toISOString() ?? null,
+          lastTickAt: lastTickAt?.toISOString() ?? null,
+          nextAlarmAt: alarmAt === null ? null : new Date(alarmAt).toISOString(),
           api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/stats", "/api/attestation", "POST /api/telegram/link"],
         },
         running.config.corsOrigin,
@@ -219,43 +276,56 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
       botUsername: running.config.botUsername,
       attestation: () => running.attestation.latest(),
       corsOrigin: running.config.corsOrigin,
+      allowLink,
     });
   };
 
-  return {
-    async start() {
+  const start = async (): Promise<void> => {
       try {
         state = build();
       } catch (error) {
-        // Settings errors name settings, never values: see readLiveConfig.
-        state = { broken: messageOf(error) };
-        log(`keeper not started: ${state.broken}`);
+        const settings = error instanceof SettingsError;
+        state = { broken: settings ? error.message : COULDNT_START, canRetry: !settings };
+        log(`keeper not started: ${messageOf(error)}`);
         return;
       }
       const running = state;
-      running.engine.recover?.();
-      running.pipeline.backfill();
+      startedAt = now();
+      await attempt("picking up unfinished rescues", () => running.engine.recover?.());
+      await attempt("explaining old records", () => running.pipeline.backfill());
       refreshAttestation(running);
       if (running.bot !== null && running.config.publicUrl !== null) {
         track(running.bot.registerWebhook(`${running.config.publicUrl}${WEBHOOK_PATH}`));
       }
-      await armIfIdle();
+      await attempt("arming the alarm", armIfIdle);
       log(`keeper started: ${running.config.mode} on ${running.config.network}, watching ${running.watching}`);
-    },
+  };
+
+  return {
+    start,
 
     async alarm() {
       if (state === null || "broken" in state) return;
       const running = state;
-      await deps.storage.setAlarm(now().getTime() + TICK_MS);
-      try {
-        await running.engine.tick();
-      } catch (error) {
-        log(`tick failed: ${messageOf(error)}`);
+      // The next alarm first: Cloudflare retries a failed alarm, but only up to 6 times.
+      await deps.storage.setAlarm(now().getTime() + ALARM_MS);
+      for (let i = 0; i < TICKS_PER_ALARM; i += 1) {
+        if (i > 0) await sleep(TICK_MS);
+        startTick(running);
+        refreshAttestation(running);
+        // Only the sim ever asks for longer: between drops it lets the object sleep.
+        const wanted = running.engine.nextTickInMs?.(TICK_MS) ?? TICK_MS;
+        if (wanted > TICK_MS) {
+          await deps.storage.setAlarm(now().getTime() + wanted);
+          return;
+        }
       }
-      refreshAttestation(running);
     },
 
-    ensureRunning: armIfIdle,
+    async ensureRunning() {
+      if (state !== null && "broken" in state && state.canRetry) await start();
+      await armIfIdle();
+    },
 
     async fetch(request) {
       if (state === null || "broken" in state) {

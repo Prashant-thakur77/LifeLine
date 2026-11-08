@@ -355,14 +355,27 @@ export async function checkAttestation(options: AttestationOptions): Promise<Att
 }
 
 /** Checks on startup and every 6 hours, sooner if unverified, and always has an answer for the API. */
+export type SavedAttestation = { result: AttestationResponse; nextCheckAt: number };
+
 export class AttestationMonitor {
   private current: AttestationResponse = NOT_AVAILABLE_ATTESTATION;
   private stopped = false;
 
   constructor(
     private readonly check: () => Promise<AttestationResponse>,
-    private readonly options: { sleep: (ms: number) => Promise<void>; checkTimeoutMs?: number },
+    private readonly options: {
+      sleep: (ms: number) => Promise<void>;
+      checkTimeoutMs?: number;
+      /** Called after each check, with when the next is due, so a host can keep both across a restart. */
+      onChecked?: (state: SavedAttestation) => void;
+    },
   ) {}
+
+  /** Picks up a saved check, so a restart serves it at once and doesn't check again early. */
+  restore(saved: SavedAttestation): void {
+    this.current = saved.result;
+    this.nextCheckAt = saved.nextCheckAt;
+  }
 
   latest(): AttestationResponse {
     return this.current;
@@ -401,5 +414,6 @@ export class AttestationMonitor {
       this.checking = false;
     }
     this.nextCheckAt = nowMs + (this.current.status === "verified" ? VERIFIED_RECHECK_MS : UNVERIFIED_RECHECK_MS);
+    this.options.onChecked?.({ result: this.current, nextCheckAt: this.nextCheckAt });
   }
 }

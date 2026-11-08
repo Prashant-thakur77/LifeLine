@@ -19,7 +19,31 @@ export type ApiDeps = {
   botUsername: string | null; // null: no bot set up, so link codes can't be used
   attestation: () => AttestationResponse;
   corsOrigin: string;
+  /** Says whether this account may have another link code now. Leave out for no limit. */
+  allowLink?: (user: string, nowMs: number) => boolean;
 };
+
+/**
+ * At most 5 codes per account every 10 minutes and 30 a minute in all. Each code costs
+ * storage writes, and the endpoint is public. Only watched accounts reach it, so the
+ * map stays as small as the watch list.
+ */
+export function createLinkLimiter(perUser = 5, perUserWindowMs = 10 * 60_000, overall = 30, overallWindowMs = 60_000) {
+  const byUser = new Map<string, number[]>();
+  let everyone: number[] = [];
+  return (user: string, nowMs: number): boolean => {
+    const mine = (byUser.get(user) ?? []).filter((at) => nowMs - at < perUserWindowMs);
+    everyone = everyone.filter((at) => nowMs - at < overallWindowMs);
+    if (mine.length >= perUser || everyone.length >= overall) {
+      byUser.set(user, mine);
+      return false;
+    }
+    mine.push(nowMs);
+    everyone.push(nowMs);
+    byUser.set(user, mine);
+    return true;
+  };
+}
 
 class HttpError extends Error {
   constructor(
@@ -129,6 +153,9 @@ async function route(request: Request, deps: ApiDeps): Promise<unknown> {
       const user = parseLinkUser(await readBody(request));
       if (botUsername === null) throw new HttpError(503, "the Telegram bot isn't set up");
       if (store.health(user) === null) throw new HttpError(404, "this user isn't being watched");
+      if (deps.allowLink && !deps.allowLink(user, now().getTime())) {
+        throw new HttpError(429, "too many link codes for this account; try again in a few minutes");
+      }
       const response: TelegramLinkResponse = { ...store.createTelegramCode(user, now()), botUsername };
       return response;
     }

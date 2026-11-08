@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { dirname } from "node:path";
 import { createLifelineBot } from "@lifeline/bot";
 import { getHealth } from "@lifeline/hyperliquid";
-import { NOT_AVAILABLE_ATTESTATION } from "./api";
+import { createLinkLimiter, NOT_AVAILABLE_ATTESTATION } from "./api";
 import { createApi } from "./api-node";
 import { AttestationMonitor, checkAttestation } from "./attestation";
 import { DEFAULT_NEAR_AI_MODEL, DEFAULT_NEAR_AI_URL, parseMode, readLiveConfig, type LiveConfig } from "./config";
@@ -133,6 +133,7 @@ async function runLive(config: LiveConfig): Promise<void> {
     botUsername: config.botUsername,
     attestation: () => attestation.latest(),
     corsOrigin: config.corsOrigin,
+    allowLink: createLinkLimiter(),
   });
 
   const shutdown = async () => {

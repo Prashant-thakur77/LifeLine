@@ -132,8 +132,15 @@ export function createLifelineBot(options: BotOptions) {
     /** Webhook mode, for a host that can't long-poll, like a Cloudflare Worker. A wrong or missing secret gets a 401. */
     handleWebhook: (request: Request): Promise<Response> => onWebhook(request),
 
-    /** Points Telegram at the webhook. Old updates are dropped: a link code in them may have expired anyway. */
+    /**
+     * Points Telegram at the webhook, unless it already points there: a host that restarts
+     * often would otherwise drop waiting messages each time. When it does move, old updates
+     * are dropped, since a link code in them may have expired. One bot per deployment:
+     * Telegram keeps a single webhook per bot.
+     */
     async registerWebhook(url: string): Promise<void> {
+      const current = await bot.api.getWebhookInfo();
+      if (current.url === url) return;
       await bot.api.setWebhook(url, { secret_token: webhookSecret, allowed_updates: ["message"], drop_pending_updates: true });
     },
 

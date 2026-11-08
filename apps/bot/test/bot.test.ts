@@ -398,16 +398,21 @@ describe("webhook mode, for hosts that can't long-poll", () => {
 
   it("registers with Telegram: the URL, the secret, only messages, and no backlog", async () => {
     await t.life.registerWebhook("https://lifeline-keeper.example/telegram/webhook");
-    expect(t.sent).toEqual([
-      {
-        method: "setWebhook",
-        payload: {
-          url: "https://lifeline-keeper.example/telegram/webhook",
-          secret_token: t.life.webhookSecret,
-          allowed_updates: ["message"],
-          drop_pending_updates: true,
-        },
-      },
-    ]);
+    expect(t.sent.map((call) => call.method)).toEqual(["getWebhookInfo", "setWebhook"]);
+    expect(t.sent[1]?.payload).toEqual({
+      url: "https://lifeline-keeper.example/telegram/webhook",
+      secret_token: t.life.webhookSecret,
+      allowed_updates: ["message"],
+      drop_pending_updates: true,
+    });
+  });
+
+  it("leaves a webhook that's already right alone, so a restart doesn't drop waiting messages", async () => {
+    const url = "https://lifeline-keeper.example/telegram/webhook";
+    t.life.bot.api.config.use(async (previous, method, payload, signal) =>
+      method === "getWebhookInfo" ? ({ ok: true, result: { url, has_custom_certificate: false, pending_update_count: 3 } } as never) : previous(method, payload, signal),
+    );
+    await t.life.registerWebhook(url);
+    expect(t.sent.filter((call) => call.method === "setWebhook")).toEqual([]);
   });
 });

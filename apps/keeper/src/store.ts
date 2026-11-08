@@ -5,6 +5,10 @@ const TELEGRAM_CODE_TTL_MS = 10 * 60 * 1000;
 const TELEGRAM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I; 32 letters, which divides 256
 const TELEGRAM_CODE_LENGTH = 8;
 const MAX_OPEN_TELEGRAM_CODES_PER_USER = 5;
+// The keeper reads every user every 5 s. Writing each read would cost 17,280 rows a day
+// per user, against Cloudflare's free 100,000, so the database gets one a minute and
+// the API is served from memory.
+const HEALTH_WRITE_MS = 60_000;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS audit (
@@ -40,6 +44,11 @@ const SCHEMA = `
     expires_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS state (
+    key TEXT PRIMARY KEY,
+    json TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS telegram_chats (
     chat_id INTEGER NOT NULL,
     user TEXT NOT NULL,
@@ -73,6 +82,9 @@ export function percentile(values: number[], p: number): number | null {
 
 /** The keeper's one SQLite database: the audit log, latest health and link codes. */
 export class Store {
+  private readonly latestHealth = new Map<string, { response: HealthResponse; writtenAt: number; written: HealthResponse }>();
+  private cachedStats: StatsResponse | null = null;
+
   constructor(readonly db: SqlDatabase) {
     db.exec(SCHEMA);
   }
@@ -86,6 +98,7 @@ export class Store {
       record.request?.id ?? null,
       JSON.stringify(record),
     );
+    this.cachedStats = null;
   }
 
   audit(user: string, limit: number): AuditRecord[] {
@@ -142,7 +155,13 @@ export class Store {
     return rows.map(parseRaw);
   }
 
+  /** Recounted only after a new record, because the dashboard asks every few seconds. */
   stats(): StatsResponse {
+    this.cachedStats ??= this.countStats();
+    return this.cachedStats;
+  }
+
+  private countStats(): StatsResponse {
     const totals = this.db.get<{ rescues: number; usd: number; blocked: number }>(
       `SELECT
          COALESCE(SUM(kind = 'RESCUE_DONE'), 0) AS rescues,
@@ -165,17 +184,43 @@ export class Store {
     };
   }
 
-  saveHealth(user: string, response: HealthResponse): void {
+  /**
+   * Always kept in memory. Written to the database when the status or policy changes,
+   * and otherwise at most once a minute, so a restart serves a reading under a minute old.
+   */
+  saveHealth(user: string, response: HealthResponse, nowMs = Date.now()): void {
+    const previous = this.latestHealth.get(user);
+    const changed =
+      previous === undefined ||
+      previous.written.status !== response.status ||
+      JSON.stringify(previous.written.policy) !== JSON.stringify(response.policy);
+    const due = changed || nowMs - (previous?.writtenAt ?? 0) >= HEALTH_WRITE_MS;
+    // Memory first: a write the database refuses mustn't leave the API serving an old reading.
+    this.latestHealth.set(user, { response, writtenAt: previous?.writtenAt ?? 0, written: previous?.written ?? response });
+    if (!due) return;
     this.db.run(
       "INSERT INTO health (user, json) VALUES (?, ?) ON CONFLICT (user) DO UPDATE SET json = excluded.json",
       user,
       JSON.stringify(response),
     );
+    this.latestHealth.set(user, { response, writtenAt: nowMs, written: response });
   }
 
   health(user: string): HealthResponse | null {
+    const remembered = this.latestHealth.get(user);
+    if (remembered !== undefined) return remembered.response;
     const row = this.db.get<JsonRow>("SELECT json FROM health WHERE user = ?", user);
     return row === undefined ? null : (JSON.parse(row.json) as HealthResponse);
+  }
+
+  /** Small things worth keeping across a restart, like the last attestation check. */
+  saveState(key: string, value: unknown): void {
+    this.db.run("INSERT INTO state (key, json) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET json = excluded.json", key, JSON.stringify(value));
+  }
+
+  loadState<T>(key: string): T | null {
+    const row = this.db.get<JsonRow>("SELECT json FROM state WHERE key = ?", key);
+    return row === undefined ? null : (JSON.parse(row.json) as T);
   }
 
   /** Each user keeps only their newest few, and only watched users get here, so this can't fill the disk. */
