@@ -11,7 +11,10 @@ import { nearblocksTx } from "../lib/links";
 import { REFUSED_RESCUE } from "../lib/proof";
 import { FundScene, PolicyScene, RescueScene, WatchScene } from "./art/Scenes";
 import { HeroWater } from "./HeroWater";
-import { Skeleton, cx } from "./ui";
+import { ButtonLink, Skeleton, cx } from "./ui";
+import { DEMO_USER } from "../lib/config";
+import { pageHref } from "../lib/links";
+import { Mark } from "./Shell";
 
 export function Landing() {
   return (
@@ -19,9 +22,9 @@ export function Landing() {
       <HeroWater />
       <Readouts />
       <HowItWorks />
-      <Marquee />
       <Safety />
       <Certificate />
+      <NextStep />
     </div>
   );
 }
@@ -126,7 +129,7 @@ function HowItWorks() {
       </div>
       <ol className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map(({ title, body, Art, tint }, i) => (
-          <li key={title} className="pop-in flex flex-col overflow-hidden rounded-xl border-2 border-ink bg-card shadow-[6px_6px_0_var(--color-ink)]">
+          <li key={title} className="pop-in flex flex-col overflow-hidden rounded-xl border-2 border-ink bg-card">
             <div className={cx("border-b-2 border-ink", tint)}>
               <Art />
             </div>
@@ -139,25 +142,6 @@ function HowItWorks() {
         ))}
       </ol>
     </section>
-  );
-}
-
-/** Livery band with one sentence moving through it, slowly. */
-function Marquee() {
-  const line = "A hacked keeper still can't redirect the money";
-  return (
-    <div className="relative -mx-4 mt-28 overflow-hidden py-3 sm:-mx-6 sm:mt-32 lg:mx-[calc(50%-50vw)]" aria-hidden>
-      <div className="-rotate-[2deg] scale-[1.04] border-y-[3px] border-ink bg-rescue py-4">
-        <div className="marquee flex w-max gap-10 whitespace-nowrap text-[clamp(28px,4vw,56px)] font-black uppercase leading-none text-ink [font-variation-settings:'wdth'_118]">
-          {Array.from({ length: 6 }, (_, i) => (
-            <span key={i} className="flex items-center gap-10">
-              {line}
-              <span className="inline-block size-[0.55em] rounded-full border-[0.12em] border-ink bg-paper" />
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -176,7 +160,7 @@ const GUARANTEES = [
 function Safety() {
   return (
     <section aria-labelledby="safety-title" className="mt-24 sm:mt-28">
-      <div className="overflow-hidden rounded-2xl border-[3px] border-ink bg-sea text-paper shadow-[8px_8px_0_var(--color-ink)]">
+      <div className="overflow-hidden rounded-2xl border-2 border-ink bg-sea text-paper">
         <div className="grid grid-cols-1 gap-10 p-6 sm:p-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <p className="font-readout text-[11px] uppercase tracking-[0.12em] text-sun">Safety notice · vault contract on NEAR</p>
@@ -304,6 +288,33 @@ function Certificate() {
             </p>
           ) : null}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/** One clear next step, then the footer. */
+function NextStep() {
+  return (
+    <section aria-labelledby="next-title" className="mt-16 overflow-hidden rounded-2xl border-2 border-ink bg-rescue sm:mt-20">
+      <div className="relative flex flex-col gap-8 p-6 sm:p-10 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2 id="next-title" className="text-[clamp(40px,6vw,88px)] font-extrabold uppercase leading-[0.86] text-ink [font-variation-settings:'wdth'_70]">
+            Watch a rescue,
+            <br />
+            live.
+          </h2>
+          <p className="mt-4 max-w-md text-[16px] leading-relaxed text-ink">No wallet, no funds. The demo account drops below its trigger every 15 minutes, and the keeper tops it up.</p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <ButtonLink href={pageHref("/position", DEMO_USER)} variant="secondary" size="lg">
+            Open the live demo
+          </ButtonLink>
+          <ButtonLink href="/start" variant="secondary" size="lg" className="bg-ink text-paper hover:bg-ink-2">
+            Protect my position
+          </ButtonLink>
+        </div>
+        <Mark className="pointer-events-none absolute -right-16 -top-16 size-56 opacity-90 sm:-right-10 sm:-top-20 lg:size-72" />
       </div>
     </section>
   );

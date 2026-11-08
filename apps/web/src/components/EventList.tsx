@@ -60,7 +60,7 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
   return (
     <li className="relative pl-7">
       <span className={cx("absolute left-[7px] top-[9px] size-[11px] rounded-full ring-4 ring-paper", RAIL[event.outcome])} aria-hidden />
-      <article className="rounded-xl border-2 border-ink bg-card shadow-[3px_3px_0_var(--color-ink)] p-4 sm:p-5">
+      <article className="rounded-xl border-2 border-ink bg-card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={OUTCOME_TONE[event.outcome]}>{OUTCOME_LABEL[event.outcome]}</Badge>
           {event.simulated ? <Badge tone="sim">Sim</Badge> : null}

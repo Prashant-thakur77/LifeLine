@@ -14,6 +14,7 @@ import { pageHref } from "../lib/links";
 import { lastRescueStory, storyLog, type LogLine } from "../lib/replay";
 import { simRestCountdown } from "../lib/sim";
 import { replayBeats, type Beat } from "../lib/waterline";
+import { Mark } from "./Shell";
 import { ButtonLink, cx } from "./ui";
 import { Waterline, type WaterTone } from "./Waterline";
 
@@ -98,7 +99,11 @@ export function HeroWater() {
       <div className="grid grid-cols-1 items-end gap-x-10 gap-y-6 pt-6 sm:pt-10 lg:grid-cols-12 lg:pt-10">
         <div className="lg:col-span-7">
           <p className="font-readout text-[12px] text-body">Hyperliquid margin protection · funded from any chain</p>
-          <h1 id="hero-title" className="mt-4 text-[clamp(52px,7.6vw,122px)] font-extrabold uppercase leading-[0.84] tracking-[-0.015em] text-ink [font-variation-settings:'wdth'_70]">
+          <h1
+            id="hero-title"
+            data-list={tone === "rescue" || tone === "liquidation" ? "on" : "off"}
+            className="listing mt-4 text-[clamp(52px,7.6vw,122px)] font-extrabold uppercase leading-[0.84] tracking-[-0.015em] text-ink [font-variation-settings:'wdth'_70]"
+          >
             <span className="kin-line">
               <span style={{ animationDelay: "40ms" }}>Topped up</span>
             </span>
@@ -107,7 +112,15 @@ export function HeroWater() {
             </span>
             <span className="kin-line">
               <span className="riso text-rescue" style={{ animationDelay: "220ms" }}>
-                liquidation.
+                {/* The O is the lifebuoy itself. */}
+                <span aria-hidden>
+                  liquidati
+                  <span className="buoy-o">
+                    <Mark className="size-full" />
+                  </span>
+                  n.
+                </span>
+                <span className="sr-only">liquidation.</span>
               </span>
             </span>
           </h1>
@@ -115,7 +128,14 @@ export function HeroWater() {
         <div className="lg:col-span-5 lg:pb-3">
           <p className="max-w-[34rem] text-[17px] leading-relaxed text-body">
             Lifeline reads your account health every {KEEPER_POLL_INTERVAL_SEC} seconds. Below the line you set, a vault on NEAR sends USDC from your
-            reserve to your perps balance through NEAR Intents. The vault only ever pays your own Hyperliquid address.
+            reserve to your perps balance through NEAR Intents. The vault only ever pays{" "}
+            <span className="pen-under">
+              your own Hyperliquid address
+              <svg viewBox="0 0 300 14" preserveAspectRatio="none" aria-hidden>
+                <path pathLength={1} d="M 3 9 C 60 3, 120 12, 180 6 S 270 4, 297 8" />
+              </svg>
+            </span>
+            .
           </p>
           <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:gap-3">
             <ButtonLink href={pageHref("/position", DEMO_USER)} variant="primary" size="lg">

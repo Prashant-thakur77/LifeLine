@@ -88,7 +88,7 @@ function Summary({ events, loading }: { events: LedgerEvent[]; loading: boolean 
   return (
     <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="rounded-xl border-2 border-ink bg-card shadow-[3px_3px_0_var(--color-ink)] px-4 py-3">
+        <div key={item.label} className="rounded-xl border-2 border-ink bg-card px-4 py-3">
           <dt className="text-[12px] text-muted">{item.label}</dt>
           <dd className={cx("num mt-1 text-[24px]", item.color)}>{loading ? "…" : item.value}</dd>
         </div>

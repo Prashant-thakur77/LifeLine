@@ -143,6 +143,68 @@ body::after {
   }
 }
 
+/* The lifebuoy that stands in for the O of LIQUIDATION: it rolls in on load. */
+.buoy-o {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin: 0 0.01em 0 0.015em;
+  vertical-align: -0.035em;
+  filter: drop-shadow(0.045em 0.03em 0 rgb(29 75 255 / 0.5));
+  animation: buoy-roll 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both;
+}
+@keyframes buoy-roll {
+  from {
+    transform: translateX(-0.6em) rotate(-220deg);
+  }
+}
+
+/* The headline lists like a hull while health is in the rescue zone, and settles level after. */
+.listing .kin-line {
+  transform-origin: 0 70%;
+  transition: transform 900ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.listing[data-list="on"] .kin-line:nth-child(1) {
+  transform: rotate(-1.4deg);
+}
+.listing[data-list="on"] .kin-line:nth-child(2) {
+  transform: rotate(1deg) translateX(0.04em);
+}
+.listing[data-list="on"] .kin-line:nth-child(3) {
+  transform: rotate(-0.8deg);
+}
+
+/* One hand-drawn pen line, under the claim that matters. */
+.pen-under {
+  position: relative;
+  display: inline-block;
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.pen-under svg {
+  position: absolute;
+  left: -2%;
+  bottom: -0.32em;
+  width: 104%;
+  height: 0.5em;
+  overflow: visible;
+}
+.pen-under path {
+  fill: none;
+  stroke: var(--color-rescue);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pen-draw 900ms cubic-bezier(0.3, 0.7, 0.2, 1) 900ms forwards;
+}
+@keyframes pen-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Risograph: a second ink pass printed slightly out of register. */
 .riso {
   text-shadow: 0.045em 0.03em 0 rgb(29 75 255 / 0.5);
@@ -231,16 +293,6 @@ body::after {
   }
 }
 
-/* A kinetic band: one sentence sliding past, slowly. */
-.marquee {
-  animation: marquee 38s linear infinite;
-}
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 /* Paper sheets rise into place as their section scrolls in. Static where scroll timelines aren't supported. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
@@ -258,6 +310,15 @@ body::after {
   }
   to {
     transform: none;
+  }
+}
+
+.page-in {
+  animation: page-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes page-in {
+  from {
+    transform: translateY(14px);
   }
 }
 
