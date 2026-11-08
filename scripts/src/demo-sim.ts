@@ -63,7 +63,10 @@ async function main() {
     },
     now,
     sleep,
-    log: () => {},
+    // Quiet, except for why a rescue had to wait: the demo holds the price while it retries.
+    log: (line) => {
+      if (line.includes("couldn't start")) console.log(`  (keeper: ${line}. It tries again in 30 s.)`);
+    },
     startPrice,
     onTick: (price, health) => console.log(`ETH $${price.toFixed(2)}  health ${health.toFixed(2)}`),
     onRecord: (record) => {

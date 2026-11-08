@@ -64,7 +64,7 @@ Settled. Don't reopen them unless the day-1 spike proves one wrong.
 - The team mainnet account receives the prize and owns the sub-accounts.
 - Vault contract at `vault.<team>.near`.
 - Keeper at `keeper.<team>.near`. Its only key is a function-call key that can call `rescue` on the vault and nothing else. It can't withdraw, transfer or change policy.
-- Testnet mirrors of all three, `.testnet`, for contract development.
+- Testnet mirrors of all three, `.testnet`, for contract development: `lifeline-team.testnet`, `vault.lifeline-team.testnet`, `keeper.lifeline-team.testnet` (only a function-call key for `rescue`), the test user `alice.lifeline-team.testnet`, and `usdc.lifeline-team.testnet`, a stand-in USDC (the mock token from the vault's tests), since 1Click has no testnet. Their keys are in `~/.near-credentials/testnet` on the human's machine.
 
 **Health formula**
 
@@ -136,6 +136,14 @@ Checked on 2026-11-06 with no-funds calls. Re-check before relying on one.
 - The quote response has no `quoteId` field. Its top-level keys are `quote`, `quoteRequest`, `signature`, `timestamp` and `correlationId`. The keeper passes `correlationId` as the vault's `quote_id`.
 - `verifyQuoteSignature` from `@defuse-protocol/one-click-sdk-typescript` accepts real dry and non-dry quotes and rejects a changed recipient or deposit address. It costs about 12 ms of CPU (tweetnacl), so the keeper checks the SDK's own `quoteHash` with noble's Ed25519 instead: 1.9 ms, and tests hold it to the SDK's answer on real quotes and on every tampered field. A non-dry quote's `deadline` came back about 3 days out even when we asked for 5 minutes, so a deposit address stays usable long after the keeper's 60 s limit.
 
+Checked on 2026-11-08 with the vault:
+
+- A non-dry quote's NEAR deposit address is a fresh implicit account (64 hex characters) that doesn't exist on chain and isn't registered with USDC (`storage_balance_of` is null), so a plain `ft_transfer` to it would fail. The vault pays USDC's `storage_deposit` for it first, with `registration_only`: 0.00125 NEAR, USDC's `storage_balance_bounds` on mainnet.
+- The quote also carries `timeEstimate`: 30 s for NEAR USDC to Hyperliquid USDC.
+- near-sdk 5.30.1, near-workspaces 0.24.0 and cargo-near 0.23.0 build and test the vault with Rust 1.98.1, and the wasm deploys and runs on the 2.14.0 sandbox and on testnet. `cargo near build` needs the Ledger feature off on this machine (`cargo install --no-default-features cargo-near`), because libudev's headers aren't installed.
+- near-workspaces downloads the sandbox node from S3 as one stream, which ran at about 30 KB/s here. `scripts/near-sandbox.mjs` fetches it in 16 ranges in about a minute and checks it against S3's multipart ETag.
+- In near-sdk unit tests, `#[private]` isn't enforced when a test calls the method directly, and the mocked chain keeps its storage between `testing_env!` calls. The vault's sandbox tests check the private callbacks.
+
 Checked on 2026-11-08 on Cloudflare, with the sim deployed at `lifeline-sim.prashantthakur.dev`:
 
 - A Durable Object's SQLite runs the keeper's store unchanged: the triggers refuse `UPDATE` and `DELETE` on the audit log, and `json_extract`, `RETURNING` and a rolled-back `transactionSync` all work. Intel's web verifier (`@phala/dcap-qvl-web`) verifies the attestation on Cloudflare: 6 of 6 checks.
@@ -159,7 +167,11 @@ pnpm --filter keeper live        # the real keeper: reads .env, and mainnet also
 pnpm --filter keeper attest      # one real NEAR AI Cloud attestation check, through NVIDIA and Intel
 pnpm backtest                    # regenerates research/backtest/RESULTS.md and its charts from the saved candles
 pnpm demo:sim                    # the whole rescue story from the live ETH price: no wallet, keys or funds
-pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved mainnet refusal re-checked on chain
+pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved on-chain refusal re-checked
+pnpm --filter intents live-quote [usdc] [hl address]   # one real dry 1Click quote, NEAR USDC to Hyperliquid USDC
+cargo test --manifest-path contracts/vault/Cargo.toml  # the vault alone: unit tests, then the sandbox tests
+cd contracts/vault && cargo near build non-reproducible-wasm   # target/near/lifeline_vault.wasm
+node scripts/near-sandbox.mjs    # fetches the NEAR sandbox node the vault's tests run on (pnpm test does this itself)
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 pnpm --filter keeper cf:dev      # the sim keeper on Cloudflare's runtime, locally
 pnpm --filter keeper cf:deploy:sim   # deploys lifeline-sim.prashantthakur.dev (needs a Cloudflare login)

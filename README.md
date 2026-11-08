@@ -2,7 +2,7 @@
 
 Auto top-up for onchain perps, funded from any chain.
 
-Work in progress. To run the tests: `pnpm install && pnpm test`.
+Work in progress. To run the tests: `pnpm install && pnpm test`. That includes the vault contract's Rust tests, which need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them it runs the rest and says so.
 
 To watch the keeper rescue a position, with no wallet, keys or funds:
 
@@ -17,6 +17,14 @@ To watch a hacked keeper try to steal a user's reserve, and get refused:
 
 ```sh
 pnpm demo:attack
+```
+
+The vault contract is in [contracts/vault](contracts/vault), which lists every method with a NEAR CLI example. It's deployed on testnet at [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet), where the keeper's only key can call `rescue` and nothing else. There the contract refused a rescue to an attacker's address ([transaction](https://testnet.nearblocks.io/txns/BgX8yWQ8oRGeY24fJ9LfMfLwxjQmXyH2TySsUX6thmad)), and `pnpm demo:attack` checks that refusal on chain again each time it runs.
+
+To get a real dry quote from 1Click, NEAR USDC to Hyperliquid USDC, with no wallet or funds:
+
+```sh
+pnpm --filter intents live-quote 5 0xYourHyperliquidAddress
 ```
 
 To check that the model writing Lifeline's explanations really runs in secure hardware, verified through NVIDIA and Intel with a fresh nonce:

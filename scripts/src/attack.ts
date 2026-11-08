@@ -134,7 +134,7 @@ export function formatAttempt(attempt: AttackAttempt): string {
 }
 
 export type AttackProof = {
-  network: "mainnet";
+  network: "mainnet" | "testnet";
   txHash: string;
   signer: string;
   vault: string;
@@ -175,10 +175,20 @@ export function parseProof(text: string): AttackProof | null {
   try {
     const proof = JSON.parse(text) as Partial<AttackProof> | null;
     const fields = [proof?.txHash, proof?.signer, proof?.vault, proof?.failure, proof?.recordedAt];
-    return proof?.network === "mainnet" && fields.every((field) => typeof field === "string") ? (proof as AttackProof) : null;
+    const known = proof?.network === "mainnet" || proof?.network === "testnet";
+    return known && fields.every((field) => typeof field === "string") ? (proof as AttackProof) : null;
   } catch {
     return null;
   }
+}
+
+/** A public node on the proof's network, which needs no key. */
+export function rpcFor(network: AttackProof["network"]): string {
+  return network === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com";
+}
+
+export function explorerFor(proof: Pick<AttackProof, "network" | "txHash">): string {
+  return `https://${proof.network === "mainnet" ? "" : "testnet."}nearblocks.io/txns/${proof.txHash}`;
 }
 
 /** Asks a public node what really happened, so nobody has to take the saved proof's word for it. */

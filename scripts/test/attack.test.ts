@@ -5,7 +5,9 @@ import {
   ATTACKER_HL,
   checkProof,
   formatAttempt,
+  explorerFor,
   parseProof,
+  rpcFor,
   runEngineAttacks,
   sendContractAttack,
   type AttackProof,
@@ -158,8 +160,28 @@ describe("parseProof", () => {
     expect(parseProof(JSON.stringify(proof))).toEqual(proof);
   });
 
-  it.each(["not json", "{}", '{"txHash":7}', "null"])("is null for %s", (text) => {
-    expect(parseProof(text)).toBeNull();
+  it("reads a testnet proof too, and keeps its network", () => {
+    const testnet = { ...proof, network: "testnet", signer: "keeper.team.testnet", vault: "vault.team.testnet" };
+    expect(parseProof(JSON.stringify(testnet))).toEqual(testnet);
+  });
+
+  it.each(["not json", "{}", '{"txHash":7}', "null", '{"network":"betanet","txHash":"H","signer":"s","vault":"v","failure":"f","recordedAt":"t"}'])(
+    "is null for %s",
+    (text) => {
+      expect(parseProof(text)).toBeNull();
+    },
+  );
+});
+
+describe("rpcFor", () => {
+  it("asks a public node on the proof's own network", () => {
+    expect(rpcFor("mainnet")).toBe("https://free.rpc.fastnear.com");
+    expect(rpcFor("testnet")).toBe("https://test.rpc.fastnear.com");
+  });
+
+  it("links the proof to the explorer for its network", () => {
+    expect(explorerFor({ network: "mainnet", txHash: "H" })).toBe("https://nearblocks.io/txns/H");
+    expect(explorerFor({ network: "testnet", txHash: "H" })).toBe("https://testnet.nearblocks.io/txns/H");
   });
 });
 

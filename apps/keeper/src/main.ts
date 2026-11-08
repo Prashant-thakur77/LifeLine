@@ -14,7 +14,8 @@ import { nodeIntel } from "./intel-node";
 import { describeRecord } from "./format";
 import { Keeper } from "./keeper";
 import { connectNear, createNearVault } from "./near";
-import { createOneClick } from "./oneclick";
+import { createUserList } from "./users";
+import { createOneClick } from "@lifeline/intents";
 import { createRecordPipeline } from "./pipeline";
 import { runSim, SIM_USER } from "./sim";
 import { openStore } from "./sql-node";
@@ -107,16 +108,18 @@ async function runLive(config: LiveConfig): Promise<void> {
     () => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: nodeIntel }),
     { sleep },
   );
+  const vault = createNearVault(connectNear(config), { keeperAccountId: config.keeperAccountId });
+  const userList = createUserList({ fixed: config.users, load: () => vault.getUsers(), now: () => Date.now(), log });
   const keeper = new Keeper({
     store,
-    vault: createNearVault(connectNear(config)),
+    vault,
     intents: createOneClick({
       apiUrl: config.oneClickUrl,
       nearSenderAccount: config.vaultId,
       ...(config.oneClickJwt ? { jwt: config.oneClickJwt } : {}),
     }),
     readHealth: (address) => getHealth(address),
-    users: () => config.users,
+    users: () => userList.users(),
     now,
     sleep,
     newId: randomUUID,
@@ -150,7 +153,8 @@ async function runLive(config: LiveConfig): Promise<void> {
   process.once("SIGINT", () => void shutdown());
 
   const port = await listen(api, config.port);
-  console.log(`Lifeline keeper, live on ${config.network}, watching ${config.users.join(", ")}. API on port ${port}.`);
+  const extra = config.users.length > 0 ? `${config.users.join(", ")} and ` : "";
+  console.log(`Lifeline keeper, live on ${config.network}, watching ${extra}everyone registered in ${config.vaultId}. API on port ${port}.`);
   void telegram?.poll();
   void attestation.run();
   pipeline.backfill();

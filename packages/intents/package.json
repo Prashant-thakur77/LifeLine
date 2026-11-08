@@ -8,13 +8,18 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "live-quote": "tsx src/live-quote.ts"
   },
   "dependencies": {
-    "@lifeline/shared": "workspace:*"
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@lifeline/shared": "workspace:*",
+    "@noble/curves": "2.2.0",
+    "@scure/base": "2.2.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
