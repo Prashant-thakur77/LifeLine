@@ -225,8 +225,8 @@ export function Waterline({
           }
           if (tag.current) {
             const tw = tag.current.offsetWidth;
-            const tx = Math.max(12, Math.min(s.w - tw - 12, ex - tw - 14));
-            tag.current.style.transform = `translate3d(${tx - ex}px, 20px, 0)`;
+            const tx = Math.max(12, Math.min(s.w - tw - 12, ex - tw - 22));
+            tag.current.style.transform = `translate3d(${tx - ex}px, 30px, 0)`;
           }
           if (easeOut >= 1 && !s.splashed) {
             s.splashed = true;
@@ -285,7 +285,7 @@ export function Waterline({
       )}
     >
       {/* The sun, printed: yellow over a misregistered orange pass. */}
-      <div className="pointer-events-none absolute right-[calc(var(--hull-r)+var(--hull-w)-9%)] top-[2%] aspect-square w-[min(26%,240px)]" aria-hidden>
+      <div className="pointer-events-none absolute right-[calc(var(--hull-r)+var(--hull-w)-8%)] top-[3%] aspect-square w-[min(20%,190px)]" aria-hidden>
         <span className="absolute inset-0 translate-x-[4px] translate-y-[3px] rounded-full bg-rescue/35 mix-blend-multiply" />
         <span className="absolute inset-0 rounded-full bg-sun mix-blend-multiply" />
         <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,transparent_58%,rgb(255_247_234/0.9)_59%)] bg-[length:100%_100%]" />
@@ -305,50 +305,6 @@ export function Waterline({
             <span key={i} className="size-[5px] shrink-0 rounded-full bg-ink/35" />
           ))}
         </span>
-      </div>
-
-      <div
-        ref={ladder}
-        className="pointer-events-none absolute bottom-0 right-[calc(var(--hull-r)+12px)] w-[calc(var(--hull-w)*0.62)]"
-        style={{ top: pct(scaleTop) }}
-        aria-hidden
-      >
-        {anchorLabel ? (
-          <div className="absolute bottom-full left-0 mb-[84px] flex -translate-x-[6px] items-center gap-2 whitespace-nowrap rounded-sm bg-ink px-2 py-1">
-            <span ref={anchorSquare} className="size-[9px] bg-rescue" />
-            <span className="font-readout text-[10.5px] text-paper">{anchorLabel}</span>
-          </div>
-        ) : null}
-        <div className="absolute inset-y-0 left-0 w-[3px] -translate-x-1/2 bg-ink/80" />
-        {marks.map((mark) => (
-          <div key={mark.key} className="absolute inset-x-0 flex -translate-y-1/2 items-center gap-2 sm:gap-3" style={{ top: pct(within(mark.value)) }}>
-            <div className={cx("h-[5px] w-[22%] shrink-0 sm:w-[28%]", mark.bar)} />
-            <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap leading-none sm:gap-2">
-              <span className="text-[12px] font-extrabold uppercase tracking-[0.02em] text-ink [font-variation-settings:'wdth'_75] sm:text-[15px]">
-                {size === "panel" ? (
-                  mark.short
-                ) : (
-                  <>
-                    <span className="sm:hidden">{mark.short}</span>
-                    <span className="hidden sm:inline">{mark.label}</span>
-                  </>
-                )}
-              </span>
-              <span className="font-readout text-[11.5px] text-ink sm:text-[13px]">{formatHealth(mark.value)}</span>
-            </div>
-          </div>
-        ))}
-        {/* The disc, as on a ship's hull: a ring crossed by a bar, on the line the user set. */}
-        <div className="absolute left-[calc(-1*var(--disc,96px)-10px)] hidden w-[var(--disc,96px)] -translate-y-1/2 sm:block" style={{ top: pct(within(levels.trigger)) }}>
-          <svg viewBox="0 0 120 120" className="block w-full overflow-visible">
-            <circle cx="60" cy="60" r="48" fill="var(--color-paper)" stroke="var(--color-ink)" strokeWidth="9" />
-            <rect x="-6" y="55" width="132" height="10" fill="var(--color-ink)" />
-            <line x1="126" y1="60" x2="138" y2="60" stroke="var(--color-ink)" strokeWidth="3" strokeDasharray="4 3" />
-          </svg>
-          <p className="absolute left-0 top-full mt-1.5 w-full text-center text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink [font-variation-settings:'wdth'_75]">
-            Your trigger
-          </p>
-        </div>
       </div>
 
       {/* The sea: four sheets of cut paper, drifting, raised and lowered together by health. */}
@@ -381,6 +337,50 @@ export function Waterline({
         </g>
       </svg>
 
+      <div
+        ref={ladder}
+        className="pointer-events-none absolute bottom-0 right-[calc(var(--hull-r)+12px)] w-[calc(var(--hull-w)*0.62)]"
+        style={{ top: pct(scaleTop) }}
+        aria-hidden
+      >
+        {anchorLabel ? (
+          <div className="absolute bottom-full left-0 mb-[84px] flex -translate-x-[6px] items-center gap-2 whitespace-nowrap rounded-sm bg-ink px-2 py-1">
+            <span ref={anchorSquare} className="size-[9px] bg-rescue" />
+            <span className="font-readout text-[10.5px] text-paper">{anchorLabel}</span>
+          </div>
+        ) : null}
+        <div className="absolute inset-y-0 left-0 w-[3px] -translate-x-1/2 bg-ink/80" />
+        {marks.map((mark) => (
+          <div key={mark.key} className="absolute inset-x-0 flex -translate-y-1/2 items-center gap-2 sm:gap-3" style={{ top: pct(within(mark.value)) }}>
+            <div className={cx("h-[5px] w-[22%] shrink-0 sm:w-[28%]", mark.bar)} />
+            <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap leading-none sm:gap-2">
+              <span className="rounded-sm bg-paper/90 px-1 text-[12px] font-extrabold uppercase tracking-[0.02em] text-ink [font-variation-settings:'wdth'_75] sm:text-[15px]">
+                {size === "panel" ? (
+                  mark.short
+                ) : (
+                  <>
+                    <span className="sm:hidden">{mark.short}</span>
+                    <span className="hidden sm:inline">{mark.label}</span>
+                  </>
+                )}
+              </span>
+              <span className="rounded-sm bg-paper/90 px-1 font-readout text-[11.5px] text-ink sm:text-[13px]">{formatHealth(mark.value)}</span>
+            </div>
+          </div>
+        ))}
+        {/* The disc, as on a ship's hull: a ring crossed by a bar, on the line the user set. */}
+        <div className="absolute left-[calc(-1*var(--disc,96px)-10px)] hidden w-[var(--disc,96px)] -translate-y-1/2 sm:block" style={{ top: pct(within(levels.trigger)) }}>
+          <svg viewBox="0 0 120 120" className="block w-full overflow-visible">
+            <circle cx="60" cy="60" r="48" fill="var(--color-paper)" stroke="var(--color-ink)" strokeWidth="9" />
+            <rect x="-6" y="55" width="132" height="10" fill="var(--color-ink)" />
+            <line x1="126" y1="60" x2="138" y2="60" stroke="var(--color-ink)" strokeWidth="3" strokeDasharray="4 3" />
+          </svg>
+          <p className="absolute left-0 top-full mt-1.5 w-full text-center text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink [font-variation-settings:'wdth'_75]">
+            Your trigger
+          </p>
+        </div>
+      </div>
+
       <svg ref={rope} className="pointer-events-none absolute inset-0 size-full opacity-0" aria-hidden>
         <path ref={ropePath} fill="none" stroke="var(--color-ink)" strokeWidth="4" strokeLinecap="round" />
         <path ref={ropeTwist} fill="none" stroke="var(--color-rescue)" strokeWidth="2" strokeDasharray="3 6" strokeLinecap="round" />
@@ -388,7 +388,7 @@ export function Waterline({
 
       {throwLabel ? (
         <div ref={buoy} className="pointer-events-none absolute left-0 top-0 opacity-0" aria-hidden>
-          <span className="absolute -left-[16px] -top-[16px] block size-[32px] drop-shadow-[0_3px_2px_rgb(11_21_51/0.35)]">
+          <span className="absolute -left-[24px] -top-[24px] block size-[48px] drop-shadow-[0_4px_3px_rgb(11_21_51/0.35)]">
             <Mark className="size-full" />
           </span>
           <span ref={tag} className="absolute left-0 top-0 block whitespace-nowrap rounded-sm bg-ink px-2 py-1 font-readout text-[12px] text-paper">

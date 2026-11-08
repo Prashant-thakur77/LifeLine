@@ -12,7 +12,7 @@ import { Button, cx, PaperRule, Spinner } from "./ui";
 import { useWallet } from "./WalletProvider";
 
 /** A lifebuoy: the mark. A white ring with four signal-orange quarters, outlined in ink like a printed object. */
-export function Mark({ className }: { className?: string }) {
+export function Mark({ className, quarters = "#ff5a1f" }: { className?: string; quarters?: string }) {
   const c = 2 * Math.PI * 8.5;
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
@@ -22,7 +22,7 @@ export function Mark({ className }: { className?: string }) {
         cy="12"
         r="8.5"
         fill="none"
-        stroke="#ff5a1f"
+        stroke={quarters}
         strokeWidth="5"
         strokeDasharray={`${c / 8} ${c / 8}`}
         transform="rotate(-22.5 12 12)"
@@ -35,7 +35,7 @@ export function Mark({ className }: { className?: string }) {
 
 const NAV = [
   { href: "/position", label: "Position", keepsUser: true },
-  { href: "/history", label: "History", keepsUser: true },
+  { href: "/check", label: "Check", keepsUser: false },
   { href: "/ledger", label: "Ledger", keepsUser: false },
   { href: "/fund", label: "Fund", keepsUser: false },
   { href: "/start", label: "Set up", keepsUser: false },
@@ -46,8 +46,16 @@ function NavLinks({ className }: { className?: string }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const user = params.get("user");
+  const nav = useRef<HTMLElement>(null);
+  // On a narrow screen the row scrolls: bring the current page into view.
+  useEffect(() => {
+    const el = nav.current;
+    const current = el?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!el || !current || el.scrollWidth <= el.clientWidth) return;
+    el.scrollLeft = current.offsetLeft - (el.clientWidth - current.offsetWidth) / 2;
+  }, [pathname]);
   return (
-    <nav className={className} aria-label="Main">
+    <nav ref={nav} className={className} aria-label="Main">
       {NAV.map((item) => {
         const active = pathname === item.href || pathname === `${item.href}/`;
         return (
@@ -210,15 +218,15 @@ export function Footer() {
             </nav>
             <dl className="flex flex-col gap-3 font-readout text-[12px]">
               <div>
-                <dt className="text-paper/60">Network</dt>
+                <dt className="text-paper/80">Network</dt>
                 <dd>{config.network}</dd>
               </div>
               <div>
-                <dt className="text-paper/60">Vault</dt>
+                <dt className="text-paper/80">Vault</dt>
                 <dd className="break-all">{config.vaultId ?? "not deployed yet"}</dd>
               </div>
               <div>
-                <dt className="text-paper/60">Demo</dt>
+                <dt className="text-paper/80">Demo</dt>
                 <dd>
                   <Link href={pageHref("/position", DEMO_USER)} className="underline decoration-sun underline-offset-4 hover:text-sun">
                     {DEMO_USER}
@@ -226,7 +234,7 @@ export function Footer() {
                 </dd>
               </div>
               <div>
-                <dt className="text-paper/60">Source</dt>
+                <dt className="text-paper/80">Source</dt>
                 <dd>
                   <a href="https://github.com/Prashant-thakur77/LifeLine" className="underline decoration-sun underline-offset-4 hover:text-sun" target="_blank" rel="noreferrer noopener">
                     GitHub (MIT)

@@ -11,6 +11,8 @@ import { nearblocksTx } from "../lib/links";
 import { REFUSED_RESCUE } from "../lib/proof";
 import { FundScene, PolicyScene, RescueScene, WatchScene } from "./art/Scenes";
 import { HeroWater } from "./HeroWater";
+import { Playground } from "./Playground";
+import { SmoothScroll } from "./SmoothScroll";
 import { ButtonLink, Skeleton, cx } from "./ui";
 import { DEMO_USER } from "../lib/config";
 import { pageHref } from "../lib/links";
@@ -19,8 +21,10 @@ import { Mark } from "./Shell";
 export function Landing() {
   return (
     <div className="flex flex-col">
+      <SmoothScroll />
       <HeroWater />
       <Readouts />
+      <Playground />
       <HowItWorks />
       <Safety />
       <Certificate />
@@ -117,30 +121,37 @@ const STEPS = [
 /** How a rescue happens: four paper scenes, in order. */
 function HowItWorks() {
   return (
-    <section aria-labelledby="how-title" className="mt-28 sm:mt-32">
-      <div className="grid grid-cols-1 items-end gap-6 lg:grid-cols-12">
-        <SectionTitle id="how-title" className="text-ink lg:col-span-7">
-          How a rescue <span className="riso text-sea">happens</span>
-        </SectionTitle>
-        <p className="max-w-md text-[16px] leading-relaxed text-body lg:col-span-5">
-          From the money you hold to the margin that saves your position, in four steps. The last two run on their own, every {KEEPER_POLL_INTERVAL_SEC}{" "}
-          seconds.
-        </p>
+    <section aria-labelledby="how-title" className="how mt-28 sm:mt-32">
+      <div className="how-stage">
+        <div className="grid grid-cols-1 items-end gap-6 lg:grid-cols-12">
+          <SectionTitle id="how-title" className="text-ink lg:col-span-7">
+            How a rescue <span className="riso text-sea">happens</span>
+          </SectionTitle>
+          <p className="max-w-md text-[16px] leading-relaxed text-body lg:col-span-5">
+            From the money you hold to the margin that saves your position, in four steps. The last two run on their own, every {KEEPER_POLL_INTERVAL_SEC}{" "}
+            seconds.
+          </p>
+        </div>
+        <ol className="how-track mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map(({ title, body, Art, tint }, i) => (
+            <li key={title} className="how-card flex flex-col overflow-hidden rounded-xl border-2 border-ink bg-card">
+              <div className={cx("border-b-2 border-ink", tint)}>
+                <Art />
+              </div>
+              <div className="flex flex-1 flex-col p-5">
+                <p className="font-readout text-[12px] text-rescue-ink">
+                  Step {i + 1} of {STEPS.length}
+                </p>
+                <h3 className="mt-1.5 text-[20px] font-bold leading-snug text-ink">{title}</h3>
+                <p className="mt-2 text-[14.5px] leading-relaxed text-body">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="how-rope mt-10 hidden h-[6px] overflow-hidden rounded-full bg-ink/10" aria-hidden>
+          <div className="how-rope-fill h-full origin-left bg-[repeating-linear-gradient(90deg,var(--color-ink)_0_10px,var(--color-rescue)_10px_16px)]" />
+        </div>
       </div>
-      <ol className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {STEPS.map(({ title, body, Art, tint }, i) => (
-          <li key={title} className="pop-in flex flex-col overflow-hidden rounded-xl border-2 border-ink bg-card">
-            <div className={cx("border-b-2 border-ink", tint)}>
-              <Art />
-            </div>
-            <div className="flex flex-1 flex-col p-5">
-              <p className="font-readout text-[12px] text-rescue-ink">Step {i + 1}</p>
-              <h3 className="mt-1.5 text-[20px] font-bold leading-snug text-ink">{title}</h3>
-              <p className="mt-2 text-[14.5px] leading-relaxed text-body">{body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
     </section>
   );
 }
@@ -163,7 +174,7 @@ function Safety() {
       <div className="overflow-hidden rounded-2xl border-2 border-ink bg-sea text-paper">
         <div className="grid grid-cols-1 gap-10 p-6 sm:p-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <p className="font-readout text-[11px] uppercase tracking-[0.12em] text-sun">Safety notice · vault contract on NEAR</p>
+            <p className="font-readout text-[11px] uppercase tracking-[0.12em] text-paper">Safety notice · vault contract on NEAR</p>
             <SectionTitle id="safety-title" className="mt-4 text-paper">
               What a hacked keeper can&apos;t do
             </SectionTitle>
@@ -314,7 +325,7 @@ function NextStep() {
             Protect my position
           </ButtonLink>
         </div>
-        <Mark className="pointer-events-none absolute -right-16 -top-16 size-56 opacity-90 sm:-right-10 sm:-top-20 lg:size-72" />
+        <Mark quarters="#0b1533" className="pointer-events-none absolute -right-16 -top-16 size-56 sm:-right-10 sm:-top-20 lg:size-72" />
       </div>
     </section>
   );

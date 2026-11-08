@@ -35,7 +35,7 @@
   /* The same accents, dark enough for small text on paper */
   --color-sea-ink: #1d4bff;
   --color-rescue-ink: #c2410c;
-  --color-safe-ink: #08805f;
+  --color-safe-ink: #066c50;
   --color-warn-ink: #9a5b00;
   --color-danger-ink: #c0182c;
   --color-sim-ink: #5b3fd9;
@@ -111,8 +111,10 @@ body::after {
 }
 
 :focus-visible {
-  outline: 2.5px solid var(--color-sea);
-  outline-offset: 3px;
+  /* Two tones, so the ring shows on paper, ink, sea and orange alike. */
+  outline: 3px solid var(--color-ink);
+  outline-offset: 0;
+  box-shadow: 0 0 0 6px var(--color-sun);
   border-radius: 6px;
 }
 
@@ -303,6 +305,66 @@ body::after {
     }
   }
 }
+/*
+ * How a rescue happens, on wide screens: the section pins and the four paper scenes slide
+ * sideways as you scroll, with a rope filling underneath. Built on the browser's scroll
+ * timelines, so it needs no script; elsewhere it stays a plain grid.
+ */
+@supports (animation-timeline: view()) {
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    .how {
+      view-timeline-name: --how;
+      height: 210vh;
+    }
+    .how-stage {
+      position: sticky;
+      top: 64px;
+      height: calc(100svh - 64px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin-inline: calc(50% - 50vw);
+      padding-inline: max(24px, calc(50vw - 552px));
+      overflow: hidden;
+    }
+    .how-track {
+      display: flex;
+      width: max-content;
+      gap: 28px;
+      animation: how-slide linear both;
+      animation-timeline: --how;
+      animation-range: contain 4% contain 96%;
+    }
+    .how-card {
+      width: min(470px, 36vw);
+    }
+    .how-rope {
+      display: block;
+    }
+    .how-rope-fill {
+      animation: how-rope linear both;
+      animation-timeline: --how;
+      animation-range: contain 4% contain 96%;
+    }
+  }
+}
+@keyframes how-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% + min(1104px, 100vw - 48px)));
+  }
+}
+@keyframes how-rope {
+  from {
+    transform: scaleX(0.04);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* Movement only, never opacity: a screenshot or a slow scroll always shows the content. */
 @keyframes pop-in {
   from {
@@ -320,6 +382,88 @@ body::after {
   from {
     transform: translateY(14px);
   }
+}
+
+/* Printed controls: an ink track with an orange thumb, and a paper switch. */
+.range {
+  appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+.range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+.range::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -9px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2.5px solid var(--color-ink);
+  background: var(--color-rescue);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  transition: transform 150ms ease;
+}
+.range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2.5px solid var(--color-ink);
+  background: var(--color-rescue);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+.range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.switch {
+  appearance: none;
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-shade);
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper);
+  transition: transform 260ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.switch:checked {
+  background: var(--color-safe);
+}
+.switch:checked::after {
+  transform: translateX(22px);
+}
+
+/* Lenis, on the landing page only. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

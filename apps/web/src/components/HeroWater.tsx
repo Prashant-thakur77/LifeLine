@@ -102,7 +102,7 @@ export function HeroWater() {
           <h1
             id="hero-title"
             data-list={tone === "rescue" || tone === "liquidation" ? "on" : "off"}
-            className="listing mt-4 text-[clamp(52px,7.6vw,122px)] font-extrabold uppercase leading-[0.84] tracking-[-0.015em] text-ink [font-variation-settings:'wdth'_70]"
+            className="listing mt-4 text-[clamp(52px,7.2vw,108px)] font-extrabold uppercase leading-[0.84] tracking-[-0.015em] text-ink [font-variation-settings:'wdth'_70]"
           >
             <span className="kin-line">
               <span style={{ animationDelay: "40ms" }}>Topped up</span>
@@ -111,7 +111,7 @@ export function HeroWater() {
               <span style={{ animationDelay: "130ms" }}>before</span>
             </span>
             <span className="kin-line">
-              <span className="riso text-rescue" style={{ animationDelay: "220ms" }}>
+              <span className="riso text-[#ee4b12]" style={{ animationDelay: "220ms" }}>
                 {/* The O is the lifebuoy itself. */}
                 <span aria-hidden>
                   liquidati
@@ -220,7 +220,7 @@ function LogTicket(props: { online: boolean; status: string; lines: LogLine[]; b
           <span className={cx("size-1.5 rounded-full", online ? "bg-safe" : "bg-warn")} aria-hidden />
           {DEMO_USER}
         </span>
-        <span className="rounded-sm bg-sim px-1.5 py-0.5 text-paper">Simulation</span>
+        <span className="rounded-sm bg-sim-ink px-1.5 py-0.5 text-paper">Simulation</span>
         {canReplay ? (
           <button type="button" onClick={onReplay} className="ml-auto py-1 text-sun underline decoration-sun/50 underline-offset-4 hover:decoration-sun">
             Replay the last rescue

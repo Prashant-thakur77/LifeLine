@@ -1,6 +1,6 @@
 # Lifeline: taste profile (v2, bright daylight)
 
-The filter for every design decision. v2 replaces the night-water version on 2026-11-09: Prashant found the deep navy, teal and single orange dull, and asked for a full redesign that is bright, art-made and high-class. His picks: the **bright daylight** palette; **printed illustration**, **paper cut-out** and **kinetic type and motion** as the art; no 3D models. At the taste check he chose the **paper-cut poster** mood and said the first build was the right direction, to polish. Then: **"a minimal site, easy to use, with everything great."** Minimal wins every tie.
+The filter for every design decision. v2 replaces the night-water version on 2026-11-09: Prashant found the deep navy, teal and single orange dull, and asked for a full redesign that is bright, art-made and high-class. His picks: the **bright daylight** palette; **printed illustration**, **paper cut-out** and **kinetic type and motion** as the art; no 3D models. At the taste check he chose the **paper-cut poster** mood and said the first build was the right direction, to polish. Then, briefly, "minimal"; and finally, his latest word (2026-11-09): **not necessarily minimal; great, creative and artful, everyone should love looking at it, every part working, and many more features people find fascinating and useful**, so they want to use the product. He chose four features: a price playground, a check-any-address tool, a backtest explorer and a live rescue feed, "and anything that makes it better". Rich, but never a hodgepodge: each section has one clear job and the same visual language.
 
 ## Personality
 
@@ -9,14 +9,14 @@ The site IS:
 - **Bright.** A rescue on a clear day. Warm white paper, saturated sea blue, signal orange, sunshine yellow. Colour carries meaning and joy at once; nothing is grey or murky.
 - **Crafted.** Made by hand for Lifeline: risograph print layers with grain, halftone and a little misregistration; waves, buoy and boat cut from paper and stacked with real depth; type that moves with intent. No stock imagery, no generic icons.
 - **Candid.** Easy to read and easy to trust: real numbers set large, the simulation always labelled, every claim one click from its proof. Navigation is obvious on every page.
-- **Minimal (overrides the rest).** One idea per section, generous space, one primary action per screen. Every graphic has a job; nothing is there only to decorate. Offset ink shadows mark what you can click, nothing else.
+- **Organised richness.** Lots of art, motion and real features, but each section does one job, reads at a glance and uses the same paper-and-ink language. Offset ink shadows mark what you can click. Interactive features run on real data or real maths and say which.
 
 It must NEVER feel:
 
 - **Childish.** No cartoon mascots, bubbly rounded UI, emoji, bouncy toy motion. Bright and crafted, but grown-up: the craft of a great print studio, the polish of a financial product.
 - **Casino.** No neon, coins, confetti, "to the moon", flashing counters.
 - **Template.** No stock photos, blue-purple SaaS gradients, glassmorphism, identical icon cards, fade-up on every block.
-- **Cluttered.** No stickers, tape, stamps, marquees or textures stacked for their own sake; no section that needs a second look to find the point.
+- **Hodgepodge.** No mixed styles, no section that needs a second look to find its point, no feature that doesn't work.
 
 ## Audience taste
 

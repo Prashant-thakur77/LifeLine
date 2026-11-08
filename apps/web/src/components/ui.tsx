@@ -107,7 +107,7 @@ const BADGE: Record<Tone, string> = {
   warn: "bg-sun text-ink",
   rescue: "bg-rescue text-ink",
   danger: "bg-danger text-paper",
-  sim: "bg-sim text-paper",
+  sim: "bg-sim-ink text-paper",
   info: "bg-sea-light text-ink",
 };
 
