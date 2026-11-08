@@ -54,8 +54,8 @@ function NavLinks({ className }: { className?: string }) {
             href={item.keepsUser ? pageHref(item.href, user) : item.href}
             aria-current={active ? "page" : undefined}
             className={cx(
-              "shrink-0 rounded-lg px-3 py-1.5 text-[14px] font-medium transition-colors",
-              active ? "bg-ink-700 text-paper" : "text-mist-300 hover:bg-ink-800 hover:text-paper",
+              "shrink-0 px-3 py-1.5 text-[14px] font-medium transition-colors",
+              active ? "text-paper shadow-[inset_0_-3px_0_var(--color-rescue)]" : "text-mist-300 hover:text-paper hover:shadow-[inset_0_-3px_0_var(--color-ink-500)]",
             )}
           >
             {item.label}
@@ -169,7 +169,7 @@ export function Header() {
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Lifeline home">
           <Mark className="size-6" />
-          <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-paper">Lifeline</span>
+          <span className="font-stencil text-[21px] font-bold uppercase leading-none tracking-[0.02em] text-paper">Lifeline</span>
         </Link>
         <Suspense fallback={<div className="hidden flex-1 md:block" />}>
           <NavLinks className="hidden flex-1 items-center gap-1 md:flex" />
@@ -210,9 +210,14 @@ export function Footer() {
               </Link>
             </dd>
           </div>
-          <a href="https://github.com/Prashant-thakur77/LifeLine" className="text-mist-200 hover:text-paper" target="_blank" rel="noreferrer noopener">
-            Source (MIT)
-          </a>
+          <div className="flex gap-1.5">
+            <dt>Source</dt>
+            <dd>
+              <a href="https://github.com/Prashant-thakur77/LifeLine" className="text-mist-200 hover:text-paper" target="_blank" rel="noreferrer noopener">
+                GitHub (MIT)
+              </a>
+            </dd>
+          </div>
         </dl>
       </div>
     </footer>

@@ -70,7 +70,7 @@ async function decisionSample(index: number): Promise<DecisionSample> {
   };
 }
 
-async function nearSamples(count: number): Promise<NearSample[]> {
+async function nearSamples(count: number): Promise<{ samples: NearSample[]; failed: FailedAttempt[] }> {
   const config = readLiveConfig(process.env);
   if (config.network !== "testnet") throw new Error("--near-testnet needs .env to point at testnet");
   const client = connectNear(config);
@@ -85,26 +85,34 @@ async function nearSamples(count: number): Promise<NearSample[]> {
   if (!signer) throw new Error("--near-testnet needs TESTNET_QUOTE_SIGNER_KEY, the key the testnet vault trusts in place of 1Click's");
 
   const samples: NearSample[] = [];
+  const failed: FailedAttempt[] = [];
   for (let i = 0; i < count; i++) {
     if (i > 0) await sleep((policy.cooldownSec + 2) * 1000);
     const depositAddress = randomBytes(32).toString("hex");
     const quote = signTestnetQuote({ key: signer, user, token, amount: "2000000", recipient: policy.hlAddress, depositAddress });
     const start = performance.now();
-    const { txHash } = await vault.rescue({
-      user,
-      token,
-      amount: "2000000",
-      depositAddress,
-      recipient: policy.hlAddress,
-      quoteId: `latency-${Date.now()}`,
-      quote: quote.payload,
-      signature: quote.signature,
-    });
-    const ms = Math.round(performance.now() - start);
-    samples.push({ at: new Date().toISOString(), txHash, ms, network: "testnet" });
-    console.log(`  NEAR ${i + 1}/${count}: ${(ms / 1000).toFixed(2)} s  https://testnet.nearblocks.io/txns/${txHash}`);
+    try {
+      const { txHash } = await vault.rescue({
+        user,
+        token,
+        amount: "2000000",
+        depositAddress,
+        recipient: policy.hlAddress,
+        quoteId: `latency-${Date.now()}`,
+        quote: quote.payload,
+        signature: quote.signature,
+      });
+      const ms = Math.round(performance.now() - start);
+      samples.push({ at: new Date().toISOString(), txHash, ms, network: "testnet" });
+      console.log(`  NEAR ${i + 1}/${count}: ${(ms / 1000).toFixed(2)} s  https://testnet.nearblocks.io/txns/${txHash}`);
+    } catch (error) {
+      // A public node drops the odd request. Count it and move on, rather than lose the run.
+      const message = error instanceof Error ? error.message : String(error);
+      failed.push({ at: new Date().toISOString(), error: message });
+      console.log(`  NEAR ${i + 1}/${count}: failed, ${message}`);
+    }
   }
-  return samples;
+  return { samples, failed };
 }
 
 async function main() {
@@ -118,7 +126,7 @@ async function main() {
   }
 
   const previous = existsSync(SAMPLES_FILE)
-    ? (JSON.parse(readFileSync(SAMPLES_FILE, "utf8")) as { decisions: DecisionSample[]; near: NearSample[] })
+    ? (JSON.parse(readFileSync(SAMPLES_FILE, "utf8")) as { decisions: DecisionSample[]; near: NearSample[]; nearFailed?: FailedAttempt[] })
     : { decisions: [], near: [] };
 
   console.log(`Keeper decision on mainnet APIs, ${count} samples:`);
@@ -137,15 +145,16 @@ async function main() {
     await sleep(GAP_MS);
   }
   let near = previous.near;
+  let nearFailed: FailedAttempt[] = previous.nearFailed ?? [];
   if (nearCount > 0) {
     console.log(`\nRescue transactions on the testnet vault, ${nearCount} samples:`);
-    near = await nearSamples(nearCount);
+    ({ samples: near, failed: nearFailed } = await nearSamples(nearCount));
   }
 
   const generatedAt = new Date().toISOString();
   mkdirSync(OUT_DIR, { recursive: true });
-  writeFileSync(SAMPLES_FILE, `${JSON.stringify({ generatedAt, decisions, failed, near }, null, 2)}\n`);
-  const report = formatReport(summarize(decisions, near, failed), generatedAt);
+  writeFileSync(SAMPLES_FILE, `${JSON.stringify({ generatedAt, decisions, failed, near, nearFailed }, null, 2)}\n`);
+  const report = formatReport(summarize(decisions, near, failed, nearFailed), generatedAt);
   writeFileSync(new URL("RESULTS.md", OUT_DIR), report);
   console.log(`\n${report}`);
 }

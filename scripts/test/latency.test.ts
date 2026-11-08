@@ -51,6 +51,12 @@ describe("formatReport", () => {
     expect(report).toContain("The operation was aborted due to timeout");
   });
 
+  it("counts NEAR transactions that never came back, instead of hiding them", () => {
+    const near = [{ at: "t", txHash: "H", ms: 4300, network: "testnet" as const }];
+    const report = formatReport(summarize([decision(3000)], near, [], [{ at: "t", error: "fetch failed" }]), "t");
+    expect(report).toContain("1 of 2 rescue transactions didn't come back from the public node and aren't in the table: fetch failed.");
+  });
+
   it("says so when the NEAR transaction wasn't sampled", () => {
     expect(formatReport(summarize([decision(3000)], []), "t")).toMatch(/NEAR transaction.*not sampled/i);
   });

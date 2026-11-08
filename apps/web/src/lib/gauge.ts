@@ -163,38 +163,3 @@ export function cushionUsd(snapshot: Pick<HealthSnapshot, "accountValue" | "main
 export function rescueNeededUsd(snapshot: Pick<HealthSnapshot, "accountValue" | "maintenanceMarginUsed">, target: number): number {
   return Math.max(0, target * snapshot.maintenanceMarginUsed - snapshot.accountValue);
 }
-
-// ---- Dial geometry ----
-
-export type Dial = { cx: number; cy: number; r: number; startDeg: number; sweepDeg: number };
-
-/** A 240° arc open at the bottom: it starts at the lower left and runs clockwise. */
-export const DIAL: Dial = { cx: 160, cy: 160, r: 128, startDeg: 150, sweepDeg: 240 };
-
-/** The point at `fraction` along the arc, in SVG coordinates (y grows downward). */
-export function dialPoint(dial: Dial, fraction: number, radius = dial.r): { x: number; y: number } {
-  const clamped = Math.min(1, Math.max(0, fraction));
-  const rad = ((dial.startDeg + clamped * dial.sweepDeg) * Math.PI) / 180;
-  return { x: dial.cx + radius * Math.cos(rad), y: dial.cy + radius * Math.sin(rad) };
-}
-
-const round = (n: number) => Math.round(n * 100) / 100;
-
-/** An SVG path for the arc between two fractions. */
-export function dialArc(dial: Dial, from: number, to: number, radius = dial.r): string {
-  const start = dialPoint(dial, from, radius);
-  const end = dialPoint(dial, to, radius);
-  const largeArc = Math.abs(to - from) * dial.sweepDeg > 180 ? 1 : 0;
-  return `M ${round(start.x)} ${round(start.y)} A ${radius} ${radius} 0 ${largeArc} 1 ${round(end.x)} ${round(end.y)}`;
-}
-
-/** The coloured bands under the needle: rescue below trigger, warn below warn, safe above. */
-export function dialBands(levels: { warn: number; trigger: number }): { zone: "rescue" | "warn" | "safe"; from: number; to: number }[] {
-  const trigger = healthToFraction(levels.trigger);
-  const warn = healthToFraction(levels.warn);
-  return [
-    { zone: "rescue", from: 0, to: trigger },
-    { zone: "warn", from: trigger, to: warn },
-    { zone: "safe", from: warn, to: 1 },
-  ];
-}

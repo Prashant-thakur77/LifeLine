@@ -2,5 +2,5 @@
   "p50Ms": 35000,
   "p95Ms": 120000,
   "measured": false,
-  "source": "Assumed, not measured: p50 is 1Click's 30 s timeEstimate plus one 5 s keeper poll, and p95 is the 120 s limit Gate 1 allows. Replace these with the real numbers from the A3 top-ups and set measured to true."
+  "source": "Partly measured. The keeper's decision and the vault's NEAR transaction are measured in research/latency/RESULTS.md, but 1Click's delivery to Hyperliquid isn't, until a rescue moves real money. So p50 is 1Click's own 30 s estimate plus one 5 s keeper poll, and p95 is a deliberately pessimistic 120 s."
 }

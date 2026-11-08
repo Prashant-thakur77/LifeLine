@@ -1,13 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Martian_Mono, Saira_Stencil } from "next/font/google";
 import type { ReactNode } from "react";
 import { Footer, Header } from "../components/Shell";
 import { WalletProvider } from "../components/WalletProvider";
 import "./globals.css";
 
-const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", axes: ["opsz"], display: "swap" });
 const plexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-sans", display: "swap" });
-const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-plex-mono", display: "swap" });
+const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-plex-mono", display: "swap", preload: false });
+// Hull lettering for headlines and the load line, and an instrument face for big readouts.
+// Google publishes no fallback metrics for Saira Stencil, so the fallback is named outright.
+const stencil = Saira_Stencil({
+  subsets: ["latin"],
+  axes: ["wdth"],
+  variable: "--font-saira-stencil",
+  display: "swap",
+  adjustFontFallback: false,
+  fallback: ["Arial Narrow", "sans-serif-condensed", "sans-serif"],
+});
+const readout = Martian_Mono({ subsets: ["latin"], axes: ["wdth"], variable: "--font-martian", display: "swap", preload: false });
 
 export const metadata: Metadata = {
   title: { default: "Lifeline: auto top-up for onchain perps", template: "%s · Lifeline" },
@@ -24,11 +34,19 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${stencil.variable} ${readout.variable}`}>
       <body>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:bg-paper focus:px-3 focus:py-2 focus:text-[14px] focus:font-semibold focus:text-ink-950"
+        >
+          Skip to content
+        </a>
         <WalletProvider>
           <Header />
-          <main className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">{children}</main>
+          <main id="main" className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">
+            {children}
+          </main>
           <Footer />
         </WalletProvider>
       </body>

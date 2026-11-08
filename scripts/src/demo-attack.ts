@@ -79,7 +79,7 @@ async function main() {
   for (const attempt of attempts) console.log(formatAttempt(attempt));
   const layer1Held = attempts.every((attempt) => attempt.outcome === attempt.expected);
 
-  console.log("\nLayer 2: the vault contract. A hacked keeper could skip layer 1, so its key calls rescue itself: the user's real address as recipient, a quote 1Click really signed, and its own account as where the money goes.\n");
+  console.log("\nLayer 2: the vault contract. A hacked keeper could skip layer 1, so its key calls rescue itself: the user's real address as recipient, a correctly signed quote, and its own account as where the money goes. (On testnet the vault trusts a team key in place of 1Click's, since 1Click has no testnet.)\n");
   let layer2Failed = false;
   const read = (file: URL) => (existsSync(file) ? parseProof(readFileSync(file, "utf8")) : null);
   const proof = read(PROOF_FILE) ?? read(TESTNET_PROOF_FILE);

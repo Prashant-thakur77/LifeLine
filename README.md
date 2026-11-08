@@ -60,7 +60,7 @@ Each of these needs only Node 22 and pnpm, and no wallet, keys or funds. Clone t
 
 | Do | See |
 | --- | --- |
-| Open https://lifeline.prashantthakur.dev | The live demo: `demo.near`'s health gauge, the keeper's stats and the attestation result. Every 15 minutes the price drops and the keeper rescues it |
+| Open https://lifeline.prashantthakur.dev | The live demo, no wallet: `demo.near`'s health drawn as a sea level against its warn, rescue and liquidation lines. On load the page replays the keeper's last rescue from its log, step by step; every 15 minutes the price drops and the keeper rescues it live. Below: the keeper's stats, the attestation result and the vault's refusal codes |
 | `pnpm demo:sim` | The real keeper rescue a pretend position opened at the live ETH price, with a real 1Click quote, the policy engine's verdict and the audit record, in under 30 seconds |
 | `pnpm demo:attack` | A hacked keeper's attacks refused by the policy engine, and a real on-chain transaction where the vault refused a redirected rescue, re-checked on a public NEAR node |
 | `pnpm --filter intents live-quote 5 0xYourHyperliquidAddress` | A real 1Click quote from NEAR USDC to Hyperliquid perps USDC, its signature checked |
@@ -70,18 +70,18 @@ Each of these needs only Node 22 and pnpm, and no wallet, keys or funds. Clone t
 | `pnpm latency` | The keeper's decision time measured against the live APIs, written to `research/latency/RESULTS.md` |
 | `pnpm test` | Every test: about 1,300 TypeScript tests, then the vault's 51 unit and 11 sandbox tests |
 
-The vault's Rust tests need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them `pnpm test` runs everything else and says so. The first run fetches a local NEAR node for the sandbox tests.
+The vault's Rust tests need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them `pnpm test` runs everything else and says so. The first run fetches a local NEAR node for the sandbox tests, and the Rust build needs about 3 GB of free disk.
 
 ## Latency
 
-Measured with `pnpm latency` on 8 November 2026 ([details](research/latency/RESULTS.md)):
+Measured with `pnpm latency` on 8 November 2026, against the vault code that's deployed now ([details and every transaction](research/latency/RESULTS.md)):
 
 | Step | p50 | p95 |
 | --- | --- | --- |
-| The keeper's decision, against the live Hyperliquid and 1Click APIs (20 samples) | 1.9 s | 2.3 s |
-| The vault's `rescue` transaction, on testnet (10 samples) | 4.4 s | 4.8 s |
+| The keeper's decision, against the live Hyperliquid and 1Click APIs (19 of 20 samples; one Hyperliquid read failed) | 1.9 s | 2.5 s |
+| The vault's `rescue` transaction, on testnet (10 samples, 2 USDC each) | 4.0 s | 45.0 s |
 
-After that, 1Click has to swap and deliver to Hyperliquid, which its quotes estimate at 30 s. With the keeper looking every 5 s, a rescue would take about 39 s from health crossing the trigger to USDC on Hyperliquid. The 1Click part is measured on mainnet once a rescue moves real money, and `/api/stats` reports real rescues' p50 and p95 from then on.
+Nine of the ten transactions took 3.7 to 6.4 s; one took 45 s waiting on the public testnet node, and with ten samples that one is the p95. After the transaction, 1Click has to swap and deliver to Hyperliquid, which its quotes estimate at 30 s. With the keeper looking every 5 s, a rescue would take about 38 s at p50 from health crossing the trigger to USDC on Hyperliquid. The 1Click part is measured on mainnet once a rescue moves real money, and `/api/stats` reports real rescues' p50 and p95 from then on.
 
 ## Safety model
 
@@ -108,7 +108,7 @@ To watch it work, run `pnpm demo:attack`. It uses real signed 1Click quotes and 
 | Rescue a healthy account, to burn its reserve | Policy engine: `NOT_BELOW_TRIGGER` |
 | Reuse a stale quote | Policy engine: `QUOTE_STALE` |
 | Change a quote's recipient after 1Click signed it | Quote signature check |
-| Call `rescue` itself, with the user's real address, a genuinely signed quote and its own account as the destination | Vault contract, on chain: `BAD_QUOTE` (testnet now, mainnet at Gate 2) |
+| Call `rescue` itself, with the user's real address, a correctly signed quote and its own account as the destination | Vault contract, on chain: `BAD_QUOTE`. Shown on testnet, where the vault trusts a team key in place of 1Click's (1Click has no testnet); the mainnet vault trusts 1Click's key |
 
 The same run allows an honest rescue as a control, so it's clear the engine isn't just refusing everything. The last row is a real failed transaction, signed with the keeper's own restricted key, and the demo asks a public NEAR node about it each time rather than trusting a saved result.
 

@@ -31,9 +31,10 @@ function mostCommon(values: number[]): number | null {
   return best;
 }
 
-export function summarize(decisions: DecisionSample[], near: NearSample[], failed: FailedAttempt[] = []) {
+export function summarize(decisions: DecisionSample[], near: NearSample[], failed: FailedAttempt[] = [], nearFailed: FailedAttempt[] = []) {
   return {
     failed,
+    nearFailed,
     decision: {
       count: decisions.length,
       readMs: spread(decisions.map((s) => s.readMs)),
@@ -52,7 +53,11 @@ export type LatencySummary = ReturnType<typeof summarize>;
 const sec = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
 export function formatReport(summary: LatencySummary, generatedAt: string): string {
-  const { decision, near, oneClickEstimateSec, failed } = summary;
+  const { decision, near, oneClickEstimateSec, failed, nearFailed } = summary;
+  const nearNote =
+    nearFailed.length === 0
+      ? ""
+      : ` ${nearFailed.length} of ${(near?.count ?? 0) + nearFailed.length} rescue transactions didn't come back from the public node and aren't in the table: ${[...new Set(nearFailed.map((f) => f.error))].join("; ")}.`;
   const attempts = decision.count + failed.length;
   const reasons = [...new Set(failed.map((f) => f.error))];
   const pollMs = KEEPER_POLL_INTERVAL_SEC * 1000;
@@ -87,7 +92,7 @@ export function formatReport(summary: LatencySummary, generatedAt: string): stri
     "",
     near === null
       ? "The NEAR transaction was not sampled in this run."
-      : `The NEAR transaction is the vault's \`rescue\`, signed with the keeper's function-call key and waited on until it executed: the storage registration, the USDC transfer and the callback. ${near.network === "testnet" ? "It ran on testnet, where blocks come at the same pace as mainnet." : ""}`.trim(),
+      : `The NEAR transaction is the vault's \`rescue\`, signed with the keeper's function-call key and waited on until it executed: the storage registration, the USDC transfer and the callback. ${near.network === "testnet" ? "It ran on testnet, where blocks come at the same pace as mainnet." : ""}`.trim() + nearNote,
     "",
     estimate === null
       ? "1Click gave no time estimate."

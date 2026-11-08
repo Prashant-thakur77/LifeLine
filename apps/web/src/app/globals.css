@@ -27,9 +27,18 @@
   --color-danger: #ff5266;
   --color-sim: #a99bff;
 
-  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-display: var(--font-saira-stencil), "Arial Narrow", sans-serif;
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-stencil: var(--font-saira-stencil), "Arial Narrow", sans-serif;
+  --font-readout: var(--font-martian), var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Hull plating, not pills: corners stay tight at every size. */
+  --radius-md: 4px;
+  --radius-lg: 5px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 10px;
 
   --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
   --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -87,6 +96,13 @@ body {
   border-radius: 6px;
 }
 
+@layer base {
+  /* Stencil lettering reads like a hull marking a little condensed. A utility can still override it. */
+  :where(.font-display, .font-stencil) {
+    font-stretch: 84%;
+  }
+}
+
 .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -103,6 +119,39 @@ body {
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+/* The lead line on the landing page fills as it scrolls past. Where scroll timelines aren't supported, or motion is
+   reduced, it simply stays full. */
+.lead-fill {
+  transform: scaleY(1);
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .lead-fill {
+      animation: lead-fill linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 70%;
+    }
+  }
+}
+@keyframes lead-fill {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* On a short desktop screen the hero's log drops its first readings, so it can't crowd the buttons. */
+@media (min-width: 1024px) and (max-height: 860px) {
+  .log-trim {
+    display: none;
+  }
+  .hero-title {
+    font-size: clamp(46px, 5.6vw, 84px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
