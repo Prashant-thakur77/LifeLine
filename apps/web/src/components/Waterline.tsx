@@ -122,7 +122,7 @@ export function Waterline({
     lastThrow.current = throwSignal;
     const rect = box.current?.getBoundingClientRect();
     const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-    if (rect && readout && readout.width > 0) live.current.focusX = Math.min(rect.width - 24, readout.right - rect.left + 14);
+    if (rect && readout && readout.width > 0) live.current.focusX = Math.min(rect.width - 24, readout.right - rect.left + 18);
     live.current.throwAt = performance.now();
     live.current.wake();
   }, [throwSignal]);
@@ -150,7 +150,7 @@ export function Waterline({
       cv.height = Math.round(rect.height * dpr);
       rope.current?.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
       const readout = rider.current?.firstElementChild?.getBoundingClientRect();
-      s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 14) : rect.width * 0.6;
+      s.focusX = readout && readout.width > 0 ? Math.min(rect.width - 24, readout.right - rect.left + 18) : rect.width * 0.6;
       const square = anchorSquare.current?.getBoundingClientRect();
       const spine = ladder.current?.getBoundingClientRect();
       s.anchor = square
@@ -347,7 +347,7 @@ export function Waterline({
       className={cx(
         "overflow-hidden",
         size === "hero"
-          ? "[--disc-w:84px] [--ladder-r:12px] [--ladder-w:128px] sm:[--ladder-w:190px] lg:[--disc-w:110px] lg:[--ladder-r:4%] lg:[--ladder-w:170px] xl:[--disc-w:150px] xl:[--ladder-w:250px]"
+          ? "[--disc-w:84px] [--ladder-r:12px] [--ladder-w:128px] sm:[--ladder-w:190px] lg:[--disc-w:104px] lg:[--ladder-r:4%] lg:[--ladder-w:170px] xl:[--disc-w:124px] xl:[--ladder-w:250px]"
           : "[--disc-w:84px] [--ladder-r:16px] [--ladder-w:128px] sm:[--ladder-w:210px]",
         className ?? "relative",
       )}

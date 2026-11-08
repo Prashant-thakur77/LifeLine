@@ -135,7 +135,7 @@ export function HeroWater() {
           anchorLabel={wide ? (story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)") : "Reserve"}
           throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
           surface={
-            <div className="absolute left-4 -translate-y-full pb-3 sm:left-6 lg:left-auto lg:right-[calc(var(--ladder-r)+var(--ladder-w)+var(--disc-w)+28px)] lg:text-right">
+            <div className="absolute left-4 -translate-y-full pb-3 sm:left-6 lg:left-auto lg:right-[calc(var(--ladder-r)+var(--ladder-w)+var(--disc-w)+46px)] lg:text-right">
               <p className="font-readout text-[clamp(52px,6.4vw,104px)] font-light leading-[0.9] tracking-[-0.04em] text-paper tabular-nums">
                 {shown === null ? "—" : formatHealth(shown)}
               </p>
@@ -148,7 +148,7 @@ export function HeroWater() {
           <p className="font-readout text-[12px] text-mist-300">Hyperliquid margin protection · funded from any chain</p>
           <h1
             id="hero-title"
-            className="mt-5 font-stencil text-[clamp(46px,6.6vw,104px)] font-bold uppercase leading-[0.86] tracking-[-0.01em] text-paper [font-stretch:78%]"
+            className="hero-title mt-5 font-stencil text-[clamp(46px,6.6vw,104px)] font-bold uppercase leading-[0.86] tracking-[-0.01em] text-paper [font-stretch:78%]"
           >
             Topped up before liquidation.
           </h1>

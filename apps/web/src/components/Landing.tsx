@@ -214,7 +214,7 @@ function Certificate() {
 /** Rescue livery: the stripe painted on lifeboats, here as the turn from how it works to why it's safe. */
 function Livery() {
   return (
-    <div className="relative -mx-4 h-[calc(5.3vw+44px)] overflow-hidden sm:-mx-6 lg:mx-[calc(50%-50vw)]" aria-hidden>
+    <div className="relative -mx-4 -my-10 h-[calc(5.3vw+44px)] overflow-hidden sm:-my-14 sm:-mx-6 lg:mx-[calc(50%-50vw)]" aria-hidden>
       <div className="absolute inset-x-[-10%] top-1/2 flex -translate-y-1/2 -rotate-[3deg] flex-col gap-2">
         <div className="h-9 bg-rescue" />
         <div className="h-[5px] bg-paper" />
@@ -296,10 +296,11 @@ function Refusal() {
       </figcaption>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-4 py-4 font-readout text-[12px]">
         <dt className="text-mist-400">From</dt>
-        <dd className="break-all text-mist-100">{r.signer}</dd>
+        <dd className="break-words text-mist-100">{r.signer}</dd>
         <dt className="text-mist-400">Called</dt>
-        <dd className="break-all text-mist-100">
-          {r.vault} · {r.method}
+        <dd className="break-words text-mist-100">
+          {r.vault}
+          <span className="whitespace-nowrap"> · {r.method}</span>
         </dd>
         <dt className="text-mist-400">Answer</dt>
         <dd className="text-rescue">{r.panic}</dd>

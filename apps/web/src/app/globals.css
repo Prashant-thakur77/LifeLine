@@ -149,6 +149,9 @@ body {
   .log-trim {
     display: none;
   }
+  .hero-title {
+    font-size: clamp(46px, 5.6vw, 84px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
