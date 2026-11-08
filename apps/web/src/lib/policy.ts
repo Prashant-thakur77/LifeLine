@@ -72,6 +72,8 @@ export const PRESETS: readonly Preset[] = [
 export const MIN_RESCUE_CAP_USDC = 2;
 
 const USDC_DECIMALS = ASSETS.NEAR_USDC.decimals;
+/** The vault's amounts are u128; anything larger fails to parse and wastes the transaction. */
+const U128_MAX = 2n ** 128n - 1n;
 const MIN_RESCUE_CAP_BASE = BigInt(MIN_RESCUE_CAP_USDC) * 10n ** BigInt(USDC_DECIMALS);
 
 const usdcFromBase = (base: string) => formatUnits(base, USDC_DECIMALS, USDC_DECIMALS).replace(/,/g, "").replace(/\.?0+$/, "");
@@ -151,12 +153,14 @@ export function validatePolicy(draft: PolicyDraft, keeper: string | null): Polic
 
   const perRescue = parseUnits(draft.maxPerRescueUsdc, USDC_DECIMALS);
   if (!perRescue.ok) errors.maxPerRescueUsdc = perRescue.error;
+  else if (BigInt(perRescue.base) > U128_MAX) errors.maxPerRescueUsdc = "That's more than the vault can store.";
   else if (BigInt(perRescue.base) < MIN_RESCUE_CAP_BASE) {
     errors.maxPerRescueUsdc = `At least ${MIN_RESCUE_CAP_USDC} USDC: 1Click won't send less to Hyperliquid.`;
   }
 
   const perDay = parseUnits(draft.maxPerDayUsdc, USDC_DECIMALS);
   if (!perDay.ok) errors.maxPerDayUsdc = perDay.error;
+  else if (BigInt(perDay.base) > U128_MAX) errors.maxPerDayUsdc = "That's more than the vault can store.";
   else if (perRescue.ok && BigInt(perDay.base) < BigInt(perRescue.base)) {
     errors.maxPerDayUsdc = "The daily cap must be at least the cap per rescue.";
   }

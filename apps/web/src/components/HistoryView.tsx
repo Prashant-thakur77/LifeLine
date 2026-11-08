@@ -154,7 +154,7 @@ function OnChainRescues({ user }: { user: string }) {
               </thead>
               <tbody>
                 {[...(rescues.data ?? [])].reverse().map((r) => {
-                  const meta = tokenMeta(r.token);
+                  const meta = tokenMeta(r.token, config.usdcContractId);
                   const at = nsToIso(r.at);
                   return (
                     <tr key={`${r.quote_id}-${r.at}`} className="border-t border-ink-600/60">

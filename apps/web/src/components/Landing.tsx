@@ -62,7 +62,7 @@ function LiveDemo() {
   const health = usePoll(`landing-health:${base}`, () => keeper.health(base, DEMO_USER), KEEPER_POLL_INTERVAL_SEC * 1000);
   const info = usePoll(`landing-info:${base}`, () => keeper.info(base), 60_000);
   const now = useNow(1000);
-  const reading = health.data ? classifyHealth(health.data, now, SIM_STALE_AFTER_MS) : null;
+  const reading = health.data ? classifyHealth(health.data, now, SIM_STALE_AFTER_MS, health.updatedAt) : null;
   const levels = health.data?.policy ?? POLICY_DEFAULTS;
   const rest = simRestCountdown(info.data?.nextAlarmAt, now);
 
@@ -228,7 +228,7 @@ const GUARANTEES = [
   ["It can only pay your Hyperliquid address.", "The vault compares every rescue's recipient with the address in your policy and refuses anything else."],
   ["It can't pass your caps.", "Per rescue, per 24 hours and a cooldown between rescues, all enforced by the contract, not by the keeper's good behaviour."],
   ["Its key does one thing.", "The keeper holds only a function-call key for the vault's rescue method. It can't withdraw, transfer or change a policy."],
-  ["You stay in charge.", "Pause with any key your wallet holds, unpause and withdraw with a confirmation, at any time."],
+  ["You stay in charge.", "Pause at once, with no deposit to attach. Unpause and withdraw any time, with a confirmation in your wallet."],
 ];
 
 function Safety() {

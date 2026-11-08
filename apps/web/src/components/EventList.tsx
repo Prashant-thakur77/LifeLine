@@ -68,7 +68,7 @@ function EventItem({ event, showUser, now }: { event: LedgerEvent; showUser: boo
             {timeAgo(event.at, now)}
           </time>
         </div>
-        <h3 className="mt-2.5 text-[16px] font-semibold leading-snug text-paper">{eventTitle(event)}</h3>
+        <h3 className="mt-2.5 text-[16px] font-semibold leading-snug text-paper">{eventTitle(event, config.usdcContractId)}</h3>
         {showUser ? (
           <Link href={pageHref("/history", event.user)} className="mt-0.5 inline-block text-[13px] text-mist-300 hover:text-paper">
             {event.user}

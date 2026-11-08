@@ -25,7 +25,8 @@ type Levels = { warn: number; trigger: number; target: number };
  * trusted draws hatched bands and no needle, so it can never pass for safe.
  */
 export function HealthGauge({ reading, levels, compact = false }: { reading: Reading | null; levels: Levels; compact?: boolean }) {
-  const id = useId().replace(/:/g, "");
+  // Only characters that are safe inside url(#…), whatever format React's ids take.
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const zone: Zone = reading?.zone ?? "unknown";
   const untrusted = reading === null || zone === "unknown" || zone === "stale";
   const showNeedle = reading !== null && !untrusted && zone !== "none" && reading.health !== null;
@@ -48,7 +49,7 @@ export function HealthGauge({ reading, levels, compact = false }: { reading: Rea
   const targetTick = tick(levels.target, 12, 4);
   const triggerLabel = label(levels.trigger, DIAL.r + 28);
   const warnLabel = label(levels.warn, DIAL.r + 28);
-  const targetLabel = label(levels.target, DIAL.r - 30);
+  const targetLabel = label(levels.target, DIAL.r - 38);
   const start = dialPoint(DIAL, 0, DIAL.r + 26);
   const end = dialPoint(DIAL, 1, DIAL.r + 26);
 
@@ -123,8 +124,8 @@ export function HealthGauge({ reading, levels, compact = false }: { reading: Rea
         {/* Needle */}
         {showNeedle ? (
           <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: `${DIAL.cx}px ${DIAL.cy}px`, transition: "transform 800ms cubic-bezier(0.2, 0.8, 0.2, 1)" }}>
-            <line x1={DIAL.cx + DIAL.r - 24} y1={DIAL.cy} x2={DIAL.cx + DIAL.r + 11} y2={DIAL.cy} stroke={color} strokeWidth={8} strokeLinecap="round" filter={`url(#glow-${id})`} opacity={0.7} />
-            <line x1={DIAL.cx + DIAL.r - 24} y1={DIAL.cy} x2={DIAL.cx + DIAL.r + 11} y2={DIAL.cy} stroke="var(--color-paper)" strokeWidth={3.5} strokeLinecap="round" />
+            <line x1={DIAL.cx + DIAL.r - 17} y1={DIAL.cy} x2={DIAL.cx + DIAL.r + 11} y2={DIAL.cy} stroke={color} strokeWidth={8} strokeLinecap="round" filter={`url(#glow-${id})`} opacity={0.7} />
+            <line x1={DIAL.cx + DIAL.r - 17} y1={DIAL.cy} x2={DIAL.cx + DIAL.r + 11} y2={DIAL.cy} stroke="var(--color-paper)" strokeWidth={3.5} strokeLinecap="round" />
           </g>
         ) : null}
 

@@ -93,6 +93,13 @@ describe("validatePolicy", () => {
     expect(errorsOf({ ...good(), maxPerDayUsdc: "lots" }).maxPerDayUsdc).toBe("Enter a number, like 10 or 2.5.");
   });
 
+  it("refuses caps the vault's u128 can't hold", () => {
+    const huge = "340282366920938463463374607431768.211456"; // 2^128 base units
+    expect(errorsOf({ ...good(), maxPerRescueUsdc: huge, maxPerDayUsdc: huge }).maxPerRescueUsdc).toBe("That's more than the vault can store.");
+    const max = "340282366920938463463374607431768.211455"; // 2^128 - 1
+    expect(validatePolicy({ ...good(), maxPerRescueUsdc: "25", maxPerDayUsdc: max }, KEEPER).ok).toBe(true);
+  });
+
   it("refuses a cooldown outside 30 to 3,600 seconds or not whole", () => {
     expect(errorsOf({ ...good(), cooldownSec: "29" }).cooldownSec).toBe("Cooldown must be from 30 to 3,600 seconds.");
     expect(errorsOf({ ...good(), cooldownSec: "3601" }).cooldownSec).toBe("Cooldown must be from 30 to 3,600 seconds.");

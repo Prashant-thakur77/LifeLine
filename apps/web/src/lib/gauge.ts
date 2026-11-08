@@ -44,8 +44,12 @@ export const SIM_STALE_AFTER_MS = 20 * 60_000;
 /**
  * Turns a keeper health response into what the gauge shows. The rule that matters: a
  * reading that is missing, unknown, stale or ambiguous never comes out as "safe".
+ *
+ * Staleness is checked two ways, because the browser's clock and the keeper's can
+ * disagree: by the reading's own time, and by `receivedAtMs`, when this browser last
+ * heard from the keeper at all. A reading stamped well in the future is also refused.
  */
-export function classifyHealth(response: HealthResponse | null, nowMs: number, staleAfterMs = STALE_AFTER_MS): Reading {
+export function classifyHealth(response: HealthResponse | null, nowMs: number, staleAfterMs = STALE_AFTER_MS, receivedAtMs?: number): Reading {
   const policy = response?.policy ?? null;
   const paused = policy?.paused ?? false;
   const snapshotJson = response?.snapshot ?? null;
@@ -65,17 +69,19 @@ export function classifyHealth(response: HealthResponse | null, nowMs: number, s
 
   const snapshot: HealthSnapshot = { ...snapshotJson, health: snapshotJson.health ?? Number.POSITIVE_INFINITY };
   const at = Date.parse(snapshot.at);
-  const ageMs = Number.isNaN(at) ? null : Math.max(0, nowMs - at);
+  const rawAge = Number.isNaN(at) ? null : nowMs - at;
+  const ageMs = rawAge === null ? null : Math.max(0, rawAge);
   const base = { snapshot, policy, ageMs, paused };
+  const silentMs = receivedAtMs === undefined ? 0 : nowMs - receivedAtMs;
 
-  if (ageMs === null || ageMs > staleAfterMs) {
-    return {
-      ...base,
-      zone: "stale",
-      health: null,
-      headline: "Stale",
-      detail: `The last reading is from ${ageMs === null ? "an unknown time" : timeAgo(snapshot.at, nowMs)}. Don't treat it as safe until a fresh one arrives.`,
-    };
+  if (rawAge === null || rawAge > staleAfterMs || rawAge < -staleAfterMs || silentMs > staleAfterMs) {
+    const why =
+      silentMs > staleAfterMs
+        ? `The keeper hasn't answered since ${timeAgo(new Date(receivedAtMs!).toISOString(), nowMs)}.`
+        : rawAge === null || rawAge < -staleAfterMs
+          ? "The last reading's time can't be trusted."
+          : `The last reading is from ${timeAgo(snapshot.at, nowMs)}.`;
+    return { ...base, zone: "stale", health: null, headline: "Stale", detail: `${why} Don't treat it as safe until a fresh one arrives.` };
   }
 
   // No maintenance margin with open positions means isolated-only positions, which a

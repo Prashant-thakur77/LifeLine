@@ -38,7 +38,10 @@ export function eventLinks(event: LedgerEvent, network: Network): ExternalLink[]
   }
   // The user's own address from the health reading: on a blocked rescue the request's
   // recipient may be exactly the wrong address that got it refused.
-  if (event.request) links.push({ label: "Hyperliquid account", href: hyperliquidAddress(event.request.snapshot.hlAddress) });
+  // Except when it was refused for SNAPSHOT_MISMATCH: then the reading was for some other address.
+  if (event.request && !event.reasons.includes("SNAPSHOT_MISMATCH")) {
+    links.push({ label: "Hyperliquid account", href: hyperliquidAddress(event.request.snapshot.hlAddress) });
+  }
   return links;
 }
 

@@ -1,4 +1,4 @@
-import { outcomeFailure, outcomeHash, outcomeValue, type Outcome } from "./near-rpc";
+import { outcomeFailure, outcomeHash, outcomeSettled, outcomeValue, type Outcome } from "./near-rpc";
 
 /** Wallet popups throw when the user closes them; that isn't an error worth showing. */
 export function isUserCancel(error: unknown): boolean {
@@ -17,8 +17,10 @@ export function describeTxError(error: unknown): string | null {
 
 export type TxResult = { hash: string | null; failure: string | null };
 
+/** An outcome that doesn't say how it ended is never reported as a success. */
 export function txResult(outcome: Outcome | null | undefined): TxResult {
-  return { hash: outcomeHash(outcome), failure: outcomeFailure(outcome) };
+  const failure = outcomeFailure(outcome) ?? (outcomeSettled(outcome) ? null : "The wallet didn't say how the transaction ended. Check NearBlocks before trying again.");
+  return { hash: outcomeHash(outcome), failure };
 }
 
 /**
@@ -28,4 +30,13 @@ export function txResult(outcome: Outcome | null | undefined): TxResult {
  */
 export function depositBounced(outcome: Outcome | null | undefined): boolean {
   return outcomeValue(outcome) === "0";
+}
+
+/**
+ * withdraw resolves to on_withdraw_transfer's answer: false means the token transfer
+ * failed and the vault put the amount back in the reserve. The wallet still calls that a
+ * success, so it has to be read from the value.
+ */
+export function withdrawRefunded(outcome: Outcome | null | undefined): boolean {
+  return outcomeValue(outcome) === false;
 }

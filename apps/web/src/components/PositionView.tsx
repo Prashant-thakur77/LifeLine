@@ -13,6 +13,7 @@ import { hyperliquidAddress, pageHref } from "../lib/links";
 import { RpcError } from "../lib/near-rpc";
 import { groupRecords, tokenMeta } from "../lib/records";
 import { simRestCountdown } from "../lib/sim";
+import { withdrawRefunded } from "../lib/tx";
 import { pauseTx, tokenViews, unpauseTx, vaultViews, withdrawTx } from "../lib/vault";
 import { EventList } from "./EventList";
 import { GaugeLegend, HealthGauge } from "./HealthGauge";
@@ -45,7 +46,7 @@ function Position({ user }: { user: string }) {
   const now = useNow(1000);
 
   const notWatched = health.error instanceof KeeperError && health.error.kind === "not-watched";
-  const reading = health.data ? classifyHealth(health.data, now, simulation ? SIM_STALE_AFTER_MS : STALE_AFTER_MS) : null;
+  const reading = health.data ? classifyHealth(health.data, now, simulation ? SIM_STALE_AFTER_MS : STALE_AFTER_MS, health.updatedAt) : null;
   const restCountdown = simulation ? simRestCountdown(info?.nextAlarmAt, now) : null;
   const policy = health.data?.policy ?? null;
   const levels = policy ?? { warn: POLICY_DEFAULTS.warn, trigger: POLICY_DEFAULTS.trigger, target: POLICY_DEFAULTS.target };
@@ -271,7 +272,7 @@ function ReserveCard({ user, simulation }: { user: string; simulation: boolean }
         ) : (
           <ul className="space-y-2">
             {Object.entries(reserve.data ?? {}).map(([token, amount]) => {
-              const meta = tokenMeta(token);
+              const meta = tokenMeta(token, config.usdcContractId);
               return (
                 <li key={token} className="flex items-baseline justify-between gap-3">
                   <span className="text-mist-300">{meta.symbol.length > 12 ? shortMiddle(meta.symbol) : meta.symbol}</span>
@@ -360,6 +361,10 @@ function Controls({ user, simulation }: { user: string; simulation: boolean }) {
           <p className="text-[14px] text-mist-300 md:col-span-2">The vault isn&apos;t deployed yet, so there&apos;s nothing to pause or withdraw from.</p>
         ) : chainPolicy.loading ? (
           <Skeleton className="h-24 md:col-span-2" />
+        ) : chainPolicy.error && chainPolicy.data === undefined ? (
+          <Notice tone="danger" title="Couldn't read your policy from the vault" className="md:col-span-2">
+            {chainPolicy.error.message} Pause and withdraw stay hidden until it can be read, so they never act on a guess.
+          </Notice>
         ) : chainPolicy.data === null ? (
           <Notice tone="info" title="No policy in the vault yet" action={<ButtonLink href="/start" variant="primary">Set up protection</ButtonLink>} className="md:col-span-2">
             Set a policy first. Then you can fund the reserve, pause and withdraw here.
@@ -371,7 +376,7 @@ function Controls({ user, simulation }: { user: string; simulation: boolean }) {
               <p className="text-[14px] leading-relaxed text-mist-300">
                 {paused
                   ? "The vault refuses every rescue until you unpause. Unpausing needs your wallet's full-access key."
-                  : "Pausing takes effect at once, and needs no deposit, so any key your wallet holds can do it."}
+                  : "Pausing takes effect at once and attaches no deposit. The vault refuses every rescue until you unpause."}
               </p>
               <Button
                 variant={paused ? "primary" : "danger"}
@@ -393,7 +398,13 @@ function Controls({ user, simulation }: { user: string; simulation: boolean }) {
                 if (!parsed.ok) return setAmountError(parsed.error);
                 if (BigInt(parsed.base) === 0n) return setAmountError("Enter an amount above 0.");
                 if (BigInt(parsed.base) > BigInt(balance)) return setAmountError("That's more than your reserve holds.");
-                if (await withdraw.run(withdrawTx(vault, usdc, parsed.base), undefined, "The USDC is back in your NEAR account.")) {
+                const ok = await withdraw.run(
+                  withdrawTx(vault, usdc, parsed.base),
+                  (outcome) => (withdrawRefunded(outcome) ? "USDC refused the transfer, so the vault put the amount back in your reserve." : null),
+                  "The USDC is back in your NEAR account.",
+                );
+                reserve.refresh();
+                if (ok) {
                   setAmount("");
                   reserve.refresh();
                 }

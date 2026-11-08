@@ -93,6 +93,20 @@ describe("classifyHealth", () => {
     expect(classifyHealth(fixtures.healthSafe, AT + SIM_STALE_AFTER_MS + 1, SIM_STALE_AFTER_MS).zone).toBe("stale");
   });
 
+  it("marks a reading stale when the keeper has gone quiet, by this browser's clock alone", () => {
+    // A clock running behind would make the reading look fresh; the silence still shows.
+    const receivedAt = fresh - STALE_AFTER_MS - 1;
+    const reading = classifyHealth(fixtures.healthSafe, fresh, STALE_AFTER_MS, receivedAt);
+    expect(reading).toMatchObject({ zone: "stale", health: null });
+    expect(reading.detail).toMatch(/hasn't answered/);
+    expect(classifyHealth(fixtures.healthSafe, fresh, STALE_AFTER_MS, fresh - 5_000).zone).toBe("safe");
+  });
+
+  it("refuses a reading stamped well in the future", () => {
+    expect(classifyHealth(fixtures.healthSafe, AT - STALE_AFTER_MS - 1).zone).toBe("stale");
+    expect(classifyHealth(fixtures.healthSafe, AT - 5_000).zone).toBe("safe");
+  });
+
   it("marks an unreadable timestamp stale", () => {
     const bad: HealthResponse = { ...fixtures.healthSafe, snapshot: { ...fixtures.healthSafe.snapshot!, at: "yesterday" } };
     expect(classifyHealth(bad, fresh).zone).toBe("stale");

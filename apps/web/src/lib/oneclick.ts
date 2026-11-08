@@ -19,6 +19,7 @@ export type OneClickToken = {
 
 export type QuoteRequest = {
   dry: boolean;
+  depositMode?: "SIMPLE" | "MEMO";
   swapType: "EXACT_INPUT";
   slippageTolerance: number;
   originAsset: string;
@@ -88,6 +89,9 @@ export type StatusResponse = {
 /** Where a funding swap lands: USDC on NEAR, the reserve token. */
 export const FUNDING_DESTINATION = ASSETS.NEAR_USDC.assetId;
 
+/** 1Click refuses SIMPLE deposits from these chains ("Incorrect depositMode", 2026-11-08). */
+const MEMO_CHAINS = new Set(["stellar"]);
+
 /** Chains where a deposit can take an hour to confirm get a longer deadline. */
 const SLOW_CHAINS = new Set(["btc", "ltc", "doge", "bch", "dash", "zec", "cardano"]);
 
@@ -113,6 +117,7 @@ export function buildFundingQuote(input: FundingQuoteInput): QuoteRequest {
   const hours = SLOW_CHAINS.has(input.originChain) ? 3 : 1;
   return {
     dry: input.dry,
+    ...(MEMO_CHAINS.has(input.originChain) ? { depositMode: "MEMO" as const } : {}),
     swapType: "EXACT_INPUT",
     slippageTolerance: MAX_QUOTE_SLIPPAGE_BPS,
     originAsset: input.originAsset,
@@ -125,6 +130,18 @@ export function buildFundingQuote(input: FundingQuoteInput): QuoteRequest {
     recipientType: "DESTINATION_CHAIN",
     deadline: new Date(input.nowMs + hours * 3_600_000).toISOString(),
   };
+}
+
+/**
+ * Refuses a quote that doesn't pay USDC on NEAR to the account it was asked for, so a
+ * deposit address is only ever shown for the connected account's own funding.
+ */
+export function fundingQuoteProblem(response: QuoteResponse, nearAccount: string): string | null {
+  const request = response.quoteRequest;
+  if (request.recipient !== nearAccount) return `This quote pays ${request.recipient}, not ${nearAccount}.`;
+  if (request.destinationAsset !== FUNDING_DESTINATION) return "This quote doesn't deliver USDC on NEAR.";
+  if (request.recipientType !== "DESTINATION_CHAIN") return "This quote doesn't deliver to the NEAR account itself.";
+  return null;
 }
 
 export type Tone = "waiting" | "progress" | "success" | "warning" | "error";

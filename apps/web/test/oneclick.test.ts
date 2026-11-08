@@ -5,6 +5,7 @@ import {
   buildFundingQuote,
   chainName,
   fundingChains,
+  fundingQuoteProblem,
   oneClickErrorMessage,
   statusInfo,
   type OneClickToken,
@@ -51,9 +52,35 @@ describe("buildFundingQuote", () => {
     expect(quote).toMatchObject({ refundTo: "alice.near", refundType: "INTENTS" });
   });
 
+  it("asks for a memo deposit where 1Click requires one", () => {
+    const stellar = buildFundingQuote({ originAsset: "nep245:x", originChain: "stellar", amountBase: "1", nearAccount: "a.near", dry: true, nowMs: NOW });
+    expect(stellar.depositMode).toBe("MEMO");
+    const base = buildFundingQuote({ originAsset: BASE_USDC, originChain: "base", amountBase: "1", nearAccount: "a.near", dry: true, nowMs: NOW });
+    expect("depositMode" in base).toBe(false);
+  });
+
   it("gives slow chains three hours before the refund starts", () => {
     const quote = buildFundingQuote({ originAsset: "nep141:btc.omft.near", originChain: "btc", amountBase: "10000", nearAccount: "a.near", dry: true, nowMs: NOW });
     expect(quote.deadline).toBe("2026-11-08T15:00:00.000Z");
+  });
+});
+
+describe("fundingQuoteProblem", () => {
+  const request = buildFundingQuote({ originAsset: BASE_USDC, originChain: "base", amountBase: "1", nearAccount: "alice.near", dry: false, nowMs: NOW });
+  const response = (patch: Partial<typeof request>) => ({
+    correlationId: "c",
+    timestamp: "t",
+    signature: "s",
+    quoteRequest: { ...request, ...patch },
+    quote: { amountIn: "1", amountInFormatted: "1", amountInUsd: "1", minAmountIn: "1", amountOut: "1", amountOutFormatted: "1", amountOutUsd: "1", minAmountOut: "1", timeEstimate: 1 },
+  });
+  it("accepts a quote that pays USDC on NEAR to the account", () => {
+    expect(fundingQuoteProblem(response({}), "alice.near")).toBeNull();
+  });
+  it("refuses one for another account, another asset or another kind of recipient", () => {
+    expect(fundingQuoteProblem(response({}), "bob.near")).toBe("This quote pays alice.near, not bob.near.");
+    expect(fundingQuoteProblem(response({ destinationAsset: "nep141:wrap.near" }), "alice.near")).toMatch(/USDC on NEAR/);
+    expect(fundingQuoteProblem(response({ recipientType: "INTENTS" as never }), "alice.near")).toMatch(/NEAR account itself/);
   });
 });
 

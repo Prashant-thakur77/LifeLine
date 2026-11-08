@@ -33,6 +33,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const { NearConnector } = await import("@hot-labs/near-connect");
+        if (cancelled) return;
         const connector = new NearConnector({
           network: config.network,
           providers: { [config.network]: [config.rpcUrl] },

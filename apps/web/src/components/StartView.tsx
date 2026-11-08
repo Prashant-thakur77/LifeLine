@@ -65,7 +65,8 @@ export function StartView() {
             </div>
           )}
         </Step>
-        <PolicyForm key={accountId ?? "no-wallet"} accountId={accountId} />
+        {/* Not keyed by account: what someone typed before connecting survives the connect. */}
+        <PolicyForm accountId={accountId} />
       </ol>
     </>
   );
@@ -100,18 +101,19 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
   const existing = usePoll(vault && accountId ? `policy:${vault}:${accountId}` : null, () => vaultViews.policy(config.rpcUrl, vault!, accountId!), null);
   const [draft, setDraft] = useState<PolicyDraft>(() => presetDraft("standard"));
   const [choice, setChoice] = useState<Choice>("standard");
-  const [loadedExisting, setLoadedExisting] = useState(false);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [attempted, setAttempted] = useState(false);
   const tx = useTx();
 
-  // A returning user edits what they already have.
+  // A returning user edits what they already have: once per account, so a later
+  // refresh of the same policy doesn't overwrite their edits.
   useEffect(() => {
-    if (loadedExisting || !existing.data) return;
+    if (!existing.data || !accountId || loadedFor === accountId) return;
     const loaded = draftFromVault(existing.data);
     setDraft(loaded);
     setChoice(matchPreset(Number(loaded.warn), Number(loaded.trigger), Number(loaded.target)));
-    setLoadedExisting(true);
-  }, [existing.data, loadedExisting]);
+    setLoadedFor(accountId);
+  }, [existing.data, accountId, loadedFor]);
 
   const check = validatePolicy(draft, config.keeperAccountId);
   const errors = check.ok ? {} : check.errors;

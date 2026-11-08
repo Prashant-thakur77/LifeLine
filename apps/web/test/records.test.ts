@@ -83,7 +83,7 @@ describe("filters and titles", () => {
     expect(events.filter((e) => matchesFilter(e, "all"))).toHaveLength(4);
   });
   it("titles each event with its amount", () => {
-    expect(events.map(eventTitle)).toEqual([
+    expect(events.map((e) => eventTitle(e))).toEqual([
       "Refused a rescue of 18.06 USDC",
       "Sent 18.06 USDC to Hyperliquid",
       "Health crossed the warn line",
@@ -96,6 +96,14 @@ describe("filters and titles", () => {
     expect(requestAmount({ amount: "7", token: "other.near" })).toBe("7 other.near");
     expect(tokenMeta("wrap.near").decimals).toBe(24);
   });
+  it("knows the configured USDC on testnet, so amounts aren't shown 10^6 too large", () => {
+    expect(tokenMeta("usdc.fakes.testnet", "usdc.fakes.testnet")).toEqual({ symbol: "USDC", decimals: 6 });
+    expect(tokenMeta("usdc.fakes.testnet")).toEqual({ symbol: "usdc.fakes.testnet", decimals: 0 });
+    expect(tokenMeta("wrap.testnet")).toEqual({ symbol: "wNEAR", decimals: 24 });
+    const testnetEvent = { ...events[1]!, request: { ...events[1]!.request!, token: "usdc.fakes.testnet" } };
+    expect(eventTitle(testnetEvent, "usdc.fakes.testnet")).toBe("Sent 18.06 USDC to Hyperliquid");
+  });
+
   it("describes block reasons, and falls back for new codes", () => {
     expect(describeReason("RECIPIENT_MISMATCH")).toMatch(/someone other than/);
     expect(describeReason("SOMETHING_NEW")).toBe("The policy engine refused it (SOMETHING_NEW).");
@@ -130,6 +138,11 @@ describe("links", () => {
     const links = eventLinks(events[0]!, "mainnet");
     expect(links).toEqual([{ label: "Hyperliquid account", href: "https://app.hyperliquid.xyz/explorer/address/0x1111111111111111111111111111111111111111" }]);
     expect(JSON.stringify(links)).not.toContain("0x9999");
+  });
+
+  it("doesn't link the reading's address when the block was for a reading of some other address", () => {
+    const mismatch = { ...events[0]!, reasons: ["SNAPSHOT_MISMATCH"] };
+    expect(eventLinks(mismatch, "mainnet")).toEqual([]);
   });
 
   it("never links a simulated event to an explorer", () => {

@@ -31,16 +31,19 @@ export function describeReason(code: string): string {
 
 export type TokenMeta = { symbol: string; decimals: number };
 
-/** The reserve tokens of the first version. Anything else shows its raw base units. */
-export function tokenMeta(contractId: string): TokenMeta {
-  if (contractId === ASSETS.NEAR_USDC.contractId) return { symbol: "USDC", decimals: ASSETS.NEAR_USDC.decimals };
-  if (contractId === ASSETS.NEAR_WNEAR.contractId) return { symbol: "wNEAR", decimals: ASSETS.NEAR_WNEAR.decimals };
+/**
+ * The reserve tokens of the first version. `usdcContractId` is the USDC this dashboard is
+ * configured with, which differs on testnet. Anything else shows its raw base units.
+ */
+export function tokenMeta(contractId: string, usdcContractId: string = ASSETS.NEAR_USDC.contractId): TokenMeta {
+  if (contractId === ASSETS.NEAR_USDC.contractId || contractId === usdcContractId) return { symbol: "USDC", decimals: ASSETS.NEAR_USDC.decimals };
+  if (contractId === ASSETS.NEAR_WNEAR.contractId || contractId === "wrap.testnet") return { symbol: "wNEAR", decimals: ASSETS.NEAR_WNEAR.decimals };
   return { symbol: contractId, decimals: 0 };
 }
 
 /** "3.47 USDC" for a rescue request's amount. */
-export function requestAmount(request: Pick<RescueRequest, "amount" | "token">): string {
-  const meta = tokenMeta(request.token);
+export function requestAmount(request: Pick<RescueRequest, "amount" | "token">, usdcContractId?: string): string {
+  const meta = tokenMeta(request.token, usdcContractId);
   return `${formatUnits(request.amount, meta.decimals, meta.decimals === 0 ? 0 : 2)} ${meta.symbol}`;
 }
 
@@ -155,8 +158,8 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
 };
 
 /** A one-line summary of an event, for the timeline heading. */
-export function eventTitle(event: LedgerEvent): string {
-  const amount = event.request ? requestAmount(event.request) : null;
+export function eventTitle(event: LedgerEvent, usdcContractId?: string): string {
+  const amount = event.request ? requestAmount(event.request, usdcContractId) : null;
   switch (event.outcome) {
     case "done":
       return amount ? `Sent ${amount} to Hyperliquid` : "Rescue done";

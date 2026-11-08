@@ -11,6 +11,7 @@ import {
   buildFundingQuote,
   chainName,
   fundingChains,
+  fundingQuoteProblem,
   getQuote,
   getStatus,
   getTokens,
@@ -41,10 +42,10 @@ export function FundView() {
       {accountId ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <PayFromAnyChain account={accountId} />
+            <PayFromAnyChain key={accountId} account={accountId} />
           </div>
           <div className="lg:col-span-5">
-            <MoveIntoReserve account={accountId} />
+            <MoveIntoReserve key={accountId} account={accountId} />
           </div>
         </div>
       ) : (
@@ -121,7 +122,9 @@ function PayFromAnyChain({ account }: { account: string | null }) {
 
   useEffect(() => setActive(account ? loadDeposit(account) : null), [account]);
 
-  const chainTokens = chains.find((c) => c.chain === chain)?.tokens ?? [];
+  // Ethereum first by default; if 1Click ever drops it, fall back to the first chain listed.
+  const chainId = chains.some((c) => c.chain === chain) ? chain : (chains[0]?.chain ?? chain);
+  const chainTokens = chains.find((c) => c.chain === chainId)?.tokens ?? [];
   const token: OneClickToken | null = chainTokens.find((t) => t.assetId === assetId) ?? chainTokens[0] ?? null;
   const parsed = token ? parseUnits(amount, token.decimals) : null;
   const amountError = amount.trim() === "" ? null : parsed && !parsed.ok ? parsed.error : parsed?.ok && BigInt(parsed.base) === 0n ? "Enter an amount above 0." : null;
@@ -155,6 +158,7 @@ function PayFromAnyChain({ account }: { account: string | null }) {
       );
       if (dry) setPreview(response);
       else if (!response.quote.depositAddress) setError("1Click didn't return a deposit address. Try again.");
+      else if (account && fundingQuoteProblem(response, account)) setError(fundingQuoteProblem(response, account));
       else if (account) {
         const deposit: ActiveDeposit = { quote: response, symbol: token.symbol, chain: token.blockchain, createdAt: new Date().toISOString() };
         saveDeposit(account, deposit);
@@ -199,7 +203,7 @@ function PayFromAnyChain({ account }: { account: string | null }) {
                 <select
                   id="chain"
                   className={inputClass}
-                  value={chain}
+                  value={chainId}
                   onChange={(e) => {
                     setChain(e.target.value);
                     setAssetId(null);
@@ -251,7 +255,7 @@ function PayFromAnyChain({ account }: { account: string | null }) {
               />
             </Field>
             <Field
-              label={`Refund address on ${chainName(chain)} (optional)`}
+              label={`Refund address on ${chainName(chainId)} (optional)`}
               htmlFor="refund"
               hint={`If the swap can't complete, 1Click refunds here. Leave it empty to refund into ${account ?? "your account"}'s NEAR Intents balance instead.`}
             >
@@ -379,7 +383,7 @@ function DepositTracker({ deposit, account, onReset }: { deposit: ActiveDeposit;
           ) : null}
           <p className="mt-4 text-[13px] leading-relaxed text-mist-400">
             Only {symbol} on {chainName(chain)}. Anything else sent here can be lost. You&apos;ll receive at least{" "}
-            <span className="num text-mist-200">{formatUnits(quote.quote.minAmountOut, USDC_DECIMALS)} USDC</span> in {account}. Deposit before{" "}
+            <span className="num text-mist-200">{formatUnits(quote.quote.minAmountOut, USDC_DECIMALS)} USDC</span> in {quote.quoteRequest.recipient}. Deposit before{" "}
             {new Date(deadline).toLocaleString()}, or 1Click refunds what it received.
           </p>
         </div>
@@ -482,6 +486,7 @@ function MoveIntoReserve({ account }: { account: string }) {
   const [amountError, setAmountError] = useState<string | null>(null);
   const deposit = useTx();
   const register = useTx();
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
   const walletUsdc = balance.data ?? "0";
   const reserveUsdc = reserve.data?.[usdc] ?? "0";
@@ -515,8 +520,12 @@ function MoveIntoReserve({ account }: { account: string }) {
                 variant="primary"
                 busy={register.busy}
                 onClick={async () => {
+                  setRegisterError(null);
                   const bounds = await tokenViews.storageBounds(config.rpcUrl, usdc).catch(() => null);
-                  if (!bounds) return;
+                  if (!bounds) {
+                    setRegisterError("Couldn't read the USDC contract's storage price. Try again.");
+                    return;
+                  }
                   if (await register.run(registerTokenTx(usdc, account, bounds.min))) registration.refresh();
                 }}
               >
@@ -528,6 +537,7 @@ function MoveIntoReserve({ account }: { account: string }) {
             somewhere to land.
             <div className="mt-2">
               <TxStatus state={register.state} doneTitle="Registered with USDC" />
+              {registerError ? <p className="text-[13px] text-[#ff8a98]">{registerError}</p> : null}
             </div>
           </Notice>
         ) : null}

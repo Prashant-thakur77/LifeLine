@@ -1,5 +1,6 @@
 // Read-only chain calls over plain JSON-RPC (https://docs.near.org/api/rpc/contracts):
-// one fetch per view, no SDK in the bundle. Writes go through the wallet instead.
+// one fetch per view, no SDK in the bundle. Writes go through the wallet instead. Views
+// use optimistic finality, so a balance read right after a transaction already shows it.
 
 export class RpcError extends Error {
   constructor(
@@ -57,7 +58,7 @@ export async function viewFunction<T>(rpcUrl: string, contractId: string, method
         jsonrpc: "2.0",
         id: "lifeline",
         method: "query",
-        params: { request_type: "call_function", finality: "final", account_id: contractId, method_name: method, args_base64: encodeArgs(args) },
+        params: { request_type: "call_function", finality: "optimistic", account_id: contractId, method_name: method, args_base64: encodeArgs(args) },
       }),
       signal: AbortSignal.timeout(10_000),
     });
@@ -76,6 +77,12 @@ export type Outcome = {
   transaction?: { hash?: string };
   transaction_outcome?: { id?: string };
 };
+
+/** True once the outcome says how the transaction ended: a value or a failure. */
+export function outcomeSettled(outcome: Outcome | null | undefined): boolean {
+  const status = outcome?.status;
+  return typeof status === "object" && status !== null && (status.SuccessValue !== undefined || status.Failure !== undefined);
+}
 
 export function outcomeHash(outcome: Outcome | null | undefined): string | null {
   return outcome?.transaction?.hash ?? outcome?.transaction_outcome?.id ?? null;

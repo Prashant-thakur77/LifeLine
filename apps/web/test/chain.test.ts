@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEMO_USER, SIM_KEEPER_URL, keeperUrlFor, readConfig } from "../src/lib/config";
 import { KeeperError, keeper, keeperError } from "../src/lib/keeper";
-import { RpcError, decodeResult, encodeArgs, outcomeFailure, outcomeHash, outcomeValue, parseViewResponse, viewFunction } from "../src/lib/near-rpc";
-import { depositBounced, describeTxError, isUserCancel, txResult } from "../src/lib/tx";
+import { RpcError, decodeResult, encodeArgs, outcomeFailure, outcomeHash, outcomeSettled, outcomeValue, parseViewResponse, viewFunction } from "../src/lib/near-rpc";
+import { depositBounced, describeTxError, isUserCancel, txResult, withdrawRefunded } from "../src/lib/tx";
 import {
   ONE_YOCTO,
   REGISTRATION_DEPOSIT,
@@ -132,7 +132,7 @@ describe("near-rpc", () => {
     const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(body.params).toEqual({
       request_type: "call_function",
-      finality: "final",
+      finality: "optimistic",
       account_id: USDC,
       method_name: "ft_balance_of",
       args_base64: encodeArgs({ account_id: "a.near" }),
@@ -171,6 +171,18 @@ describe("wallet results", () => {
   });
   it("reads hash and failure from an outcome", () => {
     expect(txResult({ status: { SuccessValue: "" }, transaction: { hash: "H" } })).toEqual({ hash: "H", failure: null });
+  });
+  it("never calls an outcome that doesn't say how it ended a success", () => {
+    for (const unsettled of [undefined, null, {}, { status: "Started" }, { status: {} }]) {
+      expect(outcomeSettled(unsettled as never), JSON.stringify(unsettled)).toBe(false);
+      expect(txResult(unsettled as never).failure, JSON.stringify(unsettled)).toMatch(/didn't say how the transaction ended/);
+    }
+    expect(outcomeSettled({ status: { Failure: {} } })).toBe(true);
+  });
+  it("spots a withdrawal the vault refunded: the callback returned false", () => {
+    expect(withdrawRefunded({ status: { SuccessValue: btoa("false") } })).toBe(true);
+    expect(withdrawRefunded({ status: { SuccessValue: btoa("true") } })).toBe(false);
+    expect(withdrawRefunded({ status: { SuccessValue: "" } })).toBe(false);
   });
   it("spots a deposit the vault bounced: ft_transfer_call returned 0 used", () => {
     expect(depositBounced({ status: { SuccessValue: btoa('"0"') } })).toBe(true);
