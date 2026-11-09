@@ -27,7 +27,8 @@ near account create-account fund-myself vault.$TEAM '3.5 NEAR' autogenerate-new-
 near account create-account fund-myself keeper.$TEAM '0.5 NEAR' autogenerate-new-keypair save-to-legacy-keychain sign-as $TEAM network-config mainnet sign-with-legacy-keychain send
 
 # The contract: USDC for rescues, wNEAR for deposits, and 1Click's quote-signing key (from its SDK)
-cd contracts/vault && cargo near build non-reproducible-wasm
+# Reproducible: from a clean checkout of a commit that's on GitHub, so anyone can rebuild the same bytes
+cd contracts/vault && cargo near build reproducible-wasm
 near contract deploy vault.$TEAM use-file target/near/lifeline_vault.wasm \
   with-init-call new json-args '{"tokens":["17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1","wrap.near"],"quote_signer":"ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"}' \
   prepaid-gas '30 Tgas' attached-deposit '0 NEAR' network-config mainnet sign-with-legacy-keychain send
