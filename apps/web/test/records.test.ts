@@ -45,6 +45,10 @@ describe("groupRecords", () => {
       simulated: false,
     });
     expect(rescue.explanation).toMatch(/ETH fell 6%/);
+    // The record the words belong to, so the page can fetch the proof behind them.
+    const explained = rescue.records.filter((r) => r.explanation !== undefined).at(-1);
+    expect(rescue.explainedRecordId).toBe(explained?.id);
+    expect(events.find((e) => e.explanation === null)?.explainedRecordId ?? null).toBeNull();
   });
 
   it("keeps the block's reasons", () => {

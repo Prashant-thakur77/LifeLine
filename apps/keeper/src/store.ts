@@ -1,4 +1,5 @@
 import type { AuditRecord, HealthResponse, StatsResponse } from "@lifeline/shared";
+import type { AnswerProof } from "./explain";
 import type { SqlDatabase } from "./sql";
 
 const TELEGRAM_CODE_TTL_MS = 10 * 60 * 1000;
@@ -31,6 +32,11 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS explanations (
     record_id TEXT PRIMARY KEY REFERENCES audit (id),
     text TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS answer_proofs (
+    record_id TEXT PRIMARY KEY REFERENCES audit (id),
+    json TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS health (
@@ -66,6 +72,13 @@ const parseRecord = (row: ExplainedRow): AuditRecord => {
 };
 
 const SELECT_EXPLAINED = "SELECT a.json, e.text FROM audit a LEFT JOIN explanations e ON e.record_id = a.id";
+const SELECT_PROVED =
+  "SELECT a.json, e.text, p.json AS proof FROM answer_proofs p JOIN audit a ON a.id = p.record_id LEFT JOIN explanations e ON e.record_id = a.id";
+
+/** A record whose explanation carries a model's words, with what proves where they came from. */
+export type ProvedRecord = { record: AuditRecord; proof: AnswerProof };
+
+const parseProved = (row: ExplainedRow & { proof: string }): ProvedRecord => ({ record: parseRecord(row), proof: JSON.parse(row.proof) as AnswerProof });
 
 /** Each byte mod 32: since 32 divides 256, no letter comes up more often than another. */
 function randomCode(): string {
@@ -133,13 +146,42 @@ export class Store {
     return rows.map(parseRaw);
   }
 
-  /** Kept beside the record, not in it: the audit log itself can't change. */
-  setExplanation(recordId: string, text: string): void {
-    this.db.run(
-      "INSERT INTO explanations (record_id, text) VALUES (?, ?) ON CONFLICT (record_id) DO UPDATE SET text = excluded.text",
-      recordId,
-      text,
-    );
+  /**
+   * Kept beside the record, not in it: the audit log itself can't change. A proof is kept
+   * with words that have one, and dropped when the words are replaced, so a proof always
+   * belongs to the words shown.
+   */
+  setExplanation(recordId: string, text: string, proof?: AnswerProof): void {
+    this.db.transaction(() => {
+      this.db.run(
+        "INSERT INTO explanations (record_id, text) VALUES (?, ?) ON CONFLICT (record_id) DO UPDATE SET text = excluded.text",
+        recordId,
+        text,
+      );
+      if (proof === undefined) {
+        this.db.run("DELETE FROM answer_proofs WHERE record_id = ?", recordId);
+      } else {
+        this.db.run(
+          "INSERT INTO answer_proofs (record_id, json) VALUES (?, ?) ON CONFLICT (record_id) DO UPDATE SET json = excluded.json",
+          recordId,
+          JSON.stringify(proof),
+        );
+      }
+    });
+  }
+
+  proof(recordId: string): ProvedRecord | null {
+    const row = this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} WHERE a.id = ?`, recordId);
+    return row === undefined ? null : parseProved(row);
+  }
+
+  /** The newest record with a proof, for everyone or for one user. */
+  latestProof(user?: string): ProvedRecord | null {
+    const row =
+      user === undefined
+        ? this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} ORDER BY a.seq DESC LIMIT 1`)
+        : this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} WHERE a.user = ? ORDER BY a.seq DESC LIMIT 1`, user);
+    return row === undefined ? null : parseProved(row);
   }
 
   /** Allowed rescues with no outcome yet: after a crash, these get picked back up. */

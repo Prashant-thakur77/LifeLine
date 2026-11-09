@@ -1,7 +1,7 @@
 import type { AuditRecord } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import { createExplainer, factsFor, templateExplanation } from "../src/explain";
-import { sha256Hex } from "../src/signature";
+import { recoverPersonalSigner, sha256Hex } from "../src/signature";
 import { record, rescueRequest, testSigner } from "./helpers";
 
 const done = record({
@@ -51,6 +51,48 @@ const explainer = (fetchFn: typeof fetch, apiKey: string | null = "key", signers
     sleep: async () => {},
     ...(onUnknownSigner ? { onUnknownSigner } : {}),
   });
+
+describe("explainWithProof", () => {
+  const unbase64 = (text: string) => new Uint8Array(Buffer.from(text, "base64"));
+
+  it("keeps the exact bytes and the enclave's signature, so anyone can redo the check without the keeper", async () => {
+    const words = "Your position lost value, so your reserve topped it up.";
+    const { fetchFn, calls } = chat(words);
+    const at = new Date("2026-11-09T09:00:00Z");
+    const result = await createExplainer({
+      baseUrl: "https://near-ai.test/v1",
+      apiKey: "key",
+      model: "m",
+      fetch: fetchFn,
+      log: () => {},
+      signers: () => [ATTESTED],
+      sleep: async () => {},
+      now: () => at,
+    }).explainWithProof(done);
+    expect(result?.text).toBe(`${templateExplanation(done)} ${words}`);
+    const proof = result?.proof;
+    expect(proof).toBeDefined();
+    const request = unbase64(proof!.requestBase64);
+    const response = unbase64(proof!.responseBase64);
+    // The bytes are the ones that went over the wire, and the signed text names their hashes.
+    expect(new TextDecoder().decode(request)).toBe(String(calls[0]?.init.body));
+    expect(proof!.signedText).toBe(`m:${sha256Hex(request)}:${sha256Hex(response)}`);
+    expect(recoverPersonalSigner(proof!.signedText, proof!.signature)).toBe(ATTESTED);
+    expect(proof!.signingAddress).toBe(ATTESTED);
+    expect(JSON.parse(new TextDecoder().decode(response)).choices[0].message.content).toBe(words);
+    expect(proof!.model).toBe("m");
+    expect(proof!.verifiedAt).toBe(at.toISOString());
+  });
+
+  it("has no proof when only the record's facts are kept", async () => {
+    const failing = [chat("Your position lost value.", 200, { signatureStatus: 500 }), chat("Your position lost value.", 200, { tamper: true }), chat("It took 41 seconds.")];
+    for (const { fetchFn } of failing) {
+      expect(await explainer(fetchFn).explainWithProof(done)).toEqual({ text: templateExplanation(done) });
+    }
+    expect(await explainer(chat("x").fetchFn, null).explainWithProof(done)).toEqual({ text: templateExplanation(done) });
+    expect(await explainer(chat("x").fetchFn).explainWithProof(record({ id: "w", kind: "WARN" }))).toBeUndefined();
+  });
+});
 
 describe("explain", () => {
   it("puts the exact figures first, then the model's words", async () => {

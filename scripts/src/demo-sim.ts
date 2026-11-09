@@ -52,7 +52,7 @@ async function main() {
   const explainer = createExplainer({ ...nearAi, log, signers: () => attestation.signers() });
   const pipeline = createRecordPipeline({
     store,
-    explain: (record) => explainer.explain(record),
+    explain: (record) => explainer.explainWithProof(record),
     notify: async ({ explanation }) => {
       if (explanation) console.log(`    "${explanation}"`);
     },

@@ -7,6 +7,8 @@ coverage/
 target/
 *.tsbuildinfo
 next-env.d.ts
+# Copied from node_modules by apps/web/copy-vendor.mjs at build time
+apps/web/public/vendor/
 
 # Secrets: real keys only ever live in .env
 .env

@@ -1,0 +1,179 @@
+import { describe, expect, it } from "vitest";
+import { REFUSED_RESCUE } from "../src/lib/proof";
+import {
+  DEPLOYMENTS,
+  ONE_CLICK_QUOTE_SIGNER,
+  VAULT_CODE_HASH,
+  calls,
+  curlFor,
+  describePermission,
+  judgeKeeperKeys,
+  judgeRefusal,
+  judgeVaultCode,
+  judgeVaultConfig,
+  judgeVaultKeys,
+  nearAmount,
+  rpc,
+  viewResult,
+  type AccessKeyInfo,
+  type Deployment,
+  type VaultConfig,
+} from "../src/lib/verify";
+
+const VAULT = "vault.lifeline-team.testnet";
+const testnet = DEPLOYMENTS.find((d) => d.network === "testnet")!;
+
+// Answers testnet's node gave on 2026-11-09.
+const keeperKeys: AccessKeyInfo[] = [
+  {
+    public_key: "ed25519:H84VL8fNqUNEbXk4mWzMexample",
+    access_key: { nonce: 1, permission: { FunctionCall: { allowance: "462134464218885000000000", method_names: ["rescue"], receiver_id: VAULT } } },
+  },
+];
+const fullKey: AccessKeyInfo = { public_key: "ed25519:BJguysEG3qV9example", access_key: { nonce: 1, permission: "FullAccess" } };
+const config: VaultConfig = {
+  tokens: ["usdc.lifeline-team.testnet"],
+  rescue_token: "usdc.lifeline-team.testnet",
+  quote_signer: "ed25519:82DdwitgHq5bvhASvXLPn2Anwc2YtJthFYXv616pej8U",
+  destination_asset: "1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054",
+  max_quote_age_sec: 120,
+};
+const refusedTx = {
+  status: {
+    Failure: {
+      ActionError: {
+        index: 0,
+        kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: BAD_QUOTE: its deposit address isn't the one this rescue pays" } },
+      },
+    },
+  },
+};
+
+const rescueKey = (receiver: string, methods: string[]): AccessKeyInfo => ({
+  public_key: "ed25519:x",
+  access_key: { nonce: 1, permission: { FunctionCall: { allowance: null, method_names: methods, receiver_id: receiver } } },
+});
+
+describe("the testnet deployment", () => {
+  it("names the refused attack the dashboard shows", () => {
+    expect(testnet.refusal).toEqual({ txHash: REFUSED_RESCUE.txHash, signer: REFUSED_RESCUE.signer, panic: REFUSED_RESCUE.panic });
+    expect(testnet.vaultCodeHash).toBe(VAULT_CODE_HASH);
+    expect(testnet.quoteSigner.isOneClick).toBe(false);
+  });
+});
+
+describe("judgeKeeperKeys", () => {
+  it("proves a keeper whose only key calls rescue on the vault", () => {
+    const judged = judgeKeeperKeys(keeperKeys, VAULT);
+    expect(judged.verdict).toBe("proven");
+    expect(judged.facts[0]?.[1]).toBe(`can only call rescue on ${VAULT} (gas allowance 0.4621 NEAR)`);
+  });
+
+  it("fails a full-access key, another method, another contract, any method, or no key at all", () => {
+    expect(judgeKeeperKeys([...keeperKeys, fullKey], VAULT).verdict).toBe("failed");
+    expect(judgeKeeperKeys([rescueKey(VAULT, ["rescue", "withdraw"])], VAULT).verdict).toBe("failed");
+    expect(judgeKeeperKeys([rescueKey("usdc.lifeline-team.testnet", ["rescue"])], VAULT).verdict).toBe("failed");
+    expect(judgeKeeperKeys([rescueKey(VAULT, [])], VAULT).verdict).toBe("failed");
+    expect(judgeKeeperKeys([], VAULT).verdict).toBe("failed");
+  });
+});
+
+describe("judgeVaultCode", () => {
+  it("proves matching code and fails anything else", () => {
+    expect(judgeVaultCode({ amount: "1", code_hash: VAULT_CODE_HASH, storage_usage: 1 }, VAULT_CODE_HASH).verdict).toBe("proven");
+    expect(judgeVaultCode({ amount: "1", code_hash: "11111111111111111111111111111111", storage_usage: 1 }, VAULT_CODE_HASH).verdict).toBe("failed");
+  });
+});
+
+describe("judgeVaultKeys", () => {
+  it("calls a vault with a full-access key trusted, not proven, and says what would change that", () => {
+    const judged = judgeVaultKeys([fullKey]);
+    expect(judged.verdict).toBe("trusted");
+    expect(judged.finding).toMatch(/could deploy different code/);
+  });
+
+  it("proves a locked vault", () => {
+    expect(judgeVaultKeys([]).verdict).toBe("proven");
+    expect(judgeVaultKeys([rescueKey(VAULT, ["get_config"])]).verdict).toBe("proven");
+  });
+});
+
+describe("judgeVaultConfig", () => {
+  it("calls testnet's stand-in quote key trusted, never 1Click's", () => {
+    const judged = judgeVaultConfig(config, testnet);
+    expect(judged.verdict).toBe("trusted");
+    expect(judged.finding).toMatch(/stand-in/);
+  });
+
+  it("proves a mainnet vault that trusts 1Click's key", () => {
+    const mainnet: Deployment = { ...testnet, network: "mainnet", quoteSigner: { key: ONE_CLICK_QUOTE_SIGNER, isOneClick: true } };
+    expect(judgeVaultConfig({ ...config, quote_signer: ONE_CLICK_QUOTE_SIGNER }, mainnet).verdict).toBe("proven");
+    expect(judgeVaultConfig(config, mainnet).verdict).toBe("failed");
+  });
+
+  it("fails another destination or a longer quote age", () => {
+    expect(judgeVaultConfig({ ...config, destination_asset: "1cs_v1:hypercore:erc20:0x1" }, testnet).verdict).toBe("failed");
+    expect(judgeVaultConfig({ ...config, max_quote_age_sec: 600 }, testnet).verdict).toBe("failed");
+  });
+});
+
+describe("judgeRefusal", () => {
+  it("proves the vault's refusal of the hacked keeper", () => {
+    const judged = judgeRefusal(refusedTx, REFUSED_RESCUE.panic);
+    expect(judged.verdict).toBe("proven");
+    expect(judged.facts).toEqual([["Outcome", `refused: ${REFUSED_RESCUE.panic}`]]);
+  });
+
+  it("fails a transaction that went through, or failed for some other reason", () => {
+    expect(judgeRefusal({ status: { SuccessValue: "" } }, REFUSED_RESCUE.panic).verdict).toBe("failed");
+    const other = { status: { Failure: { ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: PAUSED" } } } } } };
+    expect(judgeRefusal(other, REFUSED_RESCUE.panic).verdict).toBe("failed");
+  });
+});
+
+describe("the requests themselves", () => {
+  it("are plain JSON-RPC, shown as curl commands anyone can run", () => {
+    const command = curlFor("https://test.rpc.fastnear.com", calls.keys("keeper.lifeline-team.testnet"));
+    expect(command).toBe(
+      `curl -s https://test.rpc.fastnear.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":"verify","method":"query","params":{"request_type":"view_access_key_list","finality":"final","account_id":"keeper.lifeline-team.testnet"}}'`,
+    );
+    expect(calls.view(VAULT, "get_config").params.args_base64).toBe("e30=");
+    expect(calls.tx("h", "s")).toEqual({ method: "tx", params: { tx_hash: "h", sender_account_id: "s", wait_until: "FINAL" } });
+  });
+
+  it("send exactly that request and hand back the result, or the node's error", async () => {
+    let sent: { url: string; body: string } | null = null;
+    const ok = (async (url: string, init: RequestInit) => {
+      sent = { url, body: String(init.body) };
+      return Response.json({ jsonrpc: "2.0", id: "verify", result: { keys: [] } });
+    }) as typeof fetch;
+    expect(await rpc("https://rpc.test", calls.keys("a.testnet"), ok)).toEqual({ keys: [] });
+    expect(JSON.parse(sent!.body)).toEqual({ jsonrpc: "2.0", id: "verify", ...calls.keys("a.testnet") });
+
+    const unknown = (async () => Response.json({ error: { cause: { name: "UNKNOWN_ACCOUNT" }, data: "no such account" } })) as unknown as typeof fetch;
+    await expect(rpc("https://rpc.test", calls.account("x.testnet"), unknown)).rejects.toMatchObject({ reason: "UNKNOWN_ACCOUNT" });
+    const down = (async () => new Response("", { status: 502 })) as unknown as typeof fetch;
+    await expect(rpc("https://rpc.test", calls.account("x.testnet"), down)).rejects.toThrow(/502/);
+  });
+
+  it("decode a view's bytes, and surface a contract error", () => {
+    const bytes = Array.from(new TextEncoder().encode(JSON.stringify(config)));
+    expect(viewResult({ result: bytes })).toEqual(config);
+    expect(() => viewResult({ error: "MethodNotFound" })).toThrow(/MethodNotFound/);
+  });
+});
+
+describe("plain words for keys and amounts", () => {
+  it("say what a key can do", () => {
+    expect(describePermission("FullAccess")).toMatch(/deploy code/);
+    expect(describePermission({ FunctionCall: { allowance: null, method_names: [], receiver_id: VAULT } })).toBe(
+      `can call any method on ${VAULT} (gas allowance no limit)`,
+    );
+  });
+
+  it("show NEAR to four places", () => {
+    expect(nearAmount("462134464218885000000000")).toBe("0.4621 NEAR");
+    expect(nearAmount("3513806112272484499999974")).toBe("3.5138 NEAR");
+    expect(nearAmount(null)).toBe("no limit");
+  });
+});

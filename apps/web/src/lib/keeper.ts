@@ -5,6 +5,7 @@ import type {
   StatsResponse,
   TelegramLinkResponse,
 } from "@lifeline/shared";
+import type { ProvedRecord } from "./answer-proof";
 
 // The keeper's REST API (apps/keeper/src/api.ts). Errors come back as { error } with an
 // HTTP status; KeeperError turns each into something a user can act on.
@@ -73,6 +74,9 @@ export const keeper = {
   ledger: (base: string, limit = 200) => request<AuditResponse>(base, `/api/ledger?limit=${limit}`),
   stats: (base: string) => request<StatsResponse>(base, "/api/stats"),
   attestation: (base: string) => request<AttestationResponse>(base, "/api/attestation"),
+  /** A record with the bytes and signature behind its model words; "latest" for the newest one. */
+  proof: (base: string, recordId: string, user?: string) =>
+    request<ProvedRecord>(base, `/api/proof/${enc(recordId)}${user ? `?user=${enc(user)}` : ""}`),
   telegramLink: (base: string, user: string) =>
     request<TelegramLinkResponse>(base, "/api/telegram/link", {
       method: "POST",

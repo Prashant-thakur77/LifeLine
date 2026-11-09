@@ -67,7 +67,7 @@ async function runSimCli(): Promise<number> {
   });
   const pipeline = createRecordPipeline({
     store,
-    explain: (record) => explainer.explain(record),
+    explain: (record) => explainer.explainWithProof(record),
     notify: async ({ explanation }) => {
       if (explanation) console.log(`    ${explanation}`);
     },
@@ -128,7 +128,7 @@ async function runLive(config: LiveConfig): Promise<void> {
   });
   const pipeline = createRecordPipeline({
     store,
-    explain: (record) => explainer.explain(record),
+    explain: (record) => explainer.explainWithProof(record),
     notify: async (record) => telegram?.notify(record),
     log,
   });

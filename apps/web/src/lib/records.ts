@@ -66,6 +66,8 @@ export type LedgerEvent = {
   nearTx: string | null;
   oneClickStatus: string | null;
   explanation: string | null;
+  /** The record those words belong to: the verify page fetches the proof behind them by this id. */
+  explainedRecordId: string | null;
   simulated: boolean;
 };
 
@@ -118,6 +120,7 @@ export function groupRecords(records: readonly AuditRecord[]): LedgerEvent[] {
       nearTx: lastDefined(sorted, (r) => r.nearTx),
       oneClickStatus: lastDefined(sorted, (r) => r.oneClickStatus),
       explanation: lastDefined(sorted, (r) => r.explanation),
+      explainedRecordId: lastDefined(sorted, (r) => (r.explanation === undefined ? undefined : r.id)),
       simulated: sorted.some(isSimulatedRecord),
     });
   }

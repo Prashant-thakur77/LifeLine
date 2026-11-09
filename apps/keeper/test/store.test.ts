@@ -107,6 +107,45 @@ describe.each(DRIVERS)("the store on %s", (_driver, open) => {
     });
   });
 
+  describe("answer proofs", () => {
+    const proof = (n: number) => ({
+      model: "m",
+      requestBase64: "cmVx",
+      responseBase64: `cmVz${n}`,
+      signedText: `m:a:${n}`,
+      signature: "0x00",
+      signingAddress: "0xabc",
+      verifiedAt: AT,
+    });
+
+    it("are kept beside the explanation and read back with the record", () => {
+      store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+      store.setExplanation("a", "Facts. Words.", proof(1));
+      expect(store.proof("a")).toEqual({ record: expect.objectContaining({ id: "a", explanation: "Facts. Words." }), proof: proof(1) });
+      expect(store.proof("missing")).toBeNull();
+    });
+
+    it("go away when the record is explained again without one, so old proof never vouches for new words", () => {
+      store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+      store.setExplanation("a", "Facts. Words.", proof(1));
+      store.setExplanation("a", "Facts.");
+      expect(store.proof("a")).toBeNull();
+      expect(store.audit(USER, 1)[0]?.explanation).toBe("Facts.");
+    });
+
+    it("give the newest proved record, optionally for one user", () => {
+      store.append(record({ id: "a", kind: "RESCUE_DONE" }));
+      store.append(record({ id: "b", kind: "RESCUE_BLOCKED", user: "other.near" }));
+      store.append(record({ id: "c", kind: "RESCUE_DONE" }));
+      store.setExplanation("a", "A.", proof(1));
+      store.setExplanation("b", "B.", proof(2));
+      store.setExplanation("c", "C.");
+      expect(store.latestProof()?.record.id).toBe("b");
+      expect(store.latestProof(USER)?.record.id).toBe("a");
+      expect(store.latestProof("nobody.near")).toBeNull();
+    });
+  });
+
   describe("explanations", () => {
     it("show up on every read of a record", () => {
       store.append(record({ id: "a", kind: "RESCUE_DONE" }));

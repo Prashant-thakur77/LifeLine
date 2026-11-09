@@ -225,6 +225,36 @@ describe.each(TRANSPORTS)("the API through %s", (_transport, makeTransport) => {
     });
   });
 
+  describe("GET /api/proof", () => {
+    const proof = { model: "m", requestBase64: "cmVx", responseBase64: "cmVz", signedText: "m:a:b", signature: "0x00", signingAddress: "0xabc", verifiedAt: AT };
+
+    beforeEach(() => {
+      store.append(record({ id: "r1", kind: "RESCUE_DONE" }));
+      store.append(record({ id: "r2", kind: "RESCUE_BLOCKED", user: "bob.near" }));
+      store.append(record({ id: "r3", kind: "RESCUE_FAILED" }));
+      store.setExplanation("r1", "Facts. Words.", proof);
+      store.setExplanation("r2", "Bob's facts. Words.", proof);
+      store.setExplanation("r3", "Only facts.");
+    });
+
+    it("gives a record with the bytes and signature behind its model's words", async () => {
+      const response = await transport.fetch("/api/proof/r1");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ record: expect.objectContaining({ id: "r1", explanation: "Facts. Words." }), proof });
+    });
+
+    it("gives the newest proved record, for everyone or for one user", async () => {
+      expect(((await (await transport.fetch("/api/proof/latest")).json()) as { record: { id: string } }).record.id).toBe("r2");
+      expect(((await (await transport.fetch(`/api/proof/latest?user=${USER}`)).json()) as { record: { id: string } }).record.id).toBe("r1");
+    });
+
+    it("is a 404 for a record with only the facts, or none at all", async () => {
+      expect((await transport.fetch("/api/proof/r3")).status).toBe(404);
+      expect((await transport.fetch("/api/proof/nope")).status).toBe(404);
+      expect((await transport.fetch("/api/proof/latest?user=nobody.near")).status).toBe(404);
+    });
+  });
+
   describe("GET /api/attestation", () => {
     it("says not available until a check has run", async () => {
       const body = await (await get("/api/attestation")).json();

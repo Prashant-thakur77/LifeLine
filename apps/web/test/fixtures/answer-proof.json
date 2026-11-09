@@ -1,0 +1,25 @@
+{
+  "record": {
+    "id": "proof-fixture",
+    "user": "demo.near",
+    "at": "2026-11-09T09:30:00.000Z",
+    "kind": "RESCUE_BLOCKED",
+    "healthBefore": 1.45,
+    "decision": {
+      "verdict": "block",
+      "reasons": [
+        "COOLDOWN"
+      ]
+    },
+    "explanation": "Lifeline's safety rules refused a rescue at health 1.45, so no money moved. Your cooldown since the last rescue hasn't passed yet. Lifeline tried to top up your Hyperliquid margin account because its health fell too low, but the rescue was refused since your cooldown since the last rescue hasn't passed yet. No money moved."
+  },
+  "proof": {
+    "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    "requestBase64": "eyJtb2RlbCI6ImRlZXBzZWVrLWFpL0RlZXBTZWVrLVY0LjEtRmxhc2gtMTAxNyIsInRlbXBlcmF0dXJlIjowLjIsIm1heF90b2tlbnMiOjE2MCwicmVhc29uaW5nX2VmZm9ydCI6Im5vbmUiLCJtZXNzYWdlcyI6W3sicm9sZSI6InN5c3RlbSIsImNvbnRlbnQiOiJZb3UgZXhwbGFpbiB3aGF0IExpZmVsaW5lIGp1c3QgZGlkIHRvIHRoZSBwZXJzb24gd2hvc2UgYWNjb3VudCBpdCBwcm90ZWN0cy4gTGlmZWxpbmUgdG9wcyB1cCBhIEh5cGVybGlxdWlkIG1hcmdpbiBhY2NvdW50IGZyb20gdGhlaXIgcmVzZXJ2ZSB3aGVuIGl0cyBoZWFsdGggZmFsbHMgdG9vIGxvdy4gVGhlIGV4YWN0IGZpZ3VyZXMgYXJlIGFscmVhZHkgc2hvd24ganVzdCBiZWZvcmUgeW91ciB3b3Jkcywgc28gbmV2ZXIgd3JpdGUgZGlnaXRzIG9yIHJlcGVhdCBhIGZpZ3VyZS4gSW4gMSBvciAyIHNob3J0LCBwbGFpbiBzZW50ZW5jZXMsIHNheSB3aGF0IGhhcHBlbmVkIGFuZCB3aHksIHVzaW5nIG9ubHkgdGhlIGZhY3RzIHlvdSBhcmUgZ2l2ZW4uIERvbid0IGdpdmUgYWR2aWNlLiBObyBsaW5rcy4gTm8gbWFya2Rvd24uIn0seyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJ7XCJldmVudFwiOlwiQSByZXNjdWUgd2FzIHJlZnVzZWQgYnkgdGhlIHNhZmV0eSBydWxlcywgYW5kIG5vIG1vbmV5IG1vdmVkLlwiLFwiaGVhbHRoQmVmb3JlXCI6MS40NSxcInJlYXNvbnNcIjpbXCJZb3VyIGNvb2xkb3duIHNpbmNlIHRoZSBsYXN0IHJlc2N1ZSBoYXNuJ3QgcGFzc2VkIHlldC5cIl19In1dfQ==",
+    "responseBase64": "eyJpZCI6ImNoYXRjbXBsLTZiYTZhZjEzLWMzNWItNGQ2My1iOTkxLWU0NWQzMzU0YjA4MiIsIm9iamVjdCI6ImNoYXQuY29tcGxldGlvbiIsImNob2ljZXMiOlt7ImluZGV4IjowLCJtZXNzYWdlIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiTGlmZWxpbmUgdHJpZWQgdG8gdG9wIHVwIHlvdXIgSHlwZXJsaXF1aWQgbWFyZ2luIGFjY291bnQgYmVjYXVzZSBpdHMgaGVhbHRoIGZlbGwgdG9vIGxvdywgYnV0IHRoZSByZXNjdWUgd2FzIHJlZnVzZWQgc2luY2UgeW91ciBjb29sZG93biBzaW5jZSB0aGUgbGFzdCByZXNjdWUgaGFzbid0IHBhc3NlZCB5ZXQuIE5vIG1vbmV5IG1vdmVkLiJ9LCJmaW5pc2hfcmVhc29uIjoic3RvcCIsImxvZ3Byb2JzIjpudWxsfV0sIm1vZGVsIjoiZGVlcHNlZWstYWkvRGVlcFNlZWstVjQuMS1GbGFzaC0xMDE3IiwiY3JlYXRlZCI6MTc5NDIxNTM2MSwidXNhZ2UiOnsicHJvbXB0X3Rva2VucyI6MTM5LCJ0b3RhbF90b2tlbnMiOjE4MiwiY29tcGxldGlvbl90b2tlbnMiOjQzLCJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOnsiY2FjaGVkX3Rva2VucyI6MCwiY3JlYXRlZF9jYWNoZV90b2tlbnMiOjEyOH0sImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOnsicmVhc29uaW5nX3Rva2VucyI6MH19LCJzeXN0ZW1fZmluZ2VycHJpbnQiOiJ2bGxtLTAuMzIuMC1kcDgtZXAtMTg4YmJlNTAifQ==",
+    "signedText": "deepseek-ai/DeepSeek-V4.1-Flash-1017:2ae6e47f0fb8e7ab649dae0f2920679b791250fa79b832cf227cb71ab995d41f:4a7b9eac8be28e66e48bf0bb3302c0d7351295530312792483405addf2455674",
+    "signature": "0xa0d3f1b7f16b4012b3a9f617ca51cd7e693eaa36fa7fe7a2246606001f6389e23cb23a6e7a9d35af073e416f722ddb6c373e5f09d21842955e17b8cab5b5fccf1b",
+    "signingAddress": "0xfe0071895500a9755c18044948ab4f4e1a7f337e",
+    "verifiedAt": "2026-11-09T09:09:24.647Z"
+  }
+}
