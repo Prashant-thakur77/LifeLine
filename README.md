@@ -39,7 +39,7 @@ flowchart LR
 3. The keeper reads their health from Hyperliquid every 5 seconds: cross account value divided by maintenance margin. Liquidation comes at 1.0.
 4. Below the warn line it alerts them on Telegram. Below the trigger it sizes a rescue to bring health back to the target, gets a live quote from 1Click to the trader's own Hyperliquid perps balance, and runs the policy engine.
 5. If the engine allows it, the keeper calls the vault's `rescue` with 1Click's signed quote. The vault checks the signature and every limit itself, then pays the quote's deposit address. 1Click swaps and delivers USDC to Hyperliquid.
-6. Every step goes into an append-only audit log, with a plain-language explanation: the facts from the record, and a sentence from a private model on NEAR AI Cloud, running in attested hardware, when the keeper has a NEAR AI key. The hosted demo doesn't have one yet, so its explanations are the facts alone.
+6. Every step goes into an append-only audit log, with a plain-language explanation: the facts from the record, and a sentence from a private model on NEAR AI Cloud, running in attested hardware, when the keeper has a NEAR AI key. The hosted demo has one. A model sentence is kept only when NEAR AI Cloud's signature over that exact exchange verifies against the key the hardware attestation vouched for.
 
 ## What's built on NEAR
 
@@ -66,7 +66,7 @@ Each of these needs only Node 22 and pnpm, and no wallet, keys or funds. Clone t
 | `pnpm demo:sim` | The real keeper rescue a pretend position opened at the live ETH price, with a real 1Click quote, the policy engine's verdict and the audit record, in under 30 seconds |
 | `pnpm demo:attack` | A hacked keeper's attacks refused by the policy engine, and a real on-chain transaction where the vault refused a redirected rescue, re-checked on a public NEAR node |
 | `pnpm --filter intents live-quote 5 0xYourHyperliquidAddress` | A real 1Click quote from NEAR USDC to Hyperliquid perps USDC, its signature checked |
-| `pnpm --filter keeper attest` | The NEAR AI model's attestation verified through NVIDIA and Intel with a fresh nonce |
+| `pnpm --filter keeper attest` | The NEAR AI model's attestation verified through NVIDIA and Intel with a fresh nonce; with a NEAR AI key in `.env`, one answer's signature checked against the attested key |
 | `pnpm --filter hyperliquid live 0xAnyAddress` | Health, margin and liquidation prices for any Hyperliquid account |
 | `pnpm backtest` | `research/backtest/RESULTS.md` and its charts regenerated from the saved candles, in about 15 seconds |
 | `pnpm latency` | The keeper's decision time measured against the live APIs, written to `research/latency/RESULTS.md` |
@@ -118,7 +118,9 @@ Every warning, rescue, block and failure goes into an append-only audit log, whe
 
 The AI has no authority. After each decision, a model on NEAR AI Cloud adds a sentence or two of plain language, and nothing reads those words to decide anything. Each explanation starts with the record's own facts, generated from the record, so a figure on the ledger can't be wrong. The model's words come after them, and they're dropped if they contain a digit or a link, or claim something that didn't happen. The keeper's own notes, like "the money may still arrive", are kept word for word.
 
-Run `pnpm --filter keeper attest` to check that the model runs in secure hardware. It requests a report with a fresh random nonce, checks every GPU through NVIDIA, checks the CPU quote through Intel, and confirms the quote vouches for the signing key, that nonce and the running software. It then does the same for NEAR AI's gateway. We last saw it pass on 8 GPUs with Intel status `UpToDate`. If NVIDIA or Intel can't be reached it says "not available", not "failed", because an outage isn't evidence of anything.
+The model's words also have to be provably the model's. The keeper asks the model by its own name with aliasing off, so the answer is signed inside the model's enclave, and keeps the exact bytes it sent and received. It then fetches that answer's signature from NEAR AI Cloud and checks that it comes from the model's enclave rather than the gateway, that the signed text is the model name and the SHA-256 of those exact bytes, that it recovers (Ethereum personal-sign) to the stated key, and that the key is one the attestation below verified. An answer that fails any of these never reaches the log. If NEAR AI moves the model to a machine the last attestation didn't cover, the keeper checks the hardware again within minutes rather than hours.
+
+Run `pnpm --filter keeper attest` to check that the model runs in secure hardware. It requests a report with a fresh random nonce, checks every GPU through NVIDIA, checks the CPU quote through Intel, and confirms the quote vouches for the signing key, that nonce and the running software. It then does the same for NEAR AI's gateway. With a NEAR AI key it then asks for one explanation and checks that answer's signature against the attested key, the same check every explanation passes. On 9 Nov it passed on 8 GPUs with Intel status `UpToDate`, and the answer verified against the attested key. If NVIDIA or Intel can't be reached it says "not available", not "failed", because an outage isn't evidence of anything.
 
 ## Backtest results
 

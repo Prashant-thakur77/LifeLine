@@ -157,6 +157,11 @@ Checked on 2026-11-08 on Cloudflare, with the sim deployed at `lifeline-sim.pras
 - `wrangler deploy` once failed with "The request to Cloudflare's API timed out" and left the old version live. Check `wrangler deployments list` after a deploy.
 - A deploy reaches a running Durable Object only when it hibernates or after 300 s, Cloudflare's default deferred code update. The keeper never hibernates, so a fix takes up to 5 minutes to reach it. On the switch the object restarts, and the keeper picks up any unfinished rescue from its log.
 
+Checked on 2026-11-09 with a NEAR AI Cloud key:
+
+- Each answer of `deepseek-ai/DeepSeek-V4.1-Flash-1017`, asked with `x-no-aliasing: true`, has a `provider_tee` ECDSA signature at `GET /v1/signature/{id}?model=&signing_algo=ecdsa`, available at once. Its `text` is `model:sha256(request bytes):sha256(response bytes)`, hashed after decompression (the response came Brotli-encoded). The signature recovers with Ethereum personal-sign to `signing_address`, which was the one model node in that day's attestation report.
+- The model reasons before answering, and the reasoning counts against `max_tokens`: at 160 it stopped mid-answer or before answering. `reasoning_effort: "none"` gives 0 reasoning tokens, a whole sentence and about 0.6 s instead of over 2 s.
+
 ## Commands
 
 ```sh

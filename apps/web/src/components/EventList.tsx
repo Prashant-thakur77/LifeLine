@@ -157,7 +157,7 @@ export function EventList({ events, showUser = false }: { events: LedgerEvent[];
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-muted">
         <span>
           {shown.length} of {events.length} shown.
-          {explained ? " Explanations are written from each record; a keeper with a NEAR AI key adds a sentence from a model in attested hardware." : ""}
+          {explained ? " Explanations are written from each record; a keeper with a NEAR AI key adds a sentence from a model in attested hardware, kept only when its signature verifies." : ""}
         </span>
         {count < events.length ? (
           <Button size="sm" variant="secondary" onClick={() => setCount((c) => c + PAGE)}>

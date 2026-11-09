@@ -7,7 +7,7 @@ import { createLifelineBot } from "@lifeline/bot";
 import { getHealth } from "@lifeline/hyperliquid";
 import { createLinkLimiter, NOT_AVAILABLE_ATTESTATION } from "./api";
 import { createApi } from "./api-node";
-import { AttestationMonitor, checkAttestation } from "./attestation";
+import { AttestationMonitor, checkAttestationWithSigners } from "./attestation";
 import { DEFAULT_NEAR_AI_MODEL, DEFAULT_NEAR_AI_URL, parseMode, readLiveConfig, type LiveConfig } from "./config";
 import { createExplainer } from "./explain";
 import { nodeIntel } from "./intel-node";
@@ -42,12 +42,28 @@ async function runSimCli(): Promise<number> {
   const port = await listen(api, 0);
   console.log(`API: http://127.0.0.1:${port}/api/stats\n`);
 
-  // A key is optional here: with none, explanations come from the template.
-  const explainer = createExplainer({
+  // A key is optional here: with none, explanations come from the template. With one, the
+  // model's words are kept only if their signature verifies against the attested key, so
+  // the hardware is checked once first.
+  const nearAi = {
     baseUrl: process.env.NEAR_AI_BASE_URL?.trim() || DEFAULT_NEAR_AI_URL,
     apiKey: process.env.NEAR_AI_API_KEY?.trim() || null,
     model: process.env.NEAR_AI_MODEL?.trim() || DEFAULT_NEAR_AI_MODEL,
+  };
+  const attestation = new AttestationMonitor(
+    () => checkAttestationWithSigners({ baseUrl: nearAi.baseUrl, model: nearAi.model, apiKey: nearAi.apiKey, now, intel: nodeIntel }),
+    { sleep },
+  );
+  if (nearAi.apiKey !== null) {
+    console.log("Checking NEAR AI Cloud's hardware attestation, so the model's answers can be verified…");
+    await attestation.refreshIfDue(Date.now());
+    console.log(`  ${attestation.latest().status}, ${attestation.signers().length} signing key(s) verified\n`);
+  }
+  const explainer = createExplainer({
+    ...nearAi,
     log: (line) => console.log(`  (${line})`),
+    sleep,
+    signers: () => attestation.signers(),
   });
   const pipeline = createRecordPipeline({
     store,
@@ -97,17 +113,25 @@ async function runLive(config: LiveConfig): Promise<void> {
     config.botToken === null
       ? null
       : createLifelineBot({ token: config.botToken, store, dashboardUrl: config.dashboardUrl, network: config.network, now, log });
-  const explainer = createExplainer({ baseUrl: config.nearAiUrl, apiKey: config.nearAiKey, model: config.nearAiModel, log });
+  const attestation = new AttestationMonitor(
+    () => checkAttestationWithSigners({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: nodeIntel }),
+    { sleep },
+  );
+  const explainer = createExplainer({
+    baseUrl: config.nearAiUrl,
+    apiKey: config.nearAiKey,
+    model: config.nearAiModel,
+    log,
+    sleep,
+    signers: () => attestation.signers(),
+    onUnknownSigner: () => attestation.recheckSoon(now().getTime()),
+  });
   const pipeline = createRecordPipeline({
     store,
     explain: (record) => explainer.explain(record),
     notify: async (record) => telegram?.notify(record),
     log,
   });
-  const attestation = new AttestationMonitor(
-    () => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: nodeIntel }),
-    { sleep },
-  );
   const vault = createNearVault(connectNear(config), { keeperAccountId: config.keeperAccountId });
   const userList = createUserList({ fixed: config.users, load: () => vault.getUsers(), accept: canRescue(vault), now: () => Date.now(), log });
   const keeper = new Keeper({

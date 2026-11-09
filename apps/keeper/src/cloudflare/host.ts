@@ -2,7 +2,7 @@ import { createLifelineBot, type BotOptions, type LifelineBot } from "@lifeline/
 import { getHealth, getMidPrice } from "@lifeline/hyperliquid";
 import { KEEPER_POLL_INTERVAL_SEC, type AttestationResponse, type AuditRecord } from "@lifeline/shared";
 import { createLinkLimiter, handleApi, jsonResponse } from "../api";
-import { AttestationMonitor, checkAttestation, type IntelDcap, type SavedAttestation } from "../attestation";
+import { AttestationMonitor, checkAttestationWithSigners, type IntelDcap, type SavedAttestation } from "../attestation";
 import { readLiveConfig, readServiceSettings, type LiveConfig, type ServiceSettings } from "../config";
 import { createExplainer } from "../explain";
 import { describeRecord } from "../format";
@@ -158,7 +158,16 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
       seams.wrapBot?.(bot);
     }
 
-    const explainer = createExplainer({ baseUrl: config.nearAiUrl, apiKey: config.nearAiKey, model: config.nearAiModel, log });
+    const explainer = createExplainer({
+      baseUrl: config.nearAiUrl,
+      apiKey: config.nearAiKey,
+      model: config.nearAiModel,
+      log,
+      sleep,
+      // Declared below; only read once records arrive, by which time it exists.
+      signers: () => attestation.signers(),
+      onUnknownSigner: () => attestation.recheckSoon(now().getTime()),
+    });
     const pipeline = createRecordPipeline({
       store,
       explain: (record) => explainer.explain(record),
@@ -171,7 +180,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     };
     const attestation = new AttestationMonitor(
       seams.checkAttestation ??
-        (() => checkAttestation({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: deps.intel })),
+        (() => checkAttestationWithSigners({ baseUrl: config.nearAiUrl, model: config.nearAiModel, apiKey: config.nearAiKey, now, intel: deps.intel })),
       {
         sleep,
         onChecked: (saved) => {

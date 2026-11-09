@@ -12,6 +12,7 @@ const CHECK_TIMEOUT_MS = 3 * 60_000;
 const CLOCK_TOLERANCE_SEC = 60;
 const VERIFIED_RECHECK_MS = 6 * 3_600_000;
 const UNVERIFIED_RECHECK_MS = 10 * 60_000; // so an outage doesn't stick for 6 hours
+const NUDGE_MIN_MS = 10 * 60_000; // an answer from an unseen key asks for a check at most this often
 const MAX_NODES = 20; // past this, some would go unchecked, so it can't honestly say verified
 
 /** OutOfDate still has valid quote cryptography: the official NEAR AI verifier accepts it too. */
@@ -175,17 +176,30 @@ export function checkGpuClaims(
  * model has no authority.
  */
 export async function checkAttestation(options: AttestationOptions): Promise<AttestationResponse> {
+  const { signers: _signers, ...response } = await checkAttestationWithSigners(options);
+  return response;
+}
+
+/**
+ * The published result, plus the signing keys it verified: those of every model node
+ * that passed every check, and only when the whole check is verified. Each answer's
+ * signature is checked against these. They aren't part of the published result.
+ */
+export type CheckedAttestation = AttestationResponse & { signers?: readonly string[] };
+
+export async function checkAttestationWithSigners(options: AttestationOptions): Promise<AttestationResponse & { signers: string[] }> {
   const { baseUrl, model, apiKey, now, intel } = options;
   const doFetch = options.fetch ?? fetch;
   const nonce = (options.randomNonce ?? (() => randomBytes(32).toString("hex")))().toLowerCase();
   const verifyQuote =
     options.verifyQuote ?? verifyQuoteWith((raw) => withTimeout(intel.getCollateral(INTEL_PCCS_URL, raw), REQUEST_TIMEOUT_MS), now, intel);
   const jwks = options.jwks ?? createRemoteJWKSet(new URL(NRAS_JWKS_URL), { timeoutDuration: REQUEST_TIMEOUT_MS });
-  const answer = (status: AttestationResponse["status"], checks: Check[]): AttestationResponse => ({
+  const answer = (status: AttestationResponse["status"], checks: Check[], signers: string[] = []) => ({
     status,
     checkedAt: now().toISOString(),
     model,
     checks,
+    signers: status === "verified" ? signers : [],
   });
 
   let report: Report | null;
@@ -333,7 +347,13 @@ export async function checkAttestation(options: AttestationOptions): Promise<Att
 
   try {
     const results: { checks: Check[]; unavailable: boolean }[] = [];
-    for (const node of nodes as ModelNode[]) results.push(await checkNode(node));
+    const signers: string[] = [];
+    for (const node of nodes as ModelNode[]) {
+      const result = await checkNode(node);
+      results.push(result);
+      const passedAll = !result.unavailable && result.checks.length === CHECK_ORDER.length - 1 && result.checks.every((check) => check.passed);
+      if (passedAll) signers.push(`0x${hex(node.signing_address)}`);
+    }
     results.push(await checkGateway(report?.gateway_attestation));
 
     // One line per check, which holds only if it held everywhere it was run.
@@ -348,21 +368,24 @@ export async function checkAttestation(options: AttestationOptions): Promise<Att
 
     if (merged.some((check) => !check.passed)) return answer("failed", merged);
     if (results.some((result) => result.unavailable)) return answer("not available", merged);
-    return answer("verified", merged);
+    return answer("verified", merged, signers);
   } catch {
     return answer("not available", []);
   }
 }
 
 /** Checks on startup and every 6 hours, sooner if unverified, and always has an answer for the API. */
-export type SavedAttestation = { result: AttestationResponse; nextCheckAt: number };
+export type SavedAttestation = { result: AttestationResponse; nextCheckAt: number; signers?: readonly string[] };
 
 export class AttestationMonitor {
   private current: AttestationResponse = NOT_AVAILABLE_ATTESTATION;
+  private verifiedSigners: readonly string[] = [];
   private stopped = false;
+  private wake: (() => void) | null = null;
+  private lastNudgeAt = -Infinity;
 
   constructor(
-    private readonly check: () => Promise<AttestationResponse>,
+    private readonly check: () => Promise<CheckedAttestation>,
     private readonly options: {
       sleep: (ms: number) => Promise<void>;
       checkTimeoutMs?: number;
@@ -373,7 +396,7 @@ export class AttestationMonitor {
 
   /** Picks up a saved check, so a restart serves it at once and doesn't check again early. */
   restore(saved: SavedAttestation): void {
-    this.current = saved.result;
+    this.take({ ...saved.result, ...(saved.signers ? { signers: saved.signers } : {}) });
     this.nextCheckAt = saved.nextCheckAt;
   }
 
@@ -381,19 +404,50 @@ export class AttestationMonitor {
     return this.current;
   }
 
+  /** The signing keys the last check verified, lowercase; none unless it was verified. */
+  signers(): readonly string[] {
+    return this.verifiedSigners;
+  }
+
+  /**
+   * An answer came signed by a key the last check didn't cover: NEAR AI may have moved
+   * the model to another machine. Asks for a check at the next chance, at most every
+   * 10 minutes, so a stream of bad signatures can't keep it checking.
+   */
+  recheckSoon(nowMs: number): void {
+    if (nowMs - this.lastNudgeAt < NUDGE_MIN_MS) return;
+    this.lastNudgeAt = nowMs;
+    this.nextCheckAt = Math.min(this.nextCheckAt, nowMs);
+    this.wake?.();
+  }
+
+  private take(result: CheckedAttestation): void {
+    const { signers, ...response } = result;
+    this.current = response;
+    this.verifiedSigners = response.status === "verified" ? (signers ?? []).map((signer) => signer.toLowerCase()) : [];
+  }
+
+  private async checkNow(): Promise<void> {
+    try {
+      this.take(await withTimeout(this.check(), this.options.checkTimeoutMs ?? CHECK_TIMEOUT_MS));
+    } catch {
+      this.take(NOT_AVAILABLE_ATTESTATION);
+    }
+  }
+
   async run(): Promise<void> {
     while (!this.stopped) {
-      try {
-        this.current = await withTimeout(this.check(), this.options.checkTimeoutMs ?? CHECK_TIMEOUT_MS);
-      } catch {
-        this.current = NOT_AVAILABLE_ATTESTATION;
-      }
-      await this.options.sleep(this.current.status === "verified" ? VERIFIED_RECHECK_MS : UNVERIFIED_RECHECK_MS);
+      await this.checkNow();
+      if (this.stopped) break;
+      const woken = new Promise<void>((resolve) => (this.wake = resolve));
+      await Promise.race([this.options.sleep(this.current.status === "verified" ? VERIFIED_RECHECK_MS : UNVERIFIED_RECHECK_MS), woken]);
+      this.wake = null;
     }
   }
 
   stop(): void {
     this.stopped = true;
+    this.wake?.();
   }
 
   private checking = false;
@@ -407,13 +461,15 @@ export class AttestationMonitor {
     if (this.checking || nowMs < this.nextCheckAt) return;
     this.checking = true;
     try {
-      this.current = await withTimeout(this.check(), this.options.checkTimeoutMs ?? CHECK_TIMEOUT_MS);
-    } catch {
-      this.current = NOT_AVAILABLE_ATTESTATION;
+      await this.checkNow();
     } finally {
       this.checking = false;
     }
     this.nextCheckAt = nowMs + (this.current.status === "verified" ? VERIFIED_RECHECK_MS : UNVERIFIED_RECHECK_MS);
-    this.options.onChecked?.({ result: this.current, nextCheckAt: this.nextCheckAt });
+    this.options.onChecked?.({
+      result: this.current,
+      nextCheckAt: this.nextCheckAt,
+      ...(this.verifiedSigners.length > 0 ? { signers: this.verifiedSigners } : {}),
+    });
   }
 }

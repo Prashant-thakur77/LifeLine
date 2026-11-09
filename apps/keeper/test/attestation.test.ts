@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import {
   AttestationMonitor,
+  checkAttestationWithSigners,
   checkAttestation,
   checkGpuClaims,
   isWellFormedQuote,
@@ -74,6 +75,37 @@ describe("a real report, with the real cryptography", () => {
     expect(result.status).toBe("verified");
     expect(result.model).toBe(meta.model);
     expect(result.checkedAt).toBe(NOW.toISOString());
+  });
+
+  it("names the signing key it verified, for checking each answer's signature against", async () => {
+    const options = { baseUrl: "https://near-ai.test/v1", model: meta.model as string, now: () => NOW, intel: nodeIntel, randomNonce: () => NONCE };
+    const result = await checkAttestationWithSigners({
+      ...options,
+      fetch: (async (url: string, init?: RequestInit) => honest(String(url), init)) as typeof fetch,
+      verifyQuote: async (quote: string) => verifyRecorded(quote),
+      jwks: createLocalJWKSet(jwks as Parameters<typeof createLocalJWKSet>[0]),
+    });
+    expect(result.status).toBe("verified");
+    expect(result.signers).toEqual([String(attestation(report).signing_address).toLowerCase()]);
+  });
+
+  it("names no signer when the check fails, even for a node that passed", async () => {
+    const r = copy();
+    const bad = structuredClone(attestation(r));
+    bad.signing_address = "0x9999999999999999999999999999999999999999";
+    r.model_attestations.push(bad);
+    const result = await checkAttestationWithSigners({
+      baseUrl: "https://near-ai.test/v1",
+      model: meta.model as string,
+      now: () => NOW,
+      intel: nodeIntel,
+      randomNonce: () => NONCE,
+      fetch: (async (url: string) => (url.includes("nras.") ? json(nras) : json(r))) as typeof fetch,
+      verifyQuote: async (quote: string) => verifyRecorded(quote),
+      jwks: createLocalJWKSet(jwks as Parameters<typeof createLocalJWKSet>[0]),
+    });
+    expect(result.status).toBe("failed");
+    expect(result.signers).toEqual([]);
   });
 
   it("has the same shape as the fixture the dashboard builds on", async () => {
@@ -623,6 +655,28 @@ describe.each(ENGINES)("Intel's quote verifier, %s", (_engine, intel) => {
   });
 });
 
+describe("AttestationMonitor's own loop", () => {
+  const verified: AttestationResponse = { status: "verified", checkedAt: "t", model: "m", checks: [] };
+
+  it("wakes from its 6-hour wait when asked to check again soon", async () => {
+    let checks = 0;
+    const monitor: AttestationMonitor = new AttestationMonitor(
+      async () => {
+        checks += 1;
+        if (checks === 2) monitor.stop();
+        return verified;
+      },
+      { sleep: () => new Promise<void>(() => {}) },
+    );
+    const running = monitor.run();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(checks).toBe(1);
+    monitor.recheckSoon(Date.now());
+    await running;
+    expect(checks).toBe(2);
+  });
+});
+
 describe("AttestationMonitor on a host that ticks, like a Durable Object", () => {
   const verified: AttestationResponse = { status: "verified", checkedAt: "t", model: "m", checks: [] };
   const HOUR = 3_600_000;
@@ -694,6 +748,36 @@ describe("AttestationMonitor on a host that ticks, like a Durable Object", () =>
     expect(t.checks()).toBe(0);
     await t.monitor.refreshIfDue(6 * HOUR);
     expect(t.checks()).toBe(1);
+  });
+
+  it("hands out the signers of a verified check only, and keeps them out of the published result", async () => {
+    const t = counting(async () => ({ ...verified, signers: ["0xAbC"] }));
+    await t.monitor.refreshIfDue(0);
+    expect(t.monitor.signers()).toEqual(["0xabc"]);
+    expect(Object.keys(t.monitor.latest()).sort()).toEqual(["checkedAt", "checks", "model", "status"]);
+    const failed = counting(async () => ({ ...verified, status: "failed" as const, signers: ["0xabc"] }));
+    await failed.monitor.refreshIfDue(0);
+    expect(failed.monitor.signers()).toEqual([]);
+  });
+
+  it("keeps the signers across a restart", async () => {
+    const t = counting(async () => verified);
+    t.monitor.restore({ result: verified, nextCheckAt: 6 * HOUR, signers: ["0xabc"] });
+    expect(t.monitor.signers()).toEqual(["0xabc"]);
+  });
+
+  it("checks again soon when an answer comes from a key it hasn't seen, but at most every 10 minutes", async () => {
+    const t = counting(async () => verified);
+    await t.monitor.refreshIfDue(0);
+    t.monitor.recheckSoon(HOUR);
+    await t.monitor.refreshIfDue(HOUR);
+    expect(t.checks()).toBe(2);
+    t.monitor.recheckSoon(HOUR + 60_000);
+    await t.monitor.refreshIfDue(HOUR + 60_000);
+    expect(t.checks()).toBe(2);
+    t.monitor.recheckSoon(HOUR + 10 * 60_000);
+    await t.monitor.refreshIfDue(HOUR + 10 * 60_000);
+    expect(t.checks()).toBe(3);
   });
 
   it("reports each finished check and its next time, so the host can save them", async () => {

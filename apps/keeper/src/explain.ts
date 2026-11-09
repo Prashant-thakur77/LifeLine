@@ -1,5 +1,6 @@
 import { describeReason } from "@lifeline/bot";
 import { ASSETS, type AuditRecord } from "@lifeline/shared";
+import { checkResponseSignature, fetchSignature } from "./signature";
 
 const REQUEST_TIMEOUT_MS = 4_000; // Telegram has 10 s, so this can't take all of it
 const MAX_TOKENS = 160;
@@ -127,16 +128,26 @@ export type Explainer = { explain(record: AuditRecord): Promise<string | undefin
  * Plain words for each rescue, block and failure: the record's own facts, then a model's
  * words from NEAR AI Cloud. Nothing reads them to decide anything. Any problem leaves
  * just the facts, including words that contradict the record.
+ *
+ * The model's words are kept only when NEAR AI Cloud's signature over this exact
+ * exchange verifies against a key the hardware attestation vouched for (signature.ts),
+ * so an unverified answer never reaches the log.
  */
 export function createExplainer(options: {
   baseUrl: string;
   apiKey: string | null;
   model: string;
   log: (line: string) => void;
+  /** The signing keys the latest verified attestation names. */
+  signers: () => readonly string[];
+  /** Called when an answer is signed by a key the attestation didn't name, so it can be checked again. */
+  onUnknownSigner?: () => void;
+  sleep?: (ms: number) => Promise<void>;
   fetch?: typeof fetch;
 }): Explainer {
-  const { baseUrl, apiKey, model, log } = options;
+  const { baseUrl, apiKey, model, log, signers, onUnknownSigner } = options;
   const doFetch = options.fetch ?? fetch;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
   return {
     async explain(record) {
@@ -146,25 +157,36 @@ export function createExplainer(options: {
 
       const facts = factsFor(record);
       try {
+        // Sent and hashed as these exact bytes: the signature covers them.
+        const requestBody = JSON.stringify({
+          model,
+          temperature: 0.2,
+          max_tokens: MAX_TOKENS,
+          // The model reasons before answering by default, and that thinking counts against
+          // max_tokens: it ran out mid-answer or before answering at all. One plain sentence
+          // needs no reasoning.
+          reasoning_effort: "none",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: JSON.stringify(facts) },
+          ],
+        });
         const response = await doFetch(`${baseUrl}/chat/completions`, {
           method: "POST",
-          headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model,
-            temperature: 0.2,
-            max_tokens: MAX_TOKENS,
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user", content: JSON.stringify(facts) },
-            ],
-          }),
+          // No aliasing, so the model's own enclave signs the answer rather than the gateway.
+          headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}`, "x-no-aliasing": "true" },
+          body: requestBody,
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
         if (!response.ok) {
           log(`NEAR AI Cloud answered ${response.status}, so a template explanation was used`);
           return fallback;
         }
-        const body = (await response.json()) as { choices?: { finish_reason?: unknown; message?: { content?: unknown } }[] };
+        const responseBytes = new Uint8Array(await response.arrayBuffer());
+        const body = JSON.parse(new TextDecoder().decode(responseBytes)) as {
+          id?: unknown;
+          choices?: { finish_reason?: unknown; message?: { content?: unknown } }[];
+        };
         const choice = body.choices?.[0];
         // Cut off by the token limit, so it stops mid-sentence.
         if (choice?.finish_reason === "length") return fallback;
@@ -172,6 +194,27 @@ export function createExplainer(options: {
         if (words === null) return fallback;
         if (!isAcceptable(words, record.kind)) {
           log("NEAR AI Cloud's words broke the explanation rules, so only the record's facts were used");
+          return fallback;
+        }
+        if (typeof body.id !== "string") {
+          log("NEAR AI Cloud's answer had no id to fetch its signature by, so only the record's facts were used");
+          return fallback;
+        }
+        const signature = await fetchSignature({ baseUrl, apiKey, chatId: body.id, model, fetch: doFetch, sleep });
+        if (signature === null) {
+          log("NEAR AI Cloud's signature for the answer wasn't available, so only the record's facts were used");
+          return fallback;
+        }
+        const verdict = checkResponseSignature({
+          signature,
+          model,
+          request: new TextEncoder().encode(requestBody),
+          response: responseBytes,
+          attestedSigners: signers(),
+        });
+        if (!verdict.verified) {
+          log(`NEAR AI Cloud's answer didn't verify (${verdict.reason}), so only the record's facts were used`);
+          if (verdict.signer !== undefined) onUnknownSigner?.();
           return fallback;
         }
         return `${fallback} ${words}`;
