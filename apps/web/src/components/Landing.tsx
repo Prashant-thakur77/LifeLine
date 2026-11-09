@@ -275,8 +275,9 @@ function Certificate() {
             The explainer&apos;s hardware, checked
           </h2>
           <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-body">
-            Every decision gets a plain-language explanation written from its record. With a NEAR AI key, the keeper adds a sentence from a private model on NEAR AI
-            Cloud. Either way it checks, with a fresh nonce, that the model&apos;s hardware is a genuine secure enclave, through NVIDIA and Intel.
+            Every decision gets a plain-language explanation written from its record, and a sentence from a private model on NEAR AI Cloud, kept only when
+            its signature checks out against the enclave&apos;s attested key. The keeper checks, with a fresh nonce, that the model&apos;s hardware is a
+            genuine secure enclave, through NVIDIA and Intel.
           </p>
         </div>
         <div className="relative lg:col-span-6">

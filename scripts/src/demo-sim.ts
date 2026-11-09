@@ -1,11 +1,14 @@
 import { getMidPrice } from "@lifeline/hyperliquid";
 import {
+  AttestationMonitor,
+  checkAttestationWithSigners,
   createExplainer,
   createOneClick,
   createRecordPipeline,
   DEFAULT_NEAR_AI_MODEL,
   DEFAULT_NEAR_AI_URL,
   describeRecord,
+  nodeIntel,
   openStore,
   runSim,
   SIM_USER,
@@ -30,12 +33,23 @@ async function main() {
 
   const store = openStore(":memory:");
   const log = (line: string) => console.log(`  (${line})`);
-  const explainer = createExplainer({
+  const nearAi = {
     baseUrl: process.env.NEAR_AI_BASE_URL?.trim() || DEFAULT_NEAR_AI_URL,
     apiKey: process.env.NEAR_AI_API_KEY?.trim() || null,
     model: process.env.NEAR_AI_MODEL?.trim() || DEFAULT_NEAR_AI_MODEL,
-    log,
-  });
+  };
+  // With a key, the model's words are kept only if their signature verifies against the
+  // attested key, so the hardware is checked once first. Without one, the facts alone.
+  const attestation = new AttestationMonitor(
+    () => checkAttestationWithSigners({ ...nearAi, now: () => new Date(), intel: nodeIntel }),
+    { sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
+  );
+  if (nearAi.apiKey !== null) {
+    console.log("Checking NEAR AI Cloud's hardware attestation, so the model's answers can be verified…");
+    await attestation.refreshIfDue(Date.now());
+    console.log(`  ${attestation.latest().status}, ${attestation.signers().length} signing key(s) verified\n`);
+  }
+  const explainer = createExplainer({ ...nearAi, log, signers: () => attestation.signers() });
   const pipeline = createRecordPipeline({
     store,
     explain: (record) => explainer.explain(record),

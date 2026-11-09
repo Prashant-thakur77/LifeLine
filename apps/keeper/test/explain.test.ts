@@ -1,7 +1,8 @@
 import type { AuditRecord } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import { createExplainer, factsFor, templateExplanation } from "../src/explain";
-import { record, rescueRequest } from "./helpers";
+import { sha256Hex } from "../src/signature";
+import { record, rescueRequest, testSigner } from "./helpers";
 
 const done = record({
   id: "a",
@@ -13,18 +14,43 @@ const done = record({
   request: rescueRequest({ amount: "18200000", usdNeeded: 17.68 }),
 });
 
-function chat(content: string | null, status = 200) {
+type Signing = { key?: ReturnType<typeof testSigner>; signatureStatus?: number; tamper?: boolean; kind?: string };
+
+/** A NEAR AI Cloud stand-in: answers, then signs that exchange in its "enclave", as the real one does. */
+function chat(content: string | null, status = 200, signing: Signing = {}) {
+  const key = signing.key ?? testSigner();
   const calls: { url: string; init: RequestInit }[] = [];
+  let sentBody = "";
+  let answer = "";
   const fetchFn = (async (url: string, init: RequestInit) => {
     calls.push({ url: String(url), init });
     if (content === null) throw new Error("fetch failed");
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status });
+    if (String(url).includes("/signature/")) {
+      if (signing.signatureStatus !== undefined) return new Response("{}", { status: signing.signatureStatus });
+      const bytes = new TextEncoder().encode(signing.tamper ? `${answer} ` : answer);
+      const text = `m:${sha256Hex(new TextEncoder().encode(sentBody))}:${sha256Hex(bytes)}`;
+      return Response.json({ text, signature: key.sign(text), signing_address: key.address, signing_algo: "ecdsa", signature_kind: signing.kind ?? "provider_tee" });
+    }
+    sentBody = String(init.body);
+    answer = JSON.stringify({ id: "chatcmpl-1", choices: [{ message: { content } }] });
+    return new Response(answer, { status });
   }) as typeof fetch;
   return { calls, fetchFn };
 }
 
-const explainer = (fetchFn: typeof fetch, apiKey: string | null = "key") =>
-  createExplainer({ baseUrl: "https://near-ai.test/v1", apiKey, model: "m", fetch: fetchFn, log: () => {} });
+const ATTESTED = testSigner().address;
+
+const explainer = (fetchFn: typeof fetch, apiKey: string | null = "key", signers: readonly string[] = [ATTESTED], onUnknownSigner?: () => void) =>
+  createExplainer({
+    baseUrl: "https://near-ai.test/v1",
+    apiKey,
+    model: "m",
+    fetch: fetchFn,
+    log: () => {},
+    signers: () => signers,
+    sleep: async () => {},
+    ...(onUnknownSigner ? { onUnknownSigner } : {}),
+  });
 
 describe("explain", () => {
   it("puts the exact figures first, then the model's words", async () => {
@@ -40,10 +66,41 @@ describe("explain", () => {
     expect(new Headers(calls[0]?.init.headers).get("authorization")).toBe("Bearer key");
     const body = JSON.parse(String(calls[0]?.init.body)) as { model: string; messages: { role: string; content: string }[] };
     expect(body.model).toBe("m");
+    // A reasoning model would spend the whole token allowance thinking and never answer.
+    expect((body as { reasoning_effort?: string }).reasoning_effort).toBe("none");
     expect(body.messages[0]?.role).toBe("system");
     expect(body.messages[0]?.content).toMatch(/digits/i);
     expect(body.messages[1]?.content).toContain("1.4286");
     expect(calls[0]?.init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("asks for the model by its own name with aliasing off, so the model's enclave signs, then fetches that signature", async () => {
+    const { fetchFn, calls } = chat("Your position lost value.");
+    await explainer(fetchFn).explain(done);
+    expect(new Headers(calls[0]?.init.headers).get("x-no-aliasing")).toBe("true");
+    expect(calls[1]?.url).toBe("https://near-ai.test/v1/signature/chatcmpl-1?model=m&signing_algo=ecdsa");
+  });
+
+  it("keeps only the facts when the answer's signature doesn't cover the bytes received", async () => {
+    const { fetchFn } = chat("Your position lost value.", 200, { tamper: true });
+    expect(await explainer(fetchFn).explain(done)).toBe(templateExplanation(done));
+  });
+
+  it("keeps only the facts when there's no signature, or only the gateway's", async () => {
+    expect(await explainer(chat("Your position lost value.", 200, { signatureStatus: 500 }).fetchFn).explain(done)).toBe(templateExplanation(done));
+    expect(await explainer(chat("Your position lost value.", 200, { kind: "gateway" }).fetchFn).explain(done)).toBe(templateExplanation(done));
+  });
+
+  it("keeps only the facts when the signer isn't one the attestation verified, and asks for a fresh check", async () => {
+    let asked = 0;
+    const { fetchFn } = chat("Your position lost value.", 200, { key: testSigner(3) });
+    expect(await explainer(fetchFn, "key", [ATTESTED], () => (asked += 1)).explain(done)).toBe(templateExplanation(done));
+    expect(asked).toBe(1);
+  });
+
+  it("keeps only the facts before any attestation has verified a signer", async () => {
+    const { fetchFn } = chat("Your position lost value.");
+    expect(await explainer(fetchFn, "key", []).explain(done)).toBe(templateExplanation(done));
   });
 
   it("keeps the keeper's own note word for word, whatever the model says", async () => {
