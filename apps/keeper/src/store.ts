@@ -36,8 +36,12 @@ const SCHEMA = `
 
   CREATE TABLE IF NOT EXISTS answer_proofs (
     record_id TEXT PRIMARY KEY REFERENCES audit (id),
+    user TEXT NOT NULL,
+    seq INTEGER NOT NULL,
     json TEXT NOT NULL
   );
+  CREATE INDEX IF NOT EXISTS answer_proofs_seq ON answer_proofs (seq);
+  CREATE INDEX IF NOT EXISTS answer_proofs_user ON answer_proofs (user, seq);
 
   CREATE TABLE IF NOT EXISTS health (
     user TEXT PRIMARY KEY,
@@ -161,10 +165,12 @@ export class Store {
       if (proof === undefined) {
         this.db.run("DELETE FROM answer_proofs WHERE record_id = ?", recordId);
       } else {
+        // The record's user and place in the log come along, so the newest proof is one index read away.
         this.db.run(
-          "INSERT INTO answer_proofs (record_id, json) VALUES (?, ?) ON CONFLICT (record_id) DO UPDATE SET json = excluded.json",
-          recordId,
+          `INSERT INTO answer_proofs (record_id, user, seq, json) SELECT id, user, seq, ? FROM audit WHERE id = ?
+           ON CONFLICT (record_id) DO UPDATE SET json = excluded.json`,
           JSON.stringify(proof),
+          recordId,
         );
       }
     });
@@ -179,8 +185,8 @@ export class Store {
   latestProof(user?: string): ProvedRecord | null {
     const row =
       user === undefined
-        ? this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} ORDER BY a.seq DESC LIMIT 1`)
-        : this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} WHERE a.user = ? ORDER BY a.seq DESC LIMIT 1`, user);
+        ? this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} ORDER BY p.seq DESC LIMIT 1`)
+        : this.db.get<ExplainedRow & { proof: string }>(`${SELECT_PROVED} WHERE p.user = ? ORDER BY p.seq DESC LIMIT 1`, user);
     return row === undefined ? null : parseProved(row);
   }
 

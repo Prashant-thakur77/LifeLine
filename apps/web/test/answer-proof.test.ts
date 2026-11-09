@@ -3,7 +3,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { bytesToHex, concatBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { describe, expect, it } from "vitest";
-import { checkKeyLive, checkProofOffline, cleanAnswer, PCCS_URL, recoverPersonalSigner, type IntelVerifier, type ProvedRecord } from "../src/lib/answer-proof";
+import { checkKeyLive, checkProofOffline, cleanAnswer, ledgerShows, PCCS_URL, recoverPersonalSigner, type IntelVerifier, type ProvedRecord } from "../src/lib/answer-proof";
 
 /** A real answer: NEAR AI Cloud signed it in the model's enclave on 2026-11-09, and the keeper kept these bytes. */
 const real = JSON.parse(readFileSync(new URL("./fixtures/answer-proof.json", import.meta.url), "utf8")) as ProvedRecord;
@@ -19,7 +19,8 @@ describe("checkProofOffline on a real signed answer", () => {
     expect(check.steps.map((s) => [s.name, s.passed])).toEqual([
       ["The kept bytes are the ones that were signed", true],
       ["The signature recovers to the stated key", true],
-      ["The words on the ledger are the signed answer", true],
+      ["The model was told this record's facts, and only those", true],
+      ["The record's explanation ends with the signed answer", true],
     ]);
     expect(check.signer).toBe(SIGNER);
     expect(real.record.explanation?.endsWith(check.words!)).toBe(true);
@@ -46,9 +47,24 @@ describe("checkProofOffline on a real signed answer", () => {
     expect(checkProofOffline({ ...real, proof: { ...real.proof, requestBase64: reencode(request) } }).steps[0]?.passed).toBe(false);
   });
 
-  it("fails if the ledger shows other words than the signed ones", () => {
+  it("fails if the record's words aren't the signed ones", () => {
     const check = checkProofOffline({ ...real, record: { ...real.record, explanation: `${real.record.explanation} And it's all fine.` } });
-    expect(check.steps[2]?.passed).toBe(false);
+    expect(check.steps[3]?.passed).toBe(false);
+  });
+
+  it("fails a genuine proof served for a different record than the one asked about", () => {
+    expect(checkProofOffline(real, real.record.id).steps[0]).toMatchObject({ name: "It's the record you asked about", passed: true });
+    expect(checkProofOffline(real, "some-other-record").steps[0]?.passed).toBe(false);
+  });
+
+  it("fails a genuine answer attached to a record with other facts", () => {
+    const moved = { ...real, record: { ...real.record, healthBefore: 1.2 } };
+    expect(checkProofOffline(moved).steps[2]?.passed).toBe(false);
+  });
+
+  it("fails, rather than throws, on a proof that isn't even base64", () => {
+    const junk = { ...real, proof: { ...real.proof, requestBase64: "%%%", responseBase64: "%%%" } };
+    expect(passedAll(junk)).toBe(false);
   });
 
   it("fails a signature from another key, or one claiming another key", () => {
@@ -58,6 +74,14 @@ describe("checkProofOffline on a real signed answer", () => {
     const forged = `0x${bytesToHex(sig.subarray(1))}${(sig[0]! + 27).toString(16)}`;
     expect(passedAll({ ...real, proof: { ...real.proof, signature: forged } })).toBe(false);
     expect(passedAll({ ...real, proof: { ...real.proof, signingAddress: "0x0000000000000000000000000000000000000001" } })).toBe(false);
+  });
+});
+
+describe("ledgerShows", () => {
+  it("passes only when the public ledger has the same words for that record", () => {
+    expect(ledgerShows([real.record], real).passed).toBe(true);
+    expect(ledgerShows([{ ...real.record, explanation: "Other words." }], real).passed).toBe(false);
+    expect(ledgerShows([], real).passed).toBe(false);
   });
 });
 
@@ -98,7 +122,7 @@ describe("checkKeyLive", () => {
   it("passes a key in the live report, with this nonce, Intel's signature, and the key bound in the quote", async () => {
     const seen: string[] = [];
     const live = await run(report([node]), intel("UpToDate", reportData(SIGNER, nonce), seen));
-    expect(live.inReport).toBe(true);
+    expect(live.outcome).toBe("proven");
     expect(live.steps.map((s) => s.passed)).toEqual([true, true, true, true]);
     expect(seen).toEqual([PCCS_URL]);
   });
@@ -115,27 +139,41 @@ describe("checkKeyLive", () => {
 
   it("says a key that isn't in today's report has rotated out, and stops there", async () => {
     const live = await run(report([{ ...node, signing_address: "0x1111111111111111111111111111111111111111" }]));
-    expect(live.inReport).toBe(false);
+    expect(live.outcome).toBe("rotated");
     expect(live.steps).toHaveLength(1);
     expect(live.steps[0]?.detail).toMatch(/rotate/);
   });
 
   it("fails a stale report, a quote Intel won't vouch for, or a quote for another key", async () => {
-    expect((await run(report([{ ...node, request_nonce: "cd".repeat(32) }]))).steps[1]?.passed).toBe(false);
-    expect((await run(report([node]), intel("Revoked"))).steps[2]?.passed).toBe(false);
+    const stale = await run(report([{ ...node, request_nonce: "cd".repeat(32) }]));
+    expect([stale.outcome, stale.steps[1]?.passed]).toEqual(["failed", false]);
+    expect((await run(report([node]), intel("Revoked"))).outcome).toBe("failed");
     const otherKey = await run(report([node]), intel("UpToDate", reportData("0x2222222222222222222222222222222222222222", nonce)));
-    expect(otherKey.steps[3]?.passed).toBe(false);
+    expect([otherKey.outcome, otherKey.steps[3]?.passed]).toEqual(["failed", false]);
+    const rejected = async (): Promise<IntelVerifier> => ({
+      getCollateral: async () => ({}),
+      verify: () => {
+        throw new Error("bad signature");
+      },
+    });
+    expect((await run(report([node]), rejected)).outcome).toBe("failed");
   });
 
-  it("reports an unreachable NEAR AI, or Intel's check failing, as failed steps rather than throwing", async () => {
+  it("calls an outage unavailable, not failed: NEAR AI down, an empty report, or Intel's certificates out of reach", async () => {
     const down = (async () => new Response("", { status: 503 })) as unknown as typeof fetch;
-    expect((await run(down)).steps[0]).toMatchObject({ passed: false, detail: expect.stringMatching(/503/) });
+    const unreachable = await run(down);
+    expect(unreachable.outcome).toBe("unavailable");
+    expect(unreachable.steps[0]).toMatchObject({ unavailable: true, detail: expect.stringMatching(/503/) });
+    const nothing = (async () => Response.json(null)) as unknown as typeof fetch;
+    expect((await run(nothing)).outcome).toBe("unavailable");
     const broken = async (): Promise<IntelVerifier> => ({
       getCollateral: async () => {
         throw new Error("collateral unavailable");
       },
       verify: () => ({ status: "UpToDate", report: {} }),
     });
-    expect((await run(report([node]), broken)).steps[2]).toMatchObject({ passed: false, detail: expect.stringMatching(/collateral unavailable/) });
+    const noIntel = await run(report([node]), broken);
+    expect(noIntel.outcome).toBe("unavailable");
+    expect(noIntel.steps[2]).toMatchObject({ unavailable: true, detail: expect.stringMatching(/collateral unavailable/) });
   });
 });

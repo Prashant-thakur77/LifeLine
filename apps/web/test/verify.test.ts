@@ -12,10 +12,14 @@ import {
   judgeVaultCode,
   judgeVaultConfig,
   judgeVaultKeys,
+  NO_CODE_HASH,
   nearAmount,
+  snapshotCommit,
   rpc,
   viewResult,
   type AccessKeyInfo,
+  type SourceMetadata,
+  type TxStatus,
   type Deployment,
   type VaultConfig,
 } from "../src/lib/verify";
@@ -38,14 +42,31 @@ const config: VaultConfig = {
   destination_asset: "1cs_v1:hypercore:hip1:0x6d1e7cde53ba9467b783cb7c530ce054",
   max_quote_age_sec: 120,
 };
-const refusedTx = {
-  status: {
-    Failure: {
-      ActionError: {
-        index: 0,
-        kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: BAD_QUOTE: its deposit address isn't the one this rescue pays" } },
-      },
-    },
+const b64 = (value: unknown) => btoa(JSON.stringify(value));
+/** The refused rescue as testnet's node returns it (trimmed to the fields the check reads). */
+const refusedTx: TxStatus = {
+  status: { Failure: { ActionError: { index: 0, kind: { FunctionCallError: { ExecutionError: `Smart contract panicked: ${REFUSED_RESCUE.panic}` } } } } },
+  transaction: {
+    signer_id: "keeper.lifeline-team.testnet",
+    public_key: "ed25519:H84VL8fNqUNEbXk4mWzMexample",
+    receiver_id: VAULT,
+    actions: [{ FunctionCall: { method_name: "rescue", args: b64({ user: "alice.lifeline-team.testnet", deposit_address: "keeper.lifeline-team.testnet", recipient: "0x1111111111111111111111111111111111111111" }) } }],
+  },
+  receipts_outcome: [
+    { outcome: { executor_id: VAULT, status: { Failure: { ActionError: { kind: { FunctionCallError: { ExecutionError: `Smart contract panicked: ${REFUSED_RESCUE.panic}` } } } } } } },
+    { outcome: { executor_id: "keeper.lifeline-team.testnet", status: { SuccessValue: "" } } },
+  ],
+};
+const expectedRefusal = { keeper: "keeper.lifeline-team.testnet", vault: VAULT, panic: REFUSED_RESCUE.panic };
+const noCode = { amount: "1", code_hash: NO_CODE_HASH, storage_usage: 1 };
+const reproducible: SourceMetadata = {
+  version: "0.1.0",
+  link: "https://github.com/Prashant-thakur77/LifeLine/tree/134fd8813baf2d5620f7d4ff24295fc733db2fb4",
+  build_info: {
+    build_environment: "sourcescan/cargo-near:0.22.0-rust-1.99.1@sha256:c9655eaf7436b90c87ea8b25739f91063032c5c30ba24cfeafe72c142943b5bb",
+    build_command: ["cargo", "near", "build", "non-reproducible-wasm", "--locked"],
+    contract_path: "contracts/vault",
+    source_code_snapshot: "git+https://github.com/Prashant-thakur77/LifeLine?rev=134fd8813baf2d5620f7d4ff24295fc733db2fb4",
   },
 };
 
@@ -63,25 +84,55 @@ describe("the testnet deployment", () => {
 });
 
 describe("judgeKeeperKeys", () => {
-  it("proves a keeper whose only key calls rescue on the vault", () => {
-    const judged = judgeKeeperKeys(keeperKeys, VAULT);
+  it("proves a keeper whose only key calls rescue on the vault, and whose account has no code", () => {
+    const judged = judgeKeeperKeys(keeperKeys, VAULT, noCode);
     expect(judged.verdict).toBe("proven");
     expect(judged.facts[0]?.[1]).toBe(`can only call rescue on ${VAULT} (gas allowance 0.4621 NEAR)`);
   });
 
   it("fails a full-access key, another method, another contract, any method, or no key at all", () => {
-    expect(judgeKeeperKeys([...keeperKeys, fullKey], VAULT).verdict).toBe("failed");
-    expect(judgeKeeperKeys([rescueKey(VAULT, ["rescue", "withdraw"])], VAULT).verdict).toBe("failed");
-    expect(judgeKeeperKeys([rescueKey("usdc.lifeline-team.testnet", ["rescue"])], VAULT).verdict).toBe("failed");
-    expect(judgeKeeperKeys([rescueKey(VAULT, [])], VAULT).verdict).toBe("failed");
-    expect(judgeKeeperKeys([], VAULT).verdict).toBe("failed");
+    expect(judgeKeeperKeys([...keeperKeys, fullKey], VAULT, noCode).verdict).toBe("failed");
+    expect(judgeKeeperKeys([rescueKey(VAULT, ["rescue", "withdraw"])], VAULT, noCode).verdict).toBe("failed");
+    expect(judgeKeeperKeys([rescueKey("usdc.lifeline-team.testnet", ["rescue"])], VAULT, noCode).verdict).toBe("failed");
+    expect(judgeKeeperKeys([rescueKey(VAULT, [])], VAULT, noCode).verdict).toBe("failed");
+    expect(judgeKeeperKeys([], VAULT, noCode).verdict).toBe("failed");
+  });
+
+  it("fails a keeper account with contract code, which could add itself a key", () => {
+    expect(judgeKeeperKeys(keeperKeys, VAULT, { ...noCode, code_hash: VAULT_CODE_HASH }).verdict).toBe("failed");
   });
 });
 
 describe("judgeVaultCode", () => {
-  it("proves matching code and fails anything else", () => {
-    expect(judgeVaultCode({ amount: "1", code_hash: VAULT_CODE_HASH, storage_usage: 1 }, VAULT_CODE_HASH).verdict).toBe("proven");
-    expect(judgeVaultCode({ amount: "1", code_hash: "11111111111111111111111111111111", storage_usage: 1 }, VAULT_CODE_HASH).verdict).toBe("failed");
+  const onChain = { amount: "1", code_hash: VAULT_CODE_HASH, storage_usage: 1 };
+
+  it("calls our own non-reproducible build trusted: a match only says we built it", () => {
+    const judged = judgeVaultCode(onChain, { version: "0.1.0", build_info: null }, VAULT_CODE_HASH);
+    expect(judged.verdict).toBe("trusted");
+    expect(judged.finding).toMatch(/reproducible/);
+    expect(judgeVaultCode(onChain, null, VAULT_CODE_HASH).verdict).toBe("trusted");
+  });
+
+  it("proves a reproducible build, and says how to repeat it", () => {
+    const judged = judgeVaultCode(onChain, reproducible, VAULT_CODE_HASH);
+    expect(judged.verdict).toBe("proven");
+    expect(judged.facts).toContainEqual([
+      "Rebuild with",
+      "git checkout 134fd8813baf2d5620f7d4ff24295fc733db2fb4 && cd contracts/vault && cargo near build reproducible-wasm",
+    ]);
+  });
+
+  it("fails other code, however it says it was built", () => {
+    expect(judgeVaultCode({ ...onChain, code_hash: NO_CODE_HASH }, reproducible, VAULT_CODE_HASH).verdict).toBe("failed");
+  });
+
+  it("reads only a git snapshot pinned to a full commit", () => {
+    expect(snapshotCommit("git+https://github.com/a/b?rev=134fd8813baf2d5620f7d4ff24295fc733db2fb4")).toEqual({
+      repo: "https://github.com/a/b",
+      commit: "134fd8813baf2d5620f7d4ff24295fc733db2fb4",
+    });
+    expect(snapshotCommit("git+https://github.com/a/b?rev=main")).toBeNull();
+    expect(snapshotCommit("https://github.com/a/b")).toBeNull();
   });
 });
 
@@ -92,9 +143,14 @@ describe("judgeVaultKeys", () => {
     expect(judged.finding).toMatch(/could deploy different code/);
   });
 
-  it("proves a locked vault", () => {
+  it("calls any remaining function-call key trusted: one on the vault itself can call its private callbacks", () => {
+    const judged = judgeVaultKeys([rescueKey(VAULT, ["on_withdraw_transfer"])]);
+    expect(judged.verdict).toBe("trusted");
+    expect(judged.finding).toMatch(/private callbacks/);
+  });
+
+  it("proves only a vault with no keys at all", () => {
     expect(judgeVaultKeys([]).verdict).toBe("proven");
-    expect(judgeVaultKeys([rescueKey(VAULT, ["get_config"])]).verdict).toBe("proven");
   });
 });
 
@@ -118,16 +174,32 @@ describe("judgeVaultConfig", () => {
 });
 
 describe("judgeRefusal", () => {
-  it("proves the vault's refusal of the hacked keeper", () => {
-    const judged = judgeRefusal(refusedTx, REFUSED_RESCUE.panic);
+  it("proves the vault's refusal of the keeper's rescue that paid itself", () => {
+    const judged = judgeRefusal(refusedTx, expectedRefusal);
     expect(judged.verdict).toBe("proven");
-    expect(judged.facts).toEqual([["Outcome", `refused: ${REFUSED_RESCUE.panic}`]]);
+    expect(judged.facts).toContainEqual(["Money pointed at", "keeper.lifeline-team.testnet"]);
+    expect(judged.facts).toContainEqual(["Refused by", VAULT]);
   });
 
-  it("fails a transaction that went through, or failed for some other reason", () => {
-    expect(judgeRefusal({ status: { SuccessValue: "" } }, REFUSED_RESCUE.panic).verdict).toBe("failed");
-    const other = { status: { Failure: { ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: PAUSED" } } } } } };
-    expect(judgeRefusal(other, REFUSED_RESCUE.panic).verdict).toBe("failed");
+  it("fails a transaction from another account, to another contract, or another method", () => {
+    const t = refusedTx.transaction!;
+    expect(judgeRefusal({ ...refusedTx, transaction: { ...t, signer_id: "alice.lifeline-team.testnet" } }, expectedRefusal).verdict).toBe("failed");
+    expect(judgeRefusal({ ...refusedTx, transaction: { ...t, receiver_id: "usdc.lifeline-team.testnet" } }, expectedRefusal).verdict).toBe("failed");
+    const withdraw = [{ FunctionCall: { method_name: "withdraw", args: t.actions![0] && typeof t.actions![0] === "object" ? t.actions![0].FunctionCall!.args : "" } }];
+    expect(judgeRefusal({ ...refusedTx, transaction: { ...t, actions: withdraw } }, expectedRefusal).verdict).toBe("failed");
+  });
+
+  it("fails a rescue that didn't point the money at the keeper", () => {
+    const honest = [{ FunctionCall: { method_name: "rescue", args: b64({ deposit_address: "a".repeat(64) }) } }];
+    expect(judgeRefusal({ ...refusedTx, transaction: { ...refusedTx.transaction!, actions: honest } }, expectedRefusal).verdict).toBe("failed");
+  });
+
+  it("fails a transaction that went through, or failed for another reason or elsewhere", () => {
+    expect(judgeRefusal({ ...refusedTx, status: { SuccessValue: "" }, receipts_outcome: [] }, expectedRefusal).verdict).toBe("failed");
+    const paused = { Failure: { ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: PAUSED: this user has paused rescues" } } } } };
+    expect(judgeRefusal({ ...refusedTx, receipts_outcome: [{ outcome: { executor_id: VAULT, status: paused } }] }, expectedRefusal).verdict).toBe("failed");
+    const elsewhere = { outcome: { executor_id: "usdc.lifeline-team.testnet", status: refusedTx.receipts_outcome![0]!.outcome!.status! } };
+    expect(judgeRefusal({ ...refusedTx, receipts_outcome: [elsewhere] }, expectedRefusal).verdict).toBe("failed");
   });
 });
 

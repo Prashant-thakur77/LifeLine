@@ -3,11 +3,14 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { bytesToHex, concatBytes, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
+import { factsFor } from "./facts";
 
 // Checks a model's words on the ledger from the bytes the keeper kept, in the browser:
-// the hashes, the enclave's signature, and then, live, that NEAR AI Cloud's hardware
-// report vouches for the signing key, with Intel's signature on that report checked
-// here too. Nothing in it relies on the keeper's word.
+// the hashes, the enclave's signature, that the words and the facts the model was told
+// belong to the record the ledger shows, and then, live, that NEAR AI Cloud's hardware
+// report vouches for the signing key, with Intel's signature on that report checked here
+// too. The keeper supplies the bytes; it can't make them pass. What it could still do is
+// show nothing at all, or a record with no model words.
 
 /** As the keeper serves it from GET /api/proof/:recordId (apps/keeper/src/explain.ts). */
 export type AnswerProof = {
@@ -25,13 +28,15 @@ export const NEAR_AI_URL = "https://cloud-api.near.ai/v1";
 /**
  * Intel's collateral (its signed TCB info, identities and revocation lists) through a
  * public mirror, because Intel's own API doesn't allow browser requests. Every item is
- * signed by Intel and checked against Intel's root key, so the mirror can't forge any.
+ * signed by Intel and checked against Intel's root key, so the mirror can't forge any,
+ * though it could serve an older item that is still within its validity period.
  */
 export const PCCS_URL = "https://pccs.phala.network/tdx/certification/v4";
 const GOOD_INTEL_STATUSES = new Set(["UpToDate", "OutOfDate"]);
 const MAX_MODEL_LENGTH = 400;
 
-export type Step = { name: string; passed: boolean; detail: string };
+/** `unavailable`: the check couldn't be run (a service didn't answer), which proves nothing either way. */
+export type Step = { name: string; passed: boolean; detail: string; unavailable?: boolean };
 
 export const base64ToBytes = (text: string) => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
 const decode = (bytes: Uint8Array) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
@@ -74,20 +79,33 @@ export type OfflineCheck = {
   signer: string | null;
 };
 
-/** Everything the proof shows by itself, with no network at all. */
-export function checkProofOffline({ record, proof }: ProvedRecord): OfflineCheck {
-  const request = base64ToBytes(proof.requestBase64);
-  const response = base64ToBytes(proof.responseBase64);
+const bytesOrEmpty = (text: unknown) => {
+  try {
+    return base64ToBytes(String(text));
+  } catch {
+    return new Uint8Array();
+  }
+};
+
+/**
+ * Everything the proof shows by itself, with no network at all. `askedFor` is the record
+ * id the page asked about, so a proof for some other record can't stand in for it.
+ */
+export function checkProofOffline({ record, proof }: ProvedRecord, askedFor?: string): OfflineCheck {
+  const request = bytesOrEmpty(proof.requestBase64);
+  const response = bytesOrEmpty(proof.responseBase64);
   const requestHash = bytesToHex(sha256(request));
   const responseHash = bytesToHex(sha256(response));
   const rebuilt = `${proof.model}:${requestHash}:${responseHash}`;
 
   let facts: unknown = null;
+  let factsText: string | null = null;
   let sentModel: unknown = null;
   try {
     const sent = JSON.parse(decode(request)) as { model?: unknown; messages?: { content?: unknown }[] };
     sentModel = sent.model;
-    facts = JSON.parse(String(sent.messages?.[1]?.content));
+    factsText = String(sent.messages?.[1]?.content);
+    facts = JSON.parse(factsText);
   } catch {
     facts = null;
   }
@@ -98,10 +116,15 @@ export function checkProofOffline({ record, proof }: ProvedRecord): OfflineCheck
   } catch {
     words = null;
   }
-  const signer = recoverPersonalSigner(proof.signedText, proof.signature);
+  const signer = recoverPersonalSigner(String(proof.signedText), String(proof.signature));
   const explanation = record.explanation ?? "";
+  const recordFacts = JSON.stringify(factsFor(record));
 
-  const steps: Step[] = [
+  const steps: Step[] = [];
+  if (askedFor !== undefined) {
+    steps.push({ name: "It's the record you asked about", passed: record.id === askedFor, detail: `record ${record.id}` });
+  }
+  steps.push(
     {
       name: "The kept bytes are the ones that were signed",
       passed: rebuilt === proof.signedText && sentModel === proof.model,
@@ -109,16 +132,29 @@ export function checkProofOffline({ record, proof }: ProvedRecord): OfflineCheck
     },
     {
       name: "The signature recovers to the stated key",
-      passed: signer !== null && signer === proof.signingAddress.toLowerCase(),
+      passed: signer !== null && signer === String(proof.signingAddress).toLowerCase(),
       detail: signer === null ? "the signature doesn't recover to any key" : `recovered ${signer}`,
     },
     {
-      name: "The words on the ledger are the signed answer",
+      name: "The model was told this record's facts, and only those",
+      passed: factsText === recordFacts,
+      detail: factsText === recordFacts ? "rebuilt here from the record, character for character" : "the facts sent don't match this record",
+    },
+    {
+      name: "The record's explanation ends with the signed answer",
       passed: words !== null && explanation.endsWith(` ${words}`),
       detail: words === null ? "the signed answer has no words" : "the explanation ends with exactly the signed words",
     },
-  ];
+  );
   return { steps, facts, words, signer };
+}
+
+/** The ledger shows the same words for that record as the proof does, so the proof can't be for words nobody sees. */
+export function ledgerShows(ledger: readonly AuditRecord[], proved: ProvedRecord): Step {
+  const shown = ledger.find((r) => r.id === proved.record.id);
+  if (shown === undefined) return { name: "The ledger shows the same words", passed: false, detail: "this record isn't in the account's latest records" };
+  const same = shown.explanation === proved.record.explanation;
+  return { name: "The ledger shows the same words", passed: same, detail: same ? "the public ledger has this exact explanation" : "the ledger shows other words for this record" };
 }
 
 // ---- Live: is the signing key one NEAR AI's hardware vouches for, right now? ----
@@ -134,15 +170,20 @@ export type IntelVerifier = {
 
 let intelLoading: Promise<IntelVerifier> | null = null;
 
-/** Loads Intel's verifier (about 1 MB of WebAssembly) only when someone asks for this check. */
+/** Loads Intel's verifier (about 1 MB of WebAssembly) only when someone asks for this check; a failed load is tried again next time. */
 export function loadIntel(wasmUrl = "/vendor/dcap-qvl-web_bg.wasm"): Promise<IntelVerifier> {
-  intelLoading ??= import("@phala/dcap-qvl-web").then(async (dcap) => {
-    await dcap.default({ module_or_path: wasmUrl });
-    return {
-      getCollateral: (pccsUrl, rawQuote) => dcap.js_get_collateral(pccsUrl, rawQuote) as Promise<unknown>,
-      verify: (rawQuote, collateral, nowSec) => dcap.js_verify(rawQuote, collateral, nowSec) as ReturnType<IntelVerifier["verify"]>,
-    };
-  });
+  intelLoading ??= import("@phala/dcap-qvl-web")
+    .then(async (dcap) => {
+      await dcap.default({ module_or_path: wasmUrl });
+      return {
+        getCollateral: (pccsUrl: string, rawQuote: Uint8Array) => dcap.js_get_collateral(pccsUrl, rawQuote) as Promise<unknown>,
+        verify: (rawQuote: Uint8Array, collateral: unknown, nowSec: bigint) => dcap.js_verify(rawQuote, collateral, nowSec) as ReturnType<IntelVerifier["verify"]>,
+      };
+    })
+    .catch((error: unknown) => {
+      intelLoading = null;
+      throw error;
+    });
   return intelLoading;
 }
 
@@ -152,7 +193,11 @@ export function randomNonce(): string {
 
 const lowerHex = (value: unknown) => String(value ?? "").toLowerCase().replace(/^0x/, "");
 
-export type LiveCheck = { steps: Step[]; inReport: boolean; nodes: number };
+/**
+ * proven: every step passed. rotated: the key isn't in today's report. unavailable: a
+ * service didn't answer, which says nothing about the key. failed: a step failed.
+ */
+export type LiveCheck = { steps: Step[]; outcome: "proven" | "rotated" | "unavailable" | "failed"; nodes: number };
 
 /**
  * Asks NEAR AI Cloud for its attestation report with a nonce made here, finds the signing
@@ -171,43 +216,59 @@ export async function checkKeyLive(options: {
   const { signer, model, nonce } = options;
   const doFetch = options.fetch ?? fetch;
   const url = `${NEAR_AI_URL}/attestation/report?model=${encodeURIComponent(model)}&signing_algo=ecdsa&nonce=${nonce}`;
-  let report: Report;
+  const unavailable = (name: string, detail: string, earlier: Step[] = [], nodes = 0): LiveCheck => ({
+    outcome: "unavailable",
+    nodes,
+    steps: [...earlier, { name, passed: false, unavailable: true, detail }],
+  });
+  let report: Report | null;
   try {
     const response = await doFetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    report = (await response.json()) as Report;
+    report = (await response.json()) as Report | null;
   } catch (error) {
-    return { inReport: false, nodes: 0, steps: [{ name: "NEAR AI Cloud's hardware report", passed: false, detail: `couldn't be fetched (${error instanceof Error ? error.message : "network error"})` }] };
+    return unavailable("NEAR AI Cloud's hardware report", `couldn't be fetched (${error instanceof Error ? error.message : "network error"})`);
   }
-  const nodes = Array.isArray(report.model_attestations) ? (report.model_attestations as ReportNode[]) : [];
+  const nodes = Array.isArray(report?.model_attestations) ? (report.model_attestations as ReportNode[]) : [];
+  if (nodes.length === 0) return unavailable("NEAR AI Cloud's hardware report", "it listed no model nodes");
   const node = nodes.find((n) => lowerHex(n.signing_address) === lowerHex(signer));
   const listed: Step = {
     name: "NEAR AI Cloud's live report lists this key",
     passed: node !== undefined,
     detail: node === undefined ? `not among today's ${nodes.length} model ${nodes.length === 1 ? "node" : "nodes"}: keys rotate` : `one of ${nodes.length} model ${nodes.length === 1 ? "node" : "nodes"}`,
   };
-  if (node === undefined) return { inReport: false, nodes: nodes.length, steps: [listed] };
+  if (node === undefined) return { outcome: "rotated", nodes: nodes.length, steps: [listed] };
 
   const steps: Step[] = [listed];
   const echoed = lowerHex(node.request_nonce) === nonce.toLowerCase();
   steps.push({ name: "The report is fresh: it carries the nonce made here", passed: echoed, detail: echoed ? `nonce ${nonce.slice(0, 12)}…` : "the report is for another nonce" });
 
+  const failed = (): LiveCheck => ({ outcome: "failed", nodes: nodes.length, steps });
   const quoteHex = lowerHex(node.intel_quote);
   if (!/^(?:[0-9a-f]{2})+$/.test(quoteHex)) {
     steps.push({ name: "Intel signed the enclave's quote", passed: false, detail: "the quote isn't hex" });
-    return { inReport: true, nodes: nodes.length, steps };
+    return failed();
   }
   const raw = hexToBytes(quoteHex);
+  const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+  let intel: IntelVerifier;
+  let collateral: unknown;
+  try {
+    intel = await options.intel();
+    collateral = await intel.getCollateral(PCCS_URL, raw);
+  } catch (error) {
+    // Intel's verifier or certificates didn't load: an outage, not evidence about the quote.
+    return unavailable("Intel signed the enclave's quote", `Intel's certificates couldn't be fetched here (${errorText(error)})`, steps, nodes.length);
+  }
   let verdict: ReturnType<IntelVerifier["verify"]>;
   try {
-    const intel = await options.intel();
-    const collateral = await intel.getCollateral(PCCS_URL, raw);
     verdict = intel.verify(raw, collateral, BigInt(Math.floor(options.now().getTime() / 1000)));
   } catch (error) {
-    steps.push({ name: "Intel signed the enclave's quote", passed: false, detail: `Intel's check failed here (${error instanceof Error ? error.message : String(error)})` });
-    return { inReport: true, nodes: nodes.length, steps };
+    steps.push({ name: "Intel signed the enclave's quote", passed: false, detail: `Intel's verifier rejected it (${errorText(error)})` });
+    return failed();
   }
-  steps.push({ name: "Intel signed the enclave's quote", passed: GOOD_INTEL_STATUSES.has(verdict.status), detail: `checked in this browser, Intel status ${verdict.status}` });
+  const statusNote = verdict.status === "OutOfDate" ? " (genuine, but the platform's security updates lag behind Intel's latest)" : "";
+  steps.push({ name: "Intel signed the enclave's quote", passed: GOOD_INTEL_STATUSES.has(verdict.status), detail: `checked in this browser, Intel status ${verdict.status}${statusNote}` });
   const reportData = lowerHex((verdict.report.TD10 ?? verdict.report.TD15?.base)?.report_data);
   const bound = reportData === lowerHex(signer).padEnd(64, "0") + nonce.toLowerCase();
   steps.push({
@@ -215,5 +276,5 @@ export async function checkKeyLive(options: {
     passed: bound,
     detail: bound ? "the key and nonce are inside the hardware-signed report data" : "the quote's report data names another key or nonce",
   });
-  return { inReport: true, nodes: nodes.length, steps };
+  return { outcome: steps.every((step) => step.passed) ? "proven" : "failed", nodes: nodes.length, steps };
 }

@@ -57,7 +57,30 @@ export type VaultConfig = {
   destination_asset: string;
   max_quote_age_sec: number;
 };
-export type TxStatus = { status?: { SuccessValue?: string; Failure?: unknown } };
+/** NEP-330: what the contract says about its own source and how it was built. */
+export type SourceMetadata = {
+  version?: string;
+  link?: string;
+  build_info?: {
+    build_environment: string;
+    build_command: string[];
+    source_code_snapshot: string;
+    contract_path?: string | null;
+  } | null;
+};
+export type TxStatus = {
+  status?: { SuccessValue?: string; Failure?: unknown };
+  transaction?: {
+    signer_id?: string;
+    public_key?: string;
+    receiver_id?: string;
+    actions?: ({ FunctionCall?: { method_name?: string; args?: string } } | string)[];
+  };
+  receipts_outcome?: { outcome?: { executor_id?: string; status?: { Failure?: unknown; SuccessValue?: string } } }[];
+};
+
+/** An account with no contract shows the code hash of empty code. */
+export const NO_CODE_HASH = "11111111111111111111111111111111";
 
 /** One JSON-RPC call, written out so it can be shown and copied. */
 export type RpcCall = { method: string; params: Record<string, unknown> };
@@ -128,9 +151,16 @@ export function describePermission(permission: AccessKeyPermission): string {
   return `${what} on ${receiver_id} (gas allowance ${nearAmount(allowance)})`;
 }
 
-/** The keeper's account holds no key that can do anything but call rescue on the vault. */
-export function judgeKeeperKeys(keys: AccessKeyInfo[], vault: string): Judged {
+/**
+ * The keeper's account holds no key that can do anything but call rescue on the vault,
+ * and no contract code, which could otherwise add a key to the account itself.
+ */
+export function judgeKeeperKeys(keys: AccessKeyInfo[], vault: string, account: AccountView): Judged {
   const facts = keys.map((key): [string, string] => [shortKey(key.public_key), describePermission(key.access_key.permission)]);
+  facts.push(["Contract code", account.code_hash === NO_CODE_HASH ? "none" : account.code_hash]);
+  if (account.code_hash !== NO_CODE_HASH) {
+    return { verdict: "failed", finding: "The keeper account has contract code, and code can add keys to its own account, so its keys alone don't settle what it can do.", facts };
+  }
   if (keys.length === 0) return { verdict: "failed", finding: "The keeper account has no keys at all, so it couldn't call rescue.", facts };
   const rescueOnly = (permission: AccessKeyPermission) =>
     permission !== "FullAccess" &&
@@ -147,33 +177,73 @@ export function judgeKeeperKeys(keys: AccessKeyInfo[], vault: string): Judged {
   }
   return {
     verdict: "proven",
-    finding: `Every key the keeper has can call one method, rescue, on ${vault}. It can't withdraw, transfer, change a policy or touch any other contract.`,
+    finding: `Every key the keeper has can call one method, rescue, on ${vault}, and its account has no code that could add another. It can't withdraw, transfer, change a policy or touch any other contract.`,
     facts,
   };
 }
 
-/** The code running at the vault address is the code built from this repo. */
-export function judgeVaultCode(account: AccountView, expectedHash: string): Judged {
-  const facts: [string, string][] = [
-    ["On chain", account.code_hash],
-    ["Built from this repo", expectedHash],
-  ];
-  if (account.code_hash === expectedHash) {
-    return { verdict: "proven", finding: "The vault's code on chain is byte for byte the wasm built from this repo.", facts };
-  }
-  return { verdict: "failed", finding: "The code on chain isn't the build from this repo.", facts };
+/** The commit a reproducible build names: `git+<repo>?rev=<commit>`. */
+export function snapshotCommit(snapshot: string): { repo: string; commit: string } | null {
+  const match = /^git\+(https:\/\/[^?]+)\?rev=([0-9a-f]{40})$/.exec(snapshot);
+  return match ? { repo: match[1]!, commit: match[2]! } : null;
 }
 
-/** Who could replace the vault's code: anyone holding a full-access key to its account. */
+/**
+ * The code at the vault address is a build of this repo that anyone can repeat. A match
+ * with our own build only says we built it; a reproducible build (NEP-330 build_info, from
+ * a pinned image and a public commit) lets anyone rebuild those bytes and compare.
+ */
+export function judgeVaultCode(account: AccountView, metadata: SourceMetadata | null, expectedHash: string): Judged {
+  const facts: [string, string][] = [
+    ["Code hash on chain", account.code_hash],
+    ["Our build", expectedHash],
+  ];
+  if (account.code_hash !== expectedHash) {
+    return { verdict: "failed", finding: "The code on chain isn't the build this page expects.", facts };
+  }
+  const info = metadata?.build_info ?? null;
+  const source = info ? snapshotCommit(info.source_code_snapshot) : null;
+  if (info === null || source === null) {
+    return {
+      verdict: "trusted",
+      finding:
+        "The code on chain is the wasm we built, but not with a reproducible build: it carries paths from our machine, so a rebuild elsewhere gives other bytes. That it came from this repo is our word until the vault is redeployed from a reproducible build.",
+      facts,
+    };
+  }
+  facts.push(
+    ["Source", `${source.repo} at ${source.commit}`],
+    ["Build image", info.build_environment],
+    ["Rebuild with", `git checkout ${source.commit} && cd ${info.contract_path || "."} && cargo near build reproducible-wasm`],
+  );
+  return {
+    verdict: "proven",
+    finding: "The vault says it was built reproducibly from a public commit, in a pinned image. Rebuild that commit with the command below and you get these exact bytes: the hash on chain.",
+    facts,
+  };
+}
+
+/**
+ * Who could act as the vault itself. A full-access key can deploy new code; even a
+ * function-call key on the vault's own account could call its private callbacks. So only
+ * an account with no keys at all is locked. (The vault's code has no method that deploys.)
+ */
 export function judgeVaultKeys(keys: AccessKeyInfo[]): Judged {
   const facts = keys.map((key): [string, string] => [shortKey(key.public_key), describePermission(key.access_key.permission)]);
-  const full = keys.filter((key) => key.access_key.permission === "FullAccess");
-  if (full.length === 0) {
-    return { verdict: "proven", finding: "The vault account has no full-access key, so nobody, the team included, can change its code.", facts };
+  if (keys.length === 0) {
+    return {
+      verdict: "proven",
+      finding: "The vault account has no keys at all, and its code has no method that deploys new code, so nobody, the team included, can change it or act as it.",
+      facts,
+    };
   }
+  const full = keys.filter((key) => key.access_key.permission === "FullAccess").length;
   return {
     verdict: "trusted",
-    finding: `The team still holds ${full.length === 1 ? "a full-access key" : `${full.length} full-access keys`} to the vault account, so it could deploy different code. This turns proven once that key is deleted and the vault is locked.`,
+    finding:
+      full > 0
+        ? `The team still holds ${full === 1 ? "a full-access key" : `${full} full-access keys`} to the vault account, so it could deploy different code. This turns proven once every key is deleted and the vault is locked.`
+        : `The vault account has no full-access key, but ${keys.length === 1 ? "a function-call key remains" : `${keys.length} function-call keys remain`}, and a key on the vault's own account can call its private callbacks. This turns proven once every key is deleted.`,
     facts,
   };
 }
@@ -211,14 +281,50 @@ export function judgeVaultConfig(config: VaultConfig, deployment: Deployment): J
   };
 }
 
-/** The refused attack really failed on chain, with the vault's own refusal. */
-export function judgeRefusal(tx: TxStatus, expectedPanic: string): Judged {
-  const failure = tx.status?.Failure;
-  const text = failure === undefined ? "" : JSON.stringify(failure);
-  const panic = /"ExecutionError":"((?:[^"\\]|\\.)*)"/.exec(text)?.[1]?.replace(/^Smart contract panicked: /, "") ?? null;
-  const facts: [string, string][] = [["Outcome", failure === undefined ? "succeeded" : `refused: ${panic ?? "failed"}`]];
-  if (panic === expectedPanic) {
-    return { verdict: "proven", finding: "The keeper's own key sent a rescue that paid itself, with a quote signed by the key the vault trusts. The vault refused it on chain.", facts };
+const panicOf = (failure: unknown): string | null => {
+  if (failure === undefined || failure === null) return null;
+  const text = JSON.stringify(failure);
+  return /"ExecutionError":"((?:[^"\\]|\\.)*)"/.exec(text)?.[1]?.replace(/^Smart contract panicked: /, "") ?? null;
+};
+
+function decodeArgs(args: string | undefined): Record<string, unknown> | null {
+  if (args === undefined) return null;
+  try {
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(args), (c) => c.charCodeAt(0)))) as Record<string, unknown>;
+  } catch {
+    return null;
   }
-  return { verdict: "failed", finding: failure === undefined ? "That transaction succeeded: the vault didn't refuse it." : "That transaction failed for another reason.", facts };
+}
+
+/**
+ * The hacked keeper's rescue: signed by the keeper's account, sent to the vault, calling
+ * rescue with the keeper's own account as the deposit address, and refused by the vault
+ * itself with the expected panic. A node answers for any tx hash whatever sender is
+ * named, so every one of these comes from the transaction, not from the request.
+ */
+export function judgeRefusal(tx: TxStatus, expected: { keeper: string; vault: string; panic: string }): Judged {
+  const t = tx.transaction;
+  const call = t?.actions?.length === 1 && typeof t.actions[0] === "object" ? t.actions[0].FunctionCall : undefined;
+  const args = decodeArgs(call?.args);
+  const refusal = tx.receipts_outcome?.find((r) => r.outcome?.status?.Failure !== undefined);
+  const panic = panicOf(refusal?.outcome?.status?.Failure);
+  const facts: [string, string][] = [
+    ["Signed by", `${t?.signer_id ?? "?"} with ${shortKey(t?.public_key ?? "?")}`],
+    ["Called", `${call?.method_name ?? "?"} on ${t?.receiver_id ?? "?"}`],
+    ["Money pointed at", String(args?.deposit_address ?? "?")],
+    ["Refused by", refusal?.outcome?.executor_id ?? "nobody"],
+    ["Answer", panic ?? (tx.status?.Failure === undefined ? "it succeeded" : "failed")],
+  ];
+  const fail = (finding: string): Judged => ({ verdict: "failed", finding, facts });
+  if (t?.signer_id !== expected.keeper) return fail("That transaction wasn't sent by the keeper's account.");
+  if (t.receiver_id !== expected.vault || call?.method_name !== "rescue") return fail("That transaction wasn't a rescue call to the vault.");
+  if (args?.deposit_address !== expected.keeper) return fail("That rescue didn't point the money at the keeper's own account.");
+  if (tx.status?.Failure === undefined) return fail("That transaction succeeded: the vault didn't refuse it.");
+  if (refusal?.outcome?.executor_id !== expected.vault || panic !== expected.panic) return fail("That transaction failed, but not with the vault's refusal.");
+  return {
+    verdict: "proven",
+    finding:
+      "The keeper's own account called rescue with the money pointed at itself. The vault checked the quote's signature first, so the quote was signed by the key it trusts, then refused: the signed quote pays a different deposit address.",
+    facts,
+  };
 }
