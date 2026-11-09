@@ -57,7 +57,7 @@ const refusedTx: TxStatus = {
     { outcome: { executor_id: "keeper.lifeline-team.testnet", status: { SuccessValue: "" } } },
   ],
 };
-const expectedRefusal = { keeper: "keeper.lifeline-team.testnet", vault: VAULT, panic: REFUSED_RESCUE.panic };
+const expectedRefusal = { keeper: "keeper.lifeline-team.testnet", vault: VAULT, panic: REFUSED_RESCUE.panic, pointedAt: "keeper.lifeline-team.testnet" };
 const noCode = { amount: "1", code_hash: NO_CODE_HASH, storage_usage: 1 };
 const reproducible: SourceMetadata = {
   version: "0.1.0",
@@ -192,6 +192,24 @@ describe("judgeRefusal", () => {
   it("fails a rescue that didn't point the money at the keeper", () => {
     const honest = [{ FunctionCall: { method_name: "rescue", args: b64({ deposit_address: "a".repeat(64) }) } }];
     expect(judgeRefusal({ ...refusedTx, transaction: { ...refusedTx.transaction!, actions: honest } }, expectedRefusal).verdict).toBe("failed");
+  });
+
+  it("judges any lab attack the same way, without a deposit address to match", () => {
+    const { pointedAt: _ignored, ...anyAttack } = expectedRefusal;
+    const honest = [{ FunctionCall: { method_name: "rescue", args: b64({ deposit_address: "a".repeat(64) }) } }];
+    const judged = judgeRefusal({ ...refusedTx, transaction: { ...refusedTx.transaction!, actions: honest } }, anyAttack);
+    expect(judged.verdict).toBe("proven");
+    expect(judged.finding).toMatch(/refused it with exactly this answer/);
+    expect(judgeRefusal(refusedTx, { ...anyAttack, panic: "OVER_PER_RESCUE: over this user's limit per rescue" }).verdict).toBe("failed");
+  });
+
+  it("ties a lab result to its own attack: the target user and the attack's quote id", () => {
+    const { pointedAt: _ignored, ...anyAttack } = expectedRefusal;
+    const lab = [{ FunctionCall: { method_name: "rescue", args: b64({ user: "bob.lifeline-team.testnet", quote_id: "lab-over-cap-1", deposit_address: "a".repeat(64) }) } }];
+    const tx = { ...refusedTx, transaction: { ...refusedTx.transaction!, actions: lab } };
+    expect(judgeRefusal(tx, { ...anyAttack, user: "bob.lifeline-team.testnet", quoteIdPrefix: "lab-over-cap-" }).verdict).toBe("proven");
+    expect(judgeRefusal(tx, { ...anyAttack, user: "alice.lifeline-team.testnet", quoteIdPrefix: "lab-over-cap-" }).verdict).toBe("failed");
+    expect(judgeRefusal(tx, { ...anyAttack, user: "bob.lifeline-team.testnet", quoteIdPrefix: "lab-stale-quote-" }).verdict).toBe("failed");
   });
 
   it("fails a transaction that went through, or failed for another reason or elsewhere", () => {

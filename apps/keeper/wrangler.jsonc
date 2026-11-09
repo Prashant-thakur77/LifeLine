@@ -26,6 +26,7 @@
       "name": "lifeline-sim",
       "durable_objects": { "bindings": [{ "name": "KEEPER", "class_name": "KeeperObject" }] },
       // The demo's bot is @LifeLineNearBot; its token is a secret (wrangler secret put TELEGRAM_BOT_TOKEN --env sim).
+      // The attack lab runs when the secrets TESTNET_LAB_KEEPER_KEY and TESTNET_QUOTE_SIGNER_KEY are set (--env sim).
       // CORS stays open so a dashboard run locally (README) can still read the demo.
       "vars": {
         "KEEPER_MODE": "sim",

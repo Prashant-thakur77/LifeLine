@@ -2,12 +2,13 @@ import { createLifelineBot, type BotOptions, type LifelineBot } from "@lifeline/
 import { getHealth, getMidPrice } from "@lifeline/hyperliquid";
 import { KEEPER_POLL_INTERVAL_SEC, type AttestationResponse, type AuditRecord } from "@lifeline/shared";
 import { createLinkLimiter, handleApi, jsonResponse } from "../api";
+import { createAttackLab, TESTNET_LAB, type AttackLab, type LabSaved } from "../attack-lab";
 import { AttestationMonitor, checkAttestationWithSigners, type IntelDcap, type SavedAttestation } from "../attestation";
 import { readLiveConfig, readServiceSettings, type LiveConfig, type ServiceSettings } from "../config";
 import { createExplainer } from "../explain";
 import { describeRecord } from "../format";
 import { Keeper } from "../keeper";
-import { connectNear, createNearVault } from "../near";
+import { connectNear, createNearVault, type NearClient } from "../near";
 import { canRescue, createUserList } from "../users";
 import { createOneClick } from "@lifeline/intents";
 import { createRecordPipeline } from "../pipeline";
@@ -28,6 +29,8 @@ const WEBHOOK_PATH = "/telegram/webhook";
 const SIM_NOTE =
   "ETH prices and 1Click quotes are real mainnet ones (quotes are dry, so nothing can be deposited); the position, the vault and settlement are pretend. It runs with no keys and no funds.";
 const ATTESTATION_KEY = "attestation";
+const LAB_KEY = "attack-lab";
+const TESTNET_RPC_URL = "https://test.rpc.fastnear.com";
 
 /** A Durable Object's storage: its SQLite and its one alarm. */
 export type HostStorage = DurableSqlStorage & {
@@ -45,6 +48,8 @@ export type HostSeams = {
   checkAttestation?: () => Promise<AttestationResponse>;
   botInfo?: BotOptions["botInfo"];
   wrapBot?: (bot: LifelineBot) => void;
+  /** The testnet chain the attack lab sends to. */
+  labClient?: NearClient;
 };
 
 export type HostDeps = {
@@ -92,6 +97,8 @@ type Running = {
   pipeline: ReturnType<typeof createRecordPipeline>;
   /** How many users the keeper is watching right now. */
   watching: () => number;
+  /** The public attack lab: on the sim keeper only, when it has the lab's testnet keys. */
+  lab: AttackLab | null;
 };
 
 export type KeeperHost = {
@@ -238,7 +245,35 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
       });
       watching = () => 1;
     }
-    return { config, store, bot, engine, attestation, pipeline, watching };
+    // The lab runs only beside the sim: the real keeper never holds the lab's testnet keys.
+    const labKey = deps.env.TESTNET_LAB_KEEPER_KEY?.trim();
+    const standInKey = deps.env.TESTNET_QUOTE_SIGNER_KEY?.trim();
+    let lab: AttackLab | null = null;
+    if (config.mode === "sim" && labKey && standInKey) {
+      try {
+        lab = createAttackLab({
+          client:
+            seams.labClient ??
+            connectNear({ rpcUrl: deps.env.TESTNET_RPC_URL?.trim() || TESTNET_RPC_URL, vaultId: TESTNET_LAB.vault, keeperAccountId: TESTNET_LAB.keeper, keeperKey: labKey }),
+          target: TESTNET_LAB,
+          signerKey: standInKey,
+          now,
+          log,
+          saved: store.loadState<LabSaved>(LAB_KEY),
+          onSave: (saved) => {
+            try {
+              store.saveState(LAB_KEY, saved);
+            } catch (error) {
+              log(`couldn't save the lab's attacks: ${messageOf(error)}`);
+            }
+          },
+        });
+      } catch (error) {
+        // A bad lab key leaves the lab off, never the demo keeper itself.
+        log(`the attack lab couldn't start: ${messageOf(error)}`);
+      }
+    }
+    return { config, store, bot, engine, attestation, pipeline, watching, lab };
   };
 
   const allowLink = createLinkLimiter();
@@ -288,7 +323,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
           startedAt: startedAt?.toISOString() ?? null,
           lastTickAt: lastTickAt?.toISOString() ?? null,
           nextAlarmAt: alarmAt === null ? null : new Date(alarmAt).toISOString(),
-          api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/stats", "/api/attestation", "/api/proof/:recordId", "/api/proof/latest?user=", "POST /api/telegram/link"],
+          api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/stats", "/api/attestation", "/api/proof/:recordId", "/api/proof/latest?user=", ...(running.lab ? ["/api/lab", "POST /api/lab/attack"] : []), "POST /api/telegram/link"],
         },
         running.config.corsOrigin,
       );
@@ -300,6 +335,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
       attestation: () => running.attestation.latest(),
       corsOrigin: running.config.corsOrigin,
       allowLink,
+      lab: running.lab,
     });
   };
 

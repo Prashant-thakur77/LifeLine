@@ -41,6 +41,17 @@ export function keeperError(status: number, body: unknown): KeeperError {
   return new KeeperError("server", status, `The keeper had a problem (HTTP ${status}). Try again shortly.`);
 }
 
+/** As apps/keeper/src/attack-lab.ts serves them. */
+export type LabAttack = { id: string; title: string; move: string; expect: string };
+export type AttackResult = { id: string; at: string; txHash: string; refused: boolean; matched: boolean; answer: string; expected: string };
+export type LabInfo = {
+  open: boolean;
+  closedBecause?: string;
+  target: { vault: string; keeper: string; user: string; token: string; hlAddress: string; maxPerRescue: string; usedDeposit: string };
+  attacks: LabAttack[];
+  recent: AttackResult[];
+};
+
 /** GET / on the keeper Worker: which mode it runs in and when it last ticked. */
 export type KeeperInfo = {
   service: string;
@@ -53,10 +64,10 @@ export type KeeperInfo = {
   nextAlarmAt?: string | null;
 };
 
-async function request<T>(base: string, path: string, init?: RequestInit): Promise<T> {
+async function request<T>(base: string, path: string, init?: RequestInit, timeoutMs = 10_000): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(10_000) });
+    response = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch {
     throw new KeeperError("unreachable", null, "Couldn't reach the keeper. It may be restarting, or your connection dropped.");
   }
@@ -77,6 +88,12 @@ export const keeper = {
   /** A record with the bytes and signature behind its model words; "latest" for the newest one. */
   proof: (base: string, recordId: string, user?: string) =>
     request<ProvedRecord>(base, `/api/proof/${enc(recordId)}${user ? `?user=${enc(user)}` : ""}`),
+  /** The public attack lab on the demo keeper: its target, its attacks and the latest results. */
+  lab: (base: string) => request<LabInfo>(base, "/api/lab"),
+  /** Sends one lab attack to the testnet vault; resolves with the vault's answer. */
+  attack: (base: string, attack: string) =>
+    // The keeper waits up to a minute for NEAR testnet, so this waits a little longer.
+    request<AttackResult>(base, "/api/lab/attack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ attack }) }, 70_000),
   telegramLink: (base: string, user: string) =>
     request<TelegramLinkResponse>(base, "/api/telegram/link", {
       method: "POST",

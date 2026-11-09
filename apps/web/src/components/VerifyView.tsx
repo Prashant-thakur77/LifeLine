@@ -42,6 +42,7 @@ import {
   type Verdict,
   type VaultConfig,
 } from "../lib/verify";
+import { Stamp, type StampKind } from "./Stamp";
 import { Button, Card, CopyButton, ExternalLink, Notice, PageHeader, Skeleton, cx } from "./ui";
 
 /** A claim's state for the summary: settled (a verdict, or no answer) or still checking; "nothing to check" leaves the count. */
@@ -70,31 +71,6 @@ function useCheck(work: () => Promise<Judged>, run: number): Outcome {
     };
   }, [run, stable]);
   return outcome;
-}
-
-type StampKind = Verdict | "checking" | "error";
-
-const STAMP: Record<StampKind, { label: string; className: string }> = {
-  proven: { label: "Proven", className: "text-safe-ink -rotate-3" },
-  trusted: { label: "Trusted", className: "text-warn-ink rotate-2" },
-  failed: { label: "Failed", className: "text-danger-ink -rotate-2" },
-  checking: { label: "Checking", className: "text-muted animate-pulse" },
-  error: { label: "No answer", className: "text-muted rotate-1" },
-};
-
-/** A rubber stamp: the verdict, inked on the card. */
-function Stamp({ kind }: { kind: StampKind }) {
-  const { label, className } = STAMP[kind];
-  return (
-    <span
-      className={cx(
-        "inline-block shrink-0 rounded-[3px] border-[2.5px] border-current px-2 py-0.5 font-readout text-[12px] font-semibold uppercase tracking-[0.16em] [box-shadow:inset_0_0_0_1.5px_var(--color-card),inset_0_0_0_3px_currentColor]",
-        className,
-      )}
-    >
-      {label}
-    </span>
-  );
 }
 
 function Disclosure({ summary, children }: { summary: string; children: ReactNode }) {
@@ -216,7 +192,7 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
   const refusal = useCheck(async () => {
     if (d.refusal === null) throw new Error("No refused attack is recorded on this network yet.");
     const tx = await rpc<TxStatus>(d.rpcUrl, calls.tx(d.refusal.txHash, d.refusal.signer));
-    return judgeRefusal(tx, { keeper: d.keeper, vault: d.vault, panic: d.refusal.panic });
+    return judgeRefusal(tx, { keeper: d.keeper, vault: d.vault, panic: d.refusal.panic, pointedAt: d.keeper });
   }, run);
 
   const states = { keeperKeys, code, vaultKeys, vaultConfig, refusal };

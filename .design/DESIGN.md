@@ -74,6 +74,7 @@ The hero's paper sea (`components/Waterline.tsx`, `components/HeroWater.tsx`): h
 | Check any address | `/check?address=` | Hyperliquid `clearinghouseState`, read in the browser with the keeper's own parser; refreshes every 10 s; "unknown" is never shown as safe |
 | Backtest explorer | Landing | `lib/backtest.ts`, held equal to `research/backtest/RESULTS.md` by a test |
 | Check it yourself | `/verify` | Public NEAR node (keys, code hash, config, the refused transaction), NEAR AI Cloud's live report with a nonce made in the browser, Intel's quote verifier as WebAssembly; each card says proven, trusted or failed and shows its request as curl |
+| Rob the vault | `/attack` | The demo keeper's attack lab: each button sends a real rescue with the lab keeper's key to the testnet vault; the refusal is read back in the browser from a public node; the target's reserve and the key's permissions are read from the chain |
 | Proof table | `/ledger`, `/history`, position | One row per event, 25 at a time, details on demand; the testnet on-chain refusal pinned on `/ledger` |
 
 ## Components
