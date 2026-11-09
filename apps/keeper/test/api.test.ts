@@ -4,6 +4,7 @@ import type { AuditResponse, HealthResponse, StatsResponse, TelegramLinkResponse
 import { fixtures } from "@lifeline/shared/fixtures";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createLinkLimiter, handleApi, NOT_AVAILABLE_ATTESTATION, type ApiDeps } from "../src/api";
+import { createAttackLab, TESTNET_LAB } from "../src/attack-lab";
 import { createApi } from "../src/api-node";
 import { openStore } from "../src/sql-node";
 import type { Store } from "../src/store";
@@ -252,6 +253,57 @@ describe.each(TRANSPORTS)("the API through %s", (_transport, makeTransport) => {
       expect((await transport.fetch("/api/proof/r3")).status).toBe(404);
       expect((await transport.fetch("/api/proof/nope")).status).toBe(404);
       expect((await transport.fetch("/api/proof/latest?user=nobody.near")).status).toBe(404);
+    });
+  });
+
+  describe("the attack lab", () => {
+    const refusal = JSON.stringify({ ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: OVER_PER_RESCUE: over this user's limit per rescue" } } } });
+    const makeLab = (call: () => Promise<{ txHash: string; failure: string | null }>) =>
+      createAttackLab({
+        client: { view: async () => null, call },
+        target: TESTNET_LAB,
+        // A throwaway stand-in key; the fake chain never checks it.
+        signerKey: "ed25519:3D4YudUahN1nawWogh8pAKSj92sUNMdbZGjn7kERKzYoTy8tnFQuwoGUC51DowKqorvkr2pytJSnwuSbsNVfqygr",
+        now: () => new Date(AT),
+        log: () => {},
+      });
+
+    it("isn't there unless the keeper has one", async () => {
+      expect((await get("/api/lab")).status).toBe(404);
+      expect((await post("/api/lab/attack", JSON.stringify({ attack: "over-cap" }))).status).toBe(404);
+    });
+
+    it("lists the attacks and the target, and sends one, answering with the vault's refusal", async () => {
+      await start({ lab: makeLab(async () => ({ txHash: "tx1", failure: refusal })) });
+      const info = (await (await get("/api/lab")).json()) as { open: boolean; attacks: { id: string }[]; target: { user: string } };
+      expect(info.open).toBe(true);
+      expect(info.attacks).toHaveLength(7);
+      expect(info.target.user).toBe(TESTNET_LAB.user);
+      const response = await post("/api/lab/attack", JSON.stringify({ attack: "over-cap" }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ id: "over-cap", txHash: "tx1", refused: true, answer: "OVER_PER_RESCUE: over this user's limit per rescue" });
+    });
+
+    it("refuses an unknown attack, a second attack straight after, and a GET", async () => {
+      await start({ lab: makeLab(async () => ({ txHash: "tx1", failure: refusal })) });
+      expect((await post("/api/lab/attack", JSON.stringify({ attack: "drain-everything" }))).status).toBe(400);
+      expect((await post("/api/lab/attack", "not json")).status).toBe(400);
+      expect((await post("/api/lab/attack", JSON.stringify({ attack: "over-cap" }))).status).toBe(200);
+      const busy = await post("/api/lab/attack", JSON.stringify({ attack: "over-cap" }));
+      expect(busy.status).toBe(429);
+      expect(((await busy.json()) as { error: string }).error).toMatch(/try again in 8 s/);
+      expect((await get("/api/lab/attack")).status).toBe(405);
+    });
+
+    it("says the outcome is unknown when testnet doesn't answer, without the error's details", async () => {
+      await start({
+        lab: makeLab(async () => {
+          throw new Error("fetch failed https://rpc.example/?key=secret");
+        }),
+      });
+      const response = await post("/api/lab/attack", JSON.stringify({ attack: "pay-itself" }));
+      expect(response.status).toBe(502);
+      expect(JSON.stringify(await response.json())).not.toContain("secret");
     });
   });
 

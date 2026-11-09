@@ -12,6 +12,7 @@ export * from "./pipeline";
 export * from "./ports";
 export * from "./sim";
 export * from "./sizing";
+export * from "./stand-in-quote";
 export * from "./sql";
 export * from "./sql-node";
 export * from "./store";

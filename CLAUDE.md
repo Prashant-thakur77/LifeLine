@@ -65,6 +65,7 @@ Settled. Don't reopen them unless the day-1 spike proves one wrong.
 - Vault contract at `vault.<team>.near`.
 - Keeper at `keeper.<team>.near`. Its only key is a function-call key that can call `rescue` on the vault and nothing else. It can't withdraw, transfer or change policy.
 - Testnet mirrors of all three, `.testnet`, for contract development: `lifeline-team.testnet`, `vault.lifeline-team.testnet`, `keeper.lifeline-team.testnet` (only a function-call key for `rescue`), the test user `alice.lifeline-team.testnet`, and `usdc.lifeline-team.testnet`, a stand-in USDC (the mock token from the vault's tests), since 1Click has no testnet. Their keys are in `~/.near-credentials/testnet` on the human's machine.
+- The public attack lab (`/attack`) has its own pair on testnet: `lab-keeper.lifeline-team.testnet`, whose only key calls `rescue` on the vault with no allowance cap (its full-access key was deleted on 2026-11-09; the private key is `TESTNET_LAB_KEEPER_KEY` in `.env` and a lifeline-sim secret), and `bob.lifeline-team.testnet`, whose policy names it, with 10 test USDC in reserve.
 
 **Health formula**
 
@@ -120,6 +121,8 @@ The contract emits NEP-297 events (`EVENT_JSON:`) named `deposit`, `policy_set`,
 | `GET /api/attestation` | The latest NEAR AI Cloud attestation check result |
 | `GET /api/proof/:recordId` | `{ record, proof }`: the exact bytes sent to and received from NEAR AI Cloud and the enclave's signature behind that record's model words; 404 when it has only the facts |
 | `GET /api/proof/latest?user=` | The newest record with a proof, for one user or everyone |
+| `GET /api/lab` | The attack lab (demo keeper only): its target, its attacks and the latest 20 results |
+| `POST /api/lab/attack` | `{ attack }`: sends that attack to the testnet vault with the lab keeper's key and answers with the vault's refusal and the transaction; one every 8 s, 300 a day |
 
 ## Facts checked against live APIs
 

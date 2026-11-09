@@ -1,4 +1,5 @@
 import type { AttestationResponse, TelegramLinkResponse } from "@lifeline/shared";
+import { isAttackId, LabBusy, LabClosed, type AttackLab } from "./attack-lab";
 import type { Store } from "./store";
 
 const DEFAULT_LIMIT = 50;
@@ -21,6 +22,8 @@ export type ApiDeps = {
   corsOrigin: string;
   /** Says whether this account may have another link code now. Leave out for no limit. */
   allowLink?: (user: string, nowMs: number) => boolean;
+  /** The public attack lab, on the demo keeper only. */
+  lab?: AttackLab | null;
 };
 
 /**
@@ -109,6 +112,29 @@ function parseLinkUser(body: string): string {
   return user;
 }
 
+function parseAttack(body: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw new HttpError(400, "body must be JSON");
+  }
+  const attack = (parsed as { attack?: unknown } | null)?.attack;
+  if (!isAttackId(attack)) throw new HttpError(400, "attack must be one of the lab's attack ids");
+  return attack;
+}
+
+async function runAttack(lab: AttackLab, id: string): Promise<unknown> {
+  try {
+    return await lab.run(id as Parameters<AttackLab["run"]>[0]);
+  } catch (error) {
+    if (error instanceof LabBusy) throw new HttpError(429, `${error.message} (try again in ${error.retryAfterSec} s)`);
+    if (error instanceof LabClosed) throw new HttpError(503, error.message);
+    // Its outcome is unknown: the transaction may not have reached testnet.
+    throw new HttpError(502, "the attack didn't get an answer from NEAR testnet; try again in a moment");
+  }
+}
+
 function decodeSegment(segment: string): string {
   try {
     return decodeURIComponent(segment);
@@ -157,6 +183,16 @@ async function route(request: Request, deps: ApiDeps): Promise<unknown> {
     case "/api/attestation":
       expect("GET");
       return attestation();
+    case "/api/lab":
+      expect("GET");
+      if (!deps.lab) throw new HttpError(404, "the attack lab isn't set up on this keeper");
+      return deps.lab.info();
+    case "/api/lab/attack": {
+      expect("POST");
+      const attack = parseAttack(await readBody(request));
+      if (!deps.lab) throw new HttpError(404, "the attack lab isn't set up on this keeper");
+      return runAttack(deps.lab, attack);
+    }
     case "/api/telegram/link": {
       expect("POST");
       const user = parseLinkUser(await readBody(request));

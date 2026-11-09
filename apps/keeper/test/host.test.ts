@@ -353,6 +353,45 @@ describe("sim mode", () => {
   });
 });
 
+describe("the attack lab", () => {
+  const LAB_KEYS = {
+    TESTNET_LAB_KEEPER_KEY: SECRET_KEY,
+    TESTNET_QUOTE_SIGNER_KEY: "ed25519:3D4YudUahN1nawWogh8pAKSj92sUNMdbZGjn7kERKzYoTy8tnFQuwoGUC51DowKqorvkr2pytJSnwuSbsNVfqygr",
+  };
+  const refusal = JSON.stringify({ ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: BAD_QUOTE: it's more than 2 minutes old" } } } });
+  const chain = (sent: Record<string, unknown>[] = []) => ({
+    view: async () => null,
+    call: async (_method: string, args: Record<string, unknown>) => {
+      sent.push(args);
+      return { txHash: `tx${sent.length}`, failure: refusal };
+    },
+  });
+
+  it("runs beside the sim when it has both testnet keys, and keeps its attacks across a restart", async () => {
+    const storage = fakeStorage();
+    const sent: Record<string, unknown>[] = [];
+    const first = setup({ ...SIM, ...LAB_KEYS }, { storage, seams: () => ({ labClient: chain(sent) }) });
+    await first.host.start();
+    expect(((await first.json<{ api: string[] }>("/")).api)).toContain("POST /api/lab/attack");
+    const response = await first.request("/api/lab/attack", { method: "POST", body: JSON.stringify({ attack: "stale-quote" }) });
+    expect(await response.json()).toMatchObject({ id: "stale-quote", refused: true, answer: "BAD_QUOTE: it's more than 2 minutes old" });
+    expect(sent).toHaveLength(1);
+
+    const second = setup({ ...SIM, ...LAB_KEYS }, { storage, seams: () => ({ labClient: chain() }) });
+    await second.host.start();
+    const info = await second.json<{ recent: { txHash: string }[] }>("/api/lab");
+    expect(info.recent.map((r) => r.txHash)).toEqual(["tx1"]);
+  });
+
+  it("isn't there without both keys, or on the real keeper even with them", async () => {
+    for (const env of [SIM, { ...SIM, TESTNET_LAB_KEEPER_KEY: SECRET_KEY }, { ...LIVE, ...LAB_KEYS }]) {
+      const t = setup(env, { seams: () => ({ labClient: chain(), vault: fakeVault(), readHealth: healthy }) });
+      await t.host.start();
+      expect((await t.request("/api/lab")).status).toBe(404);
+    }
+  });
+});
+
 describe("live mode", () => {
   it("watches each configured user through the vault and Hyperliquid reader it's given", async () => {
     const t = setup(LIVE, { seams: () => ({ vault: fakeVault(), readHealth: healthy }) });
