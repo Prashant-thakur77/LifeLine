@@ -90,10 +90,19 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
  * drawn one period wider than `width` and down to `height`, so sliding it left by one
  * period loops seamlessly. Each period starts and ends at `top`.
  */
+/**
+ * How wide a drifting sheet is drawn: whole periods, at least one more than the stage.
+ * The sheet slides left by one period and starts again, so this is what keeps its right
+ * edge from ever coming into view.
+ */
+export function sheetWidth(stageWidth: number, period: number): number {
+  return Math.ceil((stageWidth + period) / period) * period;
+}
+
 export function wavePath(o: { width: number; height: number; period: number; amp: number; top: number }): string {
   const { width, height, period, amp, top } = o;
   const k = amp * 1.33;
-  const periods = Math.ceil((width + period) / period);
+  const periods = sheetWidth(width, period) / period;
   let d = `M 0 ${r2(top)}`;
   for (let i = 0; i < periods; i++) {
     const x = i * period;

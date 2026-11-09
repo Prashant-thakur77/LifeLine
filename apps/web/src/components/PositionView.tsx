@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ASSETS, KEEPER_POLL_INTERVAL_SEC, POLICY_DEFAULTS, type HealthResponse } from "@lifeline/shared";
 import { usePoll, useNow } from "../hooks/usePoll";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -21,7 +21,7 @@ import { EventList } from "./EventList";
 import { GaugeLegend } from "./GaugeLegend";
 import { TxStatus, useTx } from "./Tx";
 import { AccountChooser, SimBanner, useIsSimulation, useViewedUser } from "./Viewing";
-import { Badge, Button, ButtonLink, Card, CardHeader, ExternalLink, Field, inputClass, Notice, PageHeader, Skeleton, Stat, cx } from "./ui";
+import { Badge, Button, ButtonLink, Card, CardHeader, ExternalLink, Field, inputClass, Notice, PageHeader, Skeleton, SkeletonText, Stat, cx } from "./ui";
 import { useWallet } from "./WalletProvider";
 import { Waterline, type WaterTone } from "./Waterline";
 
@@ -63,10 +63,15 @@ function Position({ user }: { user: string }) {
         eyebrow="Position"
         title={user}
         aside={
-          policy ? (
+          // Laid out while the policy loads, so the page below doesn't move when it arrives.
+          policy || health.loading ? (
             <div className="flex flex-col items-start gap-1 text-[13px] text-muted sm:items-end">
               <span>Hyperliquid address</span>
-              {simulation ? (
+              {!policy ? (
+                <span className="num">
+                  <SkeletonText className="w-36" />
+                </span>
+              ) : simulation ? (
                 <span className="num text-ink-2">{shortMiddle(policy.hlAddress)} (pretend)</span>
               ) : (
                 <ExternalLink href={hyperliquidAddress(policy.hlAddress)} className="num text-ink">
@@ -77,7 +82,7 @@ function Position({ user }: { user: string }) {
           ) : null
         }
       >
-        <LiveLine updatedAt={health.updatedAt} error={health.error} now={now} readingAt={health.data?.snapshot?.at ?? null} restCountdown={restCountdown} />
+        <LiveLine updatedAt={health.updatedAt} error={health.error} now={now} readingAt={health.data?.snapshot?.at ?? null} restCountdown={restCountdown} simulation={simulation} />
       </PageHeader>
 
       {notWatched ? (
@@ -137,30 +142,46 @@ function LiveLine({
   now,
   readingAt,
   restCountdown,
+  simulation,
 }: {
   updatedAt: number | undefined;
   error: Error | undefined;
   now: number;
   readingAt: string | null;
   restCountdown: string | null;
+  simulation: boolean;
 }) {
+  let first: ReactNode;
   if (error && updatedAt === undefined && !(error instanceof KeeperError && error.kind === "not-watched")) {
-    return <span className="text-danger-ink">{error.message}</span>;
-  }
-  if (updatedAt === undefined) return <span className="text-muted">Connecting to the keeper…</span>;
-  const age = timeAgo(new Date(updatedAt).toISOString(), now);
-  const readingAge = readingAt ? timeAgo(readingAt, now) : null;
-  return (
-    <span className="flex flex-col gap-1 text-[14px]">
+    first = <span className="text-danger-ink">{error.message}</span>;
+  } else if (updatedAt === undefined) {
+    // About as long as the live line that replaces it, so it wraps the same and nothing below moves.
+    first = <span className="text-muted">Connecting to the keeper, which reads this account every {KEEPER_POLL_INTERVAL_SEC} s…</span>;
+  } else {
+    const age = timeAgo(new Date(updatedAt).toISOString(), now);
+    const readingAge = readingAt ? timeAgo(readingAt, now) : null;
+    first = (
       <span className="inline-flex items-center gap-2">
         <span className={cx("size-2 shrink-0 rounded-full", error ? "bg-warn" : "bg-safe animate-pulse-soft")} aria-hidden />
         {error
           ? `Keeper unreachable, last answer ${age}. Retrying.`
           : `Live from the keeper, asked every ${KEEPER_POLL_INTERVAL_SEC} s. Reading taken ${readingAge ?? "—"}.`}
       </span>
-      {restCountdown ? (
+    );
+  }
+  return (
+    <span className="flex flex-col gap-1 text-[14px]">
+      {first}
+      {/* Always there for the demo, in every state, so the page below never jumps as the sim cycles. */}
+      {simulation ? (
         <span className="text-sim-ink">
-          The sim keeper is resting between price drops, so this reading holds still. Next drop in <span className="num">{restCountdown}</span>.
+          {restCountdown ? (
+            <>
+              The sim keeper is resting between price drops, so this reading holds still. Next drop in <span className="num">{restCountdown}</span>.
+            </>
+          ) : (
+            "The sim keeper replays a price drop every few minutes, so this reading moves on its own."
+          )}
         </span>
       ) : null}
     </span>
@@ -267,7 +288,9 @@ function GaugePanel(props: {
           {reading.detail}
         </Notice>
       ) : loading ? (
-        <Skeleton className="h-14" />
+        <Notice tone="info" title="Reading">
+          The keeper reads this account every {KEEPER_POLL_INTERVAL_SEC} seconds; the first reading is on its way.
+        </Notice>
       ) : error ? (
         <Notice tone="warn" title="Unknown">
           No reading yet: {error.message} Don&apos;t treat this account as safe.
@@ -310,9 +333,11 @@ function MarginCard({ reading }: { reading: Reading | null }) {
             ) : null}
           </>
         ) : (
+          // The same four readings, waiting: the card keeps its size when the numbers arrive.
           <>
-            <Skeleton className="h-10" />
-            <Skeleton className="h-10" />
+            {["Account value", "Maintenance margin", "Losses until rescue", "Losses until liquidation"].map((label) => (
+              <Stat key={label} label={label} value={<SkeletonText className="w-24" />} />
+            ))}
           </>
         )}
       </div>
@@ -334,9 +359,16 @@ function PolicyCard({ policy }: { policy: HealthResponse["policy"] | null }) {
           <dd className="num text-right text-ink">{formatSeconds(policy.cooldownSec)}</dd>
         </dl>
       ) : (
-        <div className="p-5">
-          <Skeleton className="h-16" />
-        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 p-5 text-[14px]">
+          {["Per rescue, at most", "Per 24 hours, at most", "Cooldown"].map((label) => (
+            <Fragment key={label}>
+              <dt className="text-muted">{label}</dt>
+              <dd className="text-right">
+                <SkeletonText className="w-16" />
+              </dd>
+            </Fragment>
+          ))}
+        </dl>
       )}
     </Card>
   );

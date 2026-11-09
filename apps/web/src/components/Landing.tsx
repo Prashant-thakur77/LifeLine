@@ -13,7 +13,6 @@ import { BacktestExplorer } from "./BacktestExplorer";
 import { HeroWater } from "./HeroWater";
 import { RefusalReceipt } from "./RefusalReceipt";
 import { Playground } from "./Playground";
-import { SmoothScroll } from "./SmoothScroll";
 import { ButtonLink, Skeleton, cx } from "./ui";
 import { DEMO_USER } from "../lib/config";
 import { pageHref } from "../lib/links";
@@ -22,7 +21,6 @@ import { Mark } from "./Shell";
 export function Landing() {
   return (
     <div className="flex flex-col">
-      <SmoothScroll />
       <HeroWater />
       <Readouts />
       <Playground />

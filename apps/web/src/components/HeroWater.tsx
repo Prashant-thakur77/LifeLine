@@ -3,7 +3,6 @@
 import { KEEPER_POLL_INTERVAL_SEC, POLICY_DEFAULTS } from "@lifeline/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNow, usePoll } from "../hooks/usePoll";
-import { useMinWidth } from "../hooks/useMinWidth";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { DEMO_USER } from "../lib/config";
 import { config } from "../lib/env";
@@ -91,7 +90,6 @@ export function HeroWater() {
   const status = beat && story
     ? `Replay of the last rescue, ${timeAgo(story.restored.at, now)}, at ${clock(beat.at)} UTC`
     : `${health.updatedAt ? `Read ${timeAgo(new Date(health.updatedAt).toISOString(), now)}` : "Reading…"}${rest ? ` · next price drop in ${rest}` : ""}${story ? ` · last rescue ${timeAgo(story.restored.at, now)}` : ""}`;
-  const wide = useMinWidth(1024);
   const lines = story ? storyLog(story, levels) : [];
 
   return (
@@ -157,9 +155,15 @@ export function HeroWater() {
           throwSignal={throwSignal}
           pingSignal={pingSignal}
           reduced={reduced}
-          scaleTop={wide ? 0.28 : 0.26}
-          scaleMax={wide ? 3 : 2.4}
-          anchorLabel={wide ? (story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)") : "Reserve"}
+          scaleTop={0.26}
+          scaleMax={2.4}
+          wideScale={{ top: 0.28, max: 3 }}
+          anchorLabel={
+            <>
+              <span className="lg:hidden">Reserve</span>
+              <span className="hidden lg:inline">{story?.simulated === false ? "Reserve · NEAR vault" : "Reserve · vault (simulated)"}</span>
+            </>
+          }
           throwLabel={story ? `+${story.amount} → ${shortMiddle(story.recipient, 6, 4)}` : null}
           surface={
             <div className="absolute left-4 -translate-y-full pb-[64px] sm:left-6 lg:left-[max(24px,calc(50vw-552px))]">
