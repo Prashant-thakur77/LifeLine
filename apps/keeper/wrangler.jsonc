@@ -25,7 +25,15 @@
     "sim": {
       "name": "lifeline-sim",
       "durable_objects": { "bindings": [{ "name": "KEEPER", "class_name": "KeeperObject" }] },
-      "vars": { "KEEPER_MODE": "sim", "PUBLIC_URL": "https://lifeline-sim.prashantthakur.dev" },
+      // The demo's bot is @LifeLineNearBot; its token is a secret (wrangler secret put TELEGRAM_BOT_TOKEN --env sim).
+      // CORS stays open so a dashboard run locally (README) can still read the demo.
+      "vars": {
+        "KEEPER_MODE": "sim",
+        "PUBLIC_URL": "https://lifeline-sim.prashantthakur.dev",
+        "DASHBOARD_URL": "https://lifeline.prashantthakur.dev",
+        "TELEGRAM_BOT_USERNAME": "LifeLineNearBot",
+        "CORS_ORIGIN": "*"
+      },
       "routes": [{ "pattern": "lifeline-sim.prashantthakur.dev", "custom_domain": true }]
     }
   }

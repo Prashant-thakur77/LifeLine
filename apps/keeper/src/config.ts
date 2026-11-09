@@ -55,7 +55,8 @@ export function readServiceSettings(env: Env): ServiceSettings {
   return {
     oneClickUrl: optional(env.ONECLICK_API_URL) ?? "https://1click.chaindefuser.com",
     oneClickJwt: optional(env.ONECLICK_JWT),
-    corsOrigin: optional(env.DASHBOARD_URL) ?? "*",
+    // Only the dashboard may call the API, unless CORS_ORIGIN says otherwise (the public sim sets "*").
+    corsOrigin: optional(env.CORS_ORIGIN) ?? optional(env.DASHBOARD_URL) ?? "*",
     dashboardUrl: optional(env.DASHBOARD_URL) ?? "http://localhost:3000",
     botUsername,
     botToken,
