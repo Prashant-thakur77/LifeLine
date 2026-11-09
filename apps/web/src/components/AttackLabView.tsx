@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useRef, useState } from "react";
 import { usePoll, useNow } from "../hooks/usePoll";
 import { DEFAULT_RPC_URL } from "../lib/config";
 import { config } from "../lib/env";
@@ -27,7 +28,14 @@ async function readBack(result: AttackResult, lab: LabInfo): Promise<Judged | "u
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       const tx = await rpc<TxStatus>(RPC, calls.tx(result.txHash, lab.target.keeper));
-      return judgeRefusal(tx, { keeper: lab.target.keeper, vault: lab.target.vault, panic: result.expected });
+      // Tied to this attack: the lab keeper, the vault, the target user, this attack's quote id and its exact refusal.
+      return judgeRefusal(tx, {
+        keeper: lab.target.keeper,
+        vault: lab.target.vault,
+        user: lab.target.user,
+        quoteIdPrefix: `lab-${result.id}-`,
+        panic: result.answer,
+      });
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 1_500));
     }
@@ -35,27 +43,34 @@ async function readBack(result: AttackResult, lab: LabInfo): Promise<Judged | "u
   return "unavailable";
 }
 
-function AttackCard({ attack, lab, onSent }: { attack: LabAttack; lab: LabInfo; onSent: () => void }) {
+function AttackCard({ attack, lab, onSent }: { attack: LabAttack; lab: LabInfo; onSent: (result: AttackResult) => void }) {
   const [shot, setShot] = useState<Shot>({ status: "idle" });
+  // Each send gets a number, so a slow read-back of an earlier send can't overwrite a newer one.
+  const generation = useRef(0);
   const send = async () => {
+    const mine = ++generation.current;
     setShot({ status: "sending" });
     let result: AttackResult;
     try {
       result = await keeper.attack(config.simKeeperApiUrl, attack.id);
     } catch (error) {
+      if (mine !== generation.current) return;
       const message =
         error instanceof KeeperError && error.status === 502
           ? "NEAR testnet didn't answer in time, so it's unknown whether this one landed. It shows in the list below if it did."
-          : error instanceof Error
-            ? error.message
-            : "The keeper didn't answer.";
+          : error instanceof KeeperError && error.status === 503
+            ? "The lab is closed right now, so nothing was sent."
+            : error instanceof Error
+              ? error.message
+              : "The keeper didn't answer.";
       setShot({ status: "blocked", message });
       return;
     }
+    if (mine !== generation.current) return;
     setShot({ status: "sent", result, check: null });
-    onSent();
+    onSent(result);
     const check = await readBack(result, lab);
-    setShot({ status: "sent", result, check });
+    if (mine === generation.current) setShot({ status: "sent", result, check });
   };
 
   const sent = shot.status === "sent" ? shot : null;
@@ -83,6 +98,9 @@ function AttackCard({ attack, lab, onSent }: { attack: LabAttack; lab: LabInfo; 
                     : `Read back: ${sent.check.finding}`}
             </span>
           </p>
+          {sent.result.refused && !sent.result.matched ? (
+            <p className="mt-2 text-[12.5px] text-body">That&apos;s a different refusal from the one this trick aims for: the vault stopped it at another rule first.</p>
+          ) : null}
         </div>
       ) : shot.status === "blocked" ? (
         <Notice tone="warn" className="mt-4">
@@ -91,7 +109,7 @@ function AttackCard({ attack, lab, onSent }: { attack: LabAttack; lab: LabInfo; 
       ) : null}
 
       <div className="mt-4">
-        <Button variant={sent ? "secondary" : "primary"} busy={shot.status === "sending"} disabled={!lab.open} onClick={send}>
+        <Button variant={sent ? "secondary" : "primary"} busy={shot.status === "sending"} disabled={!lab.open || (sent !== null && sent.check === null)} onClick={send}>
           {shot.status === "sending" ? "Sending to NEAR testnet…" : sent ? "Send it again" : "Send this attack"}
         </Button>
       </div>
@@ -132,6 +150,9 @@ export function AttackLabView() {
   const keys = usePoll(target ? `lab-keys:${target.keeper}` : null, async () => (await rpc<{ keys: AccessKeyInfo[] }>(RPC, calls.keys(target!.keeper))).keys, null);
   const now = useNow(5_000);
   const held = target ? usdc(reserve.data?.[target.token]) : null;
+  // The keeper's list is cached for a few seconds at the edge: show this visitor's own results at once.
+  const [mine, setMine] = useState<AttackResult[]>([]);
+  const recent = info ? [...mine.filter((r) => !info.recent.some((k) => k.txHash === r.txHash)), ...info.recent].slice(0, 20) : [];
 
   return (
     <>
@@ -146,9 +167,16 @@ export function AttackLabView() {
           <Skeleton className="h-36" />
         </div>
       ) : !info ? (
-        <Notice tone="warn" title="The lab isn't answering">
-          {lab.error?.message ?? "The demo keeper didn't answer."} Every attack it has sent is still on chain; try again in a moment.
-        </Notice>
+        lab.error instanceof KeeperError && lab.error.status === 404 ? (
+          <Notice tone="info" title="The lab isn't switched on yet">
+            The demo keeper runs the lab once it holds the lab keeper&apos;s testnet key. Until then, the vault&apos;s refusal of a hacked keeper is on the{" "}
+            <Link href="/verify">verify page</Link>, checked in your browser.
+          </Notice>
+        ) : (
+          <Notice tone="warn" title="The lab isn't answering">
+            {lab.error?.message ?? "The demo keeper didn't answer."} Every attack it has sent is still on chain; try again in a moment.
+          </Notice>
+        )
       ) : (
         <>
           <div className="grid gap-5 sm:grid-cols-2">
@@ -186,8 +214,8 @@ export function AttackLabView() {
           </div>
 
           {!info.open ? (
-            <Notice tone="danger" title="The lab is closed" className="mt-6">
-              An attack got through, so the lab stopped and the team is looking at the vault. Every attack it sent is in the list below.
+            <Notice tone="warn" title="The lab is closed" className="mt-6">
+              {info.closedBecause ? `It stopped because ${info.closedBecause}.` : "It stopped itself."} Every attack it sent is in the list below, on chain.
             </Notice>
           ) : null}
 
@@ -197,7 +225,16 @@ export function AttackLabView() {
             </h2>
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
               {info.attacks.map((attack) => (
-                <AttackCard key={attack.id} attack={attack} lab={info} onSent={() => (lab.refresh(), reserve.refresh())} />
+                <AttackCard
+                  key={attack.id}
+                  attack={attack}
+                  lab={info}
+                  onSent={(result) => {
+                    setMine((list) => [result, ...list]);
+                    lab.refresh();
+                    reserve.refresh();
+                  }}
+                />
               ))}
             </div>
             <p className="mt-4 text-[13px] leading-relaxed text-muted">
@@ -215,7 +252,7 @@ export function AttackLabView() {
                 Check the rest yourself →
               </ButtonLink>
             </div>
-            <Recent recent={info.recent} attacks={info.attacks} now={now} />
+            <Recent recent={recent} attacks={info.attacks} now={now} />
           </section>
         </>
       )}

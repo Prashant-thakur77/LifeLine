@@ -2,7 +2,7 @@ import { createLifelineBot, type BotOptions, type LifelineBot } from "@lifeline/
 import { getHealth, getMidPrice } from "@lifeline/hyperliquid";
 import { KEEPER_POLL_INTERVAL_SEC, type AttestationResponse, type AuditRecord } from "@lifeline/shared";
 import { createLinkLimiter, handleApi, jsonResponse } from "../api";
-import { createAttackLab, TESTNET_LAB, type AttackLab, type AttackResult } from "../attack-lab";
+import { createAttackLab, TESTNET_LAB, type AttackLab, type LabSaved } from "../attack-lab";
 import { AttestationMonitor, checkAttestationWithSigners, type IntelDcap, type SavedAttestation } from "../attestation";
 import { readLiveConfig, readServiceSettings, type LiveConfig, type ServiceSettings } from "../config";
 import { createExplainer } from "../explain";
@@ -248,26 +248,31 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     // The lab runs only beside the sim: the real keeper never holds the lab's testnet keys.
     const labKey = deps.env.TESTNET_LAB_KEEPER_KEY?.trim();
     const standInKey = deps.env.TESTNET_QUOTE_SIGNER_KEY?.trim();
-    const lab =
-      config.mode === "sim" && labKey && standInKey
-        ? createAttackLab({
-            client:
-              seams.labClient ??
-              connectNear({ rpcUrl: deps.env.TESTNET_RPC_URL?.trim() || TESTNET_RPC_URL, vaultId: TESTNET_LAB.vault, keeperAccountId: TESTNET_LAB.keeper, keeperKey: labKey }),
-            target: TESTNET_LAB,
-            signerKey: standInKey,
-            now,
-            log,
-            saved: store.loadState<AttackResult[]>(LAB_KEY) ?? [],
-            onResult: (recent) => {
-              try {
-                store.saveState(LAB_KEY, recent);
-              } catch (error) {
-                log(`couldn't save the lab's attacks: ${messageOf(error)}`);
-              }
-            },
-          })
-        : null;
+    let lab: AttackLab | null = null;
+    if (config.mode === "sim" && labKey && standInKey) {
+      try {
+        lab = createAttackLab({
+          client:
+            seams.labClient ??
+            connectNear({ rpcUrl: deps.env.TESTNET_RPC_URL?.trim() || TESTNET_RPC_URL, vaultId: TESTNET_LAB.vault, keeperAccountId: TESTNET_LAB.keeper, keeperKey: labKey }),
+          target: TESTNET_LAB,
+          signerKey: standInKey,
+          now,
+          log,
+          saved: store.loadState<LabSaved>(LAB_KEY),
+          onSave: (saved) => {
+            try {
+              store.saveState(LAB_KEY, saved);
+            } catch (error) {
+              log(`couldn't save the lab's attacks: ${messageOf(error)}`);
+            }
+          },
+        });
+      } catch (error) {
+        // A bad lab key leaves the lab off, never the demo keeper itself.
+        log(`the attack lab couldn't start: ${messageOf(error)}`);
+      }
+    }
     return { config, store, bot, engine, attestation, pipeline, watching, lab };
   };
 

@@ -258,9 +258,14 @@ describe.each(TRANSPORTS)("the API through %s", (_transport, makeTransport) => {
 
   describe("the attack lab", () => {
     const refusal = JSON.stringify({ ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: OVER_PER_RESCUE: over this user's limit per rescue" } } } });
+    // The chain as the lab expects it: bob's policy, and the deposit address alice's rescue paid.
+    const view = async (method: string) =>
+      method === "get_policy"
+        ? { keeper: TESTNET_LAB.keeper, hl_address: TESTNET_LAB.hlAddress, max_per_rescue: TESTNET_LAB.maxPerRescue, paused: false }
+        : [{ deposit_address: TESTNET_LAB.usedDeposit, refunded: false }];
     const makeLab = (call: () => Promise<{ txHash: string; failure: string | null }>) =>
       createAttackLab({
-        client: { view: async () => null, call },
+        client: { view, call },
         target: TESTNET_LAB,
         // A throwaway stand-in key; the fake chain never checks it.
         signerKey: "ed25519:3D4YudUahN1nawWogh8pAKSj92sUNMdbZGjn7kERKzYoTy8tnFQuwoGUC51DowKqorvkr2pytJSnwuSbsNVfqygr",

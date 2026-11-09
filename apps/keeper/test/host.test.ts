@@ -360,7 +360,10 @@ describe("the attack lab", () => {
   };
   const refusal = JSON.stringify({ ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: BAD_QUOTE: it's more than 2 minutes old" } } } });
   const chain = (sent: Record<string, unknown>[] = []) => ({
-    view: async () => null,
+    view: async (method: string) =>
+      method === "get_policy"
+        ? { keeper: "lab-keeper.lifeline-team.testnet", hl_address: "0x2222222222222222222222222222222222222222", max_per_rescue: "25000000", paused: false }
+        : [{ deposit_address: "c79422d7b73e20ba6e30c9c323822a828267e36c4fbcaf82c4a34b7524c600b5", refunded: false }],
     call: async (_method: string, args: Record<string, unknown>) => {
       sent.push(args);
       return { txHash: `tx${sent.length}`, failure: refusal };
@@ -381,6 +384,15 @@ describe("the attack lab", () => {
     await second.host.start();
     const info = await second.json<{ recent: { txHash: string }[] }>("/api/lab");
     expect(info.recent.map((r) => r.txHash)).toEqual(["tx1"]);
+  });
+
+  it("leaves the demo running, without a lab, when the lab's key is malformed", async () => {
+    const t = setup({ ...SIM, ...LAB_KEYS, TESTNET_LAB_KEEPER_KEY: "ed25519:abc" });
+    await t.host.start();
+    expect((await t.request("/api/lab")).status).toBe(404);
+    await t.alarms(2);
+    expect((await t.json<StatsResponse>("/api/stats")).totalRescues).toBe(1);
+    expect(t.logs.join("\n")).toMatch(/attack lab couldn't start/);
   });
 
   it("isn't there without both keys, or on the real keeper even with them", async () => {

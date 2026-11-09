@@ -305,7 +305,10 @@ function decodeArgs(args: string | undefined): Record<string, unknown> | null {
  * itself with the expected panic. A node answers for any tx hash whatever sender is
  * named, so every one of these comes from the transaction, not from the request.
  */
-export function judgeRefusal(tx: TxStatus, expected: { keeper: string; vault: string; panic: string; pointedAt?: string }): Judged {
+export function judgeRefusal(
+  tx: TxStatus,
+  expected: { keeper: string; vault: string; panic: string; pointedAt?: string; user?: string; quoteIdPrefix?: string },
+): Judged {
   const t = tx.transaction;
   const call = t?.actions?.length === 1 && typeof t.actions[0] === "object" ? t.actions[0].FunctionCall : undefined;
   const args = decodeArgs(call?.args);
@@ -322,6 +325,8 @@ export function judgeRefusal(tx: TxStatus, expected: { keeper: string; vault: st
   if (t?.signer_id !== expected.keeper) return fail("That transaction wasn't sent by the keeper's account.");
   if (t.receiver_id !== expected.vault || call?.method_name !== "rescue") return fail("That transaction wasn't a rescue call to the vault.");
   if (expected.pointedAt !== undefined && args?.deposit_address !== expected.pointedAt) return fail("That rescue didn't point the money where the attack said.");
+  if (expected.user !== undefined && args?.user !== expected.user) return fail("That rescue was for another user.");
+  if (expected.quoteIdPrefix !== undefined && !String(args?.quote_id ?? "").startsWith(expected.quoteIdPrefix)) return fail("That rescue isn't one this attack sent.");
   if (tx.status?.Failure === undefined) return fail("That transaction succeeded: the vault didn't refuse it.");
   if (refusal?.outcome?.executor_id !== expected.vault || panic !== expected.panic) return fail("That transaction failed, but not with the vault's refusal.");
   return {

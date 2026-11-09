@@ -203,6 +203,15 @@ describe("judgeRefusal", () => {
     expect(judgeRefusal(refusedTx, { ...anyAttack, panic: "OVER_PER_RESCUE: over this user's limit per rescue" }).verdict).toBe("failed");
   });
 
+  it("ties a lab result to its own attack: the target user and the attack's quote id", () => {
+    const { pointedAt: _ignored, ...anyAttack } = expectedRefusal;
+    const lab = [{ FunctionCall: { method_name: "rescue", args: b64({ user: "bob.lifeline-team.testnet", quote_id: "lab-over-cap-1", deposit_address: "a".repeat(64) }) } }];
+    const tx = { ...refusedTx, transaction: { ...refusedTx.transaction!, actions: lab } };
+    expect(judgeRefusal(tx, { ...anyAttack, user: "bob.lifeline-team.testnet", quoteIdPrefix: "lab-over-cap-" }).verdict).toBe("proven");
+    expect(judgeRefusal(tx, { ...anyAttack, user: "alice.lifeline-team.testnet", quoteIdPrefix: "lab-over-cap-" }).verdict).toBe("failed");
+    expect(judgeRefusal(tx, { ...anyAttack, user: "bob.lifeline-team.testnet", quoteIdPrefix: "lab-stale-quote-" }).verdict).toBe("failed");
+  });
+
   it("fails a transaction that went through, or failed for another reason or elsewhere", () => {
     expect(judgeRefusal({ ...refusedTx, status: { SuccessValue: "" }, receipts_outcome: [] }, expectedRefusal).verdict).toBe("failed");
     const paused = { Failure: { ActionError: { kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: PAUSED: this user has paused rescues" } } } } };

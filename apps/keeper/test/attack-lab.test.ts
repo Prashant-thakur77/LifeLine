@@ -14,8 +14,10 @@ import {
   panicOf,
   type AttackId,
   type AttackResult,
+  type LabSaved,
 } from "../src/attack-lab";
 import type { NearClient } from "../src/near";
+import { VaultRejectedError } from "../src/ports";
 
 const seed = sha256(new TextEncoder().encode("lab test key"));
 const publicKey = ed25519.getPublicKey(seed);
@@ -89,22 +91,47 @@ describe("panicOf", () => {
 
 describe("createAttackLab", () => {
   const refusal = (text: string) => JSON.stringify({ ActionError: { kind: { FunctionCallError: { ExecutionError: `Smart contract panicked: ${text}` } } } });
+  const goodPolicy = { keeper: TESTNET_LAB.keeper, hl_address: TESTNET_LAB.hlAddress, max_per_rescue: TESTNET_LAB.maxPerRescue, paused: false };
+  const goodPaid = [{ deposit_address: TESTNET_LAB.usedDeposit, refunded: false }];
 
-  function lab(options: { accept?: boolean; saved?: AttackResult[]; perDay?: number; clock?: { t: number } } = {}) {
-    const clock = options.clock ?? { t: NOW.getTime() };
+  function lab(
+    options: {
+      answer?: (attack: (typeof ATTACKS)[number]) => string | null;
+      saved?: LabSaved;
+      perDay?: number;
+      perVisitor?: number;
+      policy?: Record<string, unknown> | null;
+      paid?: unknown;
+      call?: NearClient["call"];
+    } = {},
+  ) {
+    const clock = { t: NOW.getTime() };
     const sent: Record<string, unknown>[] = [];
-    const saved: (readonly AttackResult[])[] = [];
+    const saved: LabSaved[] = [];
     const logs: string[] = [];
+    const views: string[] = [];
     let n = 0;
     const client: NearClient = {
-      view: async () => null,
-      async call(method, args) {
-        expect(method).toBe("rescue");
-        sent.push(args);
-        n += 1;
-        const attack = ATTACKS.find((a) => String(args.quote_id).startsWith(`lab-${a.id}-`))!;
-        return { txHash: `tx${n}`, failure: options.accept ? null : refusal(attack.expect) };
+      async view(method, args) {
+        views.push(method);
+        if (method === "get_policy") {
+          expect(args).toEqual({ user: TESTNET_LAB.user });
+          return options.policy === undefined ? goodPolicy : options.policy;
+        }
+        expect(method).toBe("get_rescues");
+        expect(args).toEqual({ user: "alice.lifeline-team.testnet", from: 25, limit: 1 });
+        return options.paid === undefined ? goodPaid : options.paid;
       },
+      call:
+        options.call ??
+        (async (method, args) => {
+          expect(method).toBe("rescue");
+          sent.push(args);
+          n += 1;
+          const attack = ATTACKS.find((a) => String(args.quote_id).startsWith(`lab-${a.id}-`))!;
+          const answer = options.answer ? options.answer(attack) : attack.expect;
+          return { txHash: `tx${n}`, failure: answer === null ? null : refusal(answer) };
+        }),
     };
     const instance = createAttackLab({
       client,
@@ -115,10 +142,11 @@ describe("createAttackLab", () => {
       freshDeposit: () => FRESH,
       minGapMs: 8_000,
       perDay: options.perDay ?? 300,
-      ...(options.saved ? { saved: options.saved } : {}),
-      onResult: (recent) => saved.push(recent),
+      perVisitor: options.perVisitor ?? 40,
+      saved: options.saved ?? null,
+      onSave: (state) => saved.push(state),
     });
-    return { instance, sent, saved, logs, clock };
+    return { instance, sent, saved, logs, clock, views };
   }
 
   it("sends the attack as the lab keeper's rescue, and reports the vault's refusal word for word", async () => {
@@ -129,12 +157,41 @@ describe("createAttackLab", () => {
       at: NOW.toISOString(),
       txHash: "tx1",
       refused: true,
+      matched: true,
       answer: "BAD_QUOTE: it's more than 2 minutes old",
       expected: "BAD_QUOTE: it's more than 2 minutes old",
     });
     expect(sent[0]).toMatchObject({ user: TESTNET_LAB.user, quote_id: `lab-stale-quote-${NOW.getTime()}` });
-    expect(saved.at(-1)).toEqual([result]);
+    expect(saved.at(-1)).toEqual({ recent: [result], day: Math.floor(NOW.getTime() / 86_400_000), count: 1 });
     expect(instance.info().recent).toEqual([result]);
+  });
+
+  it("reads the target's policy and the paid deposit address before attacking, then again every 10 minutes", async () => {
+    const { instance, views, clock } = lab();
+    await instance.run("pay-itself");
+    clock.t += 9_000;
+    await instance.run("over-cap");
+    expect(views).toEqual(["get_policy", "get_rescues"]);
+    clock.t += 10 * 60_000;
+    await instance.run("over-cap");
+    expect(views).toHaveLength(4);
+  });
+
+  it("closes instead of attacking when the chain isn't what the attacks rely on", async () => {
+    const cases: { policy?: Record<string, unknown> | null; paid?: unknown; reason: RegExp }[] = [
+      { policy: null, reason: /no policy/ },
+      { policy: { ...goodPolicy, keeper: "someone.testnet" }, reason: /lab keeper/ },
+      { policy: { ...goodPolicy, max_per_rescue: "100000000" }, reason: /limit per rescue/ },
+      { policy: { ...goodPolicy, paused: true }, reason: /paused/ },
+      { paid: [], reason: /already-paid deposit address/ },
+      { paid: [{ ...goodPaid[0], refunded: true }], reason: /already-paid deposit address/ },
+    ];
+    for (const c of cases) {
+      const { instance, sent } = lab(c);
+      await expect(instance.run("reused-deposit")).rejects.toThrow(c.reason);
+      expect(sent).toEqual([]);
+      expect(instance.info()).toMatchObject({ open: false, closedBecause: expect.stringMatching(c.reason) });
+    }
   });
 
   it("allows one attack at a time, at most one every 8 seconds", async () => {
@@ -148,53 +205,75 @@ describe("createAttackLab", () => {
     await expect(instance.run("over-cap")).resolves.toMatchObject({ refused: true });
   });
 
-  it("stops at the day's allowance and opens again the next UTC day", async () => {
-    const { instance, clock } = lab({ perDay: 2 });
-    await instance.run("pay-itself");
+  it("stops at the day's allowance, kept across a restart, and opens again the next UTC day", async () => {
+    const first = lab({ perDay: 2 });
+    await first.instance.run("pay-itself");
+    first.clock.t += 10_000;
+    await first.instance.run("pay-attacker");
+    const afterRestart = lab({ perDay: 2, saved: first.saved.at(-1)! });
+    afterRestart.clock.t = first.clock.t + 10_000;
+    await expect(afterRestart.instance.run("over-cap")).rejects.toMatchObject({ message: expect.stringMatching(/midnight UTC/) });
+    afterRestart.clock.t = Date.parse("2026-11-10T00:00:01Z");
+    await expect(afterRestart.instance.run("over-cap")).resolves.toMatchObject({ refused: true });
+  });
+
+  it("gives each visitor a share of the day, so one script can't use it all", async () => {
+    const { instance, clock } = lab({ perVisitor: 1 });
+    await instance.run("pay-itself", "203.0.113.7");
     clock.t += 10_000;
-    await instance.run("pay-attacker");
-    clock.t += 10_000;
-    await expect(instance.run("over-cap")).rejects.toMatchObject({ message: expect.stringMatching(/midnight UTC/) });
-    clock.t = Date.parse("2026-11-10T00:00:01Z");
-    await expect(instance.run("over-cap")).resolves.toMatchObject({ refused: true });
+    await expect(instance.run("pay-itself", "203.0.113.7")).rejects.toMatchObject({ message: expect.stringMatching(/your|today's share/) });
+    await expect(instance.run("pay-itself", "198.51.100.2")).resolves.toMatchObject({ refused: true });
   });
 
   it("closes if the vault ever accepts an attack, and says so loudly", async () => {
-    const { instance, logs, clock } = lab({ accept: true });
+    const { instance, logs, clock } = lab({ answer: () => null });
     const result = await instance.run("pay-itself");
-    expect(result).toMatchObject({ refused: false, answer: "accepted" });
-    expect(logs[0]).toMatch(/ACCEPTED/);
+    expect(result).toMatchObject({ refused: false, matched: false, answer: "accepted" });
+    expect(logs.join("\n")).toMatch(/got through/);
     expect(instance.info().open).toBe(false);
     clock.t += 60_000;
     await expect(instance.run("over-cap")).rejects.toBeInstanceOf(LabClosed);
   });
 
+  it("flags a refusal for another reason than the attack aims for, without closing", async () => {
+    const { instance, logs } = lab({ answer: () => "PAUSED: this user has paused rescues" });
+    const result = await instance.run("over-cap");
+    expect(result).toMatchObject({ refused: true, matched: false, answer: "PAUSED: this user has paused rescues" });
+    expect(logs.join("\n")).toMatch(/another reason/);
+    expect(instance.info().open).toBe(true);
+  });
+
+  it("closes when NEAR refuses the lab keeper's transaction for want of gas", async () => {
+    const { instance, logs } = lab({
+      call: async () => {
+        throw new VaultRejectedError("NotEnoughBalance: the signer doesn't have enough balance");
+      },
+    });
+    await expect(instance.run("pay-itself")).rejects.toBeInstanceOf(LabClosed);
+    expect(instance.info()).toMatchObject({ open: false, closedBecause: expect.stringMatching(/testnet NEAR/) });
+    expect(logs.join("\n")).toMatch(/NotEnoughBalance/);
+  });
+
   it("picks up its recent attacks, spacing and lock after a restart", async () => {
-    const earlier: AttackResult = { id: "pay-itself", at: new Date(NOW.getTime() - 2_000).toISOString(), txHash: "old", refused: true, answer: "x", expected: "x" };
-    const { instance } = lab({ saved: [earlier] });
+    const earlier: AttackResult = { id: "pay-itself", at: new Date(NOW.getTime() - 2_000).toISOString(), txHash: "old", refused: true, matched: true, answer: "x", expected: "x" };
+    const day = Math.floor(NOW.getTime() / 86_400_000);
+    const { instance } = lab({ saved: { recent: [earlier], day, count: 1 } });
     expect(instance.info().recent).toEqual([earlier]);
     await expect(instance.run("over-cap")).rejects.toBeInstanceOf(LabBusy);
-    const accepted = lab({ saved: [{ ...earlier, at: "2026-11-01T00:00:00Z", refused: false }] });
+    const accepted = lab({ saved: { recent: [{ ...earlier, at: "2026-11-01T00:00:00Z", refused: false }], day, count: 1 } });
     expect(accepted.instance.info().open).toBe(false);
   });
 
-  it("frees itself for the next attack when sending fails", async () => {
-    const clock = { t: NOW.getTime() };
-    const instance = createAttackLab({
-      client: {
-        view: async () => null,
-        call: async () => {
-          throw new Error("RPC down");
-        },
+  it("frees itself for the next attack when sending fails for another reason", async () => {
+    const { instance, clock, logs } = lab({
+      call: async () => {
+        throw new Error("RPC down");
       },
-      target: TESTNET_LAB,
-      signerKey: KEY,
-      now: () => new Date(clock.t),
-      log: () => {},
-      freshDeposit: () => FRESH,
     });
     await expect(instance.run("pay-itself")).rejects.toThrow("RPC down");
+    expect(logs.join("\n")).toMatch(/RPC down/);
     clock.t += 9_000;
     await expect(instance.run("pay-itself")).rejects.toThrow("RPC down");
+    expect(instance.info().open).toBe(true);
   });
 });

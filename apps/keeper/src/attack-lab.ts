@@ -1,4 +1,5 @@
 import type { NearClient } from "./near";
+import { VaultRejectedError } from "./ports";
 import { signStandIn, signTestnetQuote } from "./stand-in-quote";
 
 /**
@@ -51,7 +52,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "stale-quote",
     title: "Replay an old quote",
-    move: "Sends a properly signed quote from ten minutes ago, when prices were different.",
+    move: "Sends a properly signed quote dated ten minutes ago, as if replaying one it saved back then.",
     expect: "BAD_QUOTE: it's more than 2 minutes old",
   },
   {
@@ -63,7 +64,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "reused-deposit",
     title: "Pay an old deposit address twice",
-    move: "Sends money to a 1Click deposit address the vault already paid once, hoping to collect the second payment.",
+    move: "Sends money to a deposit address the vault has already paid once (on testnet, one from an earlier test rescue), hoping to collect a second payment.",
     expect: "DEPOSIT_REUSED: this deposit address was already paid",
   },
 ];
@@ -80,6 +81,8 @@ export type LabTarget = {
   maxPerRescue: string;
   /** A deposit address the vault has already paid (it remembers every one, for every user). */
   usedDeposit: string;
+  /** The rescue that paid it, which the lab reads before attacking to be sure the vault remembers it. */
+  usedDepositBy: { user: string; index: number };
 };
 
 /** The lab on NEAR testnet, set up on 2026-11-09. */
@@ -90,8 +93,9 @@ export const TESTNET_LAB: LabTarget = {
   token: "usdc.lifeline-team.testnet",
   hlAddress: "0x2222222222222222222222222222222222222222",
   maxPerRescue: "25000000",
-  // Paid by alice.lifeline-team.testnet's rescue "latency-1794165270579".
   usedDeposit: "c79422d7b73e20ba6e30c9c323822a828267e36c4fbcaf82c4a34b7524c600b5",
+  // alice.lifeline-team.testnet's rescue #25 (quote "latency-1794165270579"), never refunded.
+  usedDepositBy: { user: "alice.lifeline-team.testnet", index: 25 },
 };
 
 export type RescueArgs = {
@@ -152,12 +156,17 @@ export type AttackResult = {
   txHash: string;
   /** False only if the vault accepted it, which closes the lab. */
   refused: boolean;
+  /** Refused with exactly the answer this attack aims for. Anything else is logged for a look. */
+  matched: boolean;
   /** The vault's panic, word for word, or what happened instead. */
   answer: string;
   expected: string;
 };
 
-/** Too soon after the last attack, or over the day's allowance. */
+/** What the lab keeps across restarts: the latest results and the day's count. */
+export type LabSaved = { recent: AttackResult[]; day: number; count: number };
+
+/** Too soon after the last attack, or over an allowance. */
 export class LabBusy extends Error {
   constructor(
     message: string,
@@ -167,7 +176,7 @@ export class LabBusy extends Error {
   }
 }
 
-/** The lab is closed: an attack got through, or it isn't set up. */
+/** The lab is closed: an attack got through, the chain isn't as the attacks assume, or the keeper is out of gas. */
 export class LabClosed extends Error {}
 
 export function panicOf(failure: string | null): string | null {
@@ -183,6 +192,27 @@ export function panicOf(failure: string | null): string | null {
 
 const RECENT = 20;
 const DAY_MS = 86_400_000;
+const PREFLIGHT_MS = 10 * 60_000;
+
+type Raw = Record<string, unknown>;
+
+/**
+ * Two attacks are refused only because of chain state: "over the cap" needs the target's
+ * cap to be what the attack exceeds, and "pay an old deposit address twice" needs the
+ * vault to remember that address. Everything the attacks rely on is read back first; if
+ * any of it has changed, the lab closes rather than risk an attack the vault would accept.
+ */
+export async function checkLabTarget(client: NearClient, target: LabTarget): Promise<string | null> {
+  const policy = (await client.view("get_policy", { user: target.user })) as Raw | null;
+  if (policy === null) return `${target.user} has no policy`;
+  if (policy.keeper !== target.keeper) return `${target.user}'s policy no longer names the lab keeper`;
+  if (String(policy.hl_address).toLowerCase() !== target.hlAddress) return `${target.user}'s Hyperliquid address changed`;
+  if (String(policy.max_per_rescue) !== target.maxPerRescue) return `${target.user}'s limit per rescue changed`;
+  if (policy.paused === true) return `${target.user} has paused rescues`;
+  const [paid] = ((await client.view("get_rescues", { user: target.usedDepositBy.user, from: target.usedDepositBy.index, limit: 1 })) as Raw[] | null) ?? [];
+  if (paid?.deposit_address !== target.usedDeposit || paid.refunded !== false) return "the vault's record of the already-paid deposit address changed";
+  return null;
+}
 
 export type AttackLab = ReturnType<typeof createAttackLab>;
 
@@ -196,61 +226,95 @@ export function createAttackLab(options: {
   freshDeposit?: () => string;
   /** At least this long between attacks, so the lab can't be used to flood testnet. */
   minGapMs?: number;
-  /** At most this many attacks per UTC day. */
+  /** At most this many attacks per UTC day, for everyone together. */
   perDay?: number;
-  saved?: readonly AttackResult[];
-  onResult?: (recent: readonly AttackResult[]) => void;
+  /** At most this many per UTC day from one visitor, so one script can't use up the day. */
+  perVisitor?: number;
+  saved?: LabSaved | null;
+  onSave?: (saved: LabSaved) => void;
 }) {
-  const { client, target, signerKey, now, log, minGapMs = 8_000, perDay = 300 } = options;
+  const { client, target, signerKey, now, log, minGapMs = 8_000, perDay = 300, perVisitor = 40 } = options;
   const freshDeposit =
     options.freshDeposit ?? (() => Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join(""));
-  let recent: AttackResult[] = [...(options.saved ?? [])].slice(0, RECENT);
+  const dayOf = (ms: number) => Math.floor(ms / DAY_MS);
+  let recent: AttackResult[] = [...(options.saved?.recent ?? [])].slice(0, RECENT);
+  let day = options.saved?.day ?? dayOf(now().getTime());
+  let count = options.saved?.count ?? 0;
   let running = false;
-  let closed = recent.some((r) => !r.refused);
+  let closedBecause: string | null = recent.some((r) => !r.refused) ? "an attack got through, and the team is looking at the vault" : null;
   let lastAt = recent[0] ? Date.parse(recent[0].at) : 0;
-  let day = Math.floor(now().getTime() / DAY_MS);
-  let today = recent.filter((r) => Math.floor(Date.parse(r.at) / DAY_MS) === day).length;
+  let checkedAt = -Infinity;
+  const visitors = new Map<string, number>();
+
+  const close = (reason: string) => {
+    closedBecause = reason;
+    log(`the attack lab closed: ${reason}`);
+  };
 
   return {
     info() {
-      return { open: !closed, target, attacks: ATTACKS, recent };
+      return { open: closedBecause === null, ...(closedBecause === null ? {} : { closedBecause }), target, attacks: ATTACKS, recent };
     },
 
-    async run(id: AttackId): Promise<AttackResult> {
-      if (closed) throw new LabClosed("the lab is closed while the team looks at an attack the vault accepted");
+    /** `visitor` is who asked (their IP on Cloudflare), for the per-visitor allowance. */
+    async run(id: AttackId, visitor = "anyone"): Promise<AttackResult> {
+      if (closedBecause !== null) throw new LabClosed(`the lab is closed: ${closedBecause}`);
       const at = now();
-      const thisDay = Math.floor(at.getTime() / DAY_MS);
+      const thisDay = dayOf(at.getTime());
       if (thisDay !== day) {
         day = thisDay;
-        today = 0;
+        count = 0;
+        visitors.clear();
       }
       if (running) throw new LabBusy("another attack is on its way to the vault; try again in a few seconds", 5);
       const wait = lastAt + minGapMs - at.getTime();
       if (wait > 0) throw new LabBusy("one attack at a time: the last one went out a moment ago", Math.ceil(wait / 1000));
-      if (today >= perDay) throw new LabBusy("the lab has sent today's attacks; it opens again at midnight UTC", Math.ceil(((thisDay + 1) * DAY_MS - at.getTime()) / 1000));
+      const untilMidnight = Math.ceil(((thisDay + 1) * DAY_MS - at.getTime()) / 1000);
+      if (count >= perDay) throw new LabBusy("the lab has sent today's attacks; it opens again at midnight UTC", untilMidnight);
+      if ((visitors.get(visitor) ?? 0) >= perVisitor) throw new LabBusy("you've sent today's share of attacks; more at midnight UTC", untilMidnight);
 
       running = true;
-      lastAt = at.getTime();
-      today += 1;
       try {
+        if (at.getTime() - checkedAt > PREFLIGHT_MS) {
+          const problem = await checkLabTarget(client, target);
+          if (problem !== null) {
+            close(problem);
+            throw new LabClosed(`the lab is closed: ${problem}`);
+          }
+          checkedAt = at.getTime();
+        }
+        lastAt = at.getTime();
+        count += 1;
+        visitors.set(visitor, (visitors.get(visitor) ?? 0) + 1);
         const attack = ATTACKS.find((a) => a.id === id)!;
         const args = buildAttack(id, target, { signerKey, now: at, freshDeposit: freshDeposit() });
-        const { txHash, failure } = await client.call("rescue", args);
-        const panic = panicOf(failure);
+        let sent: { txHash: string; failure: string | null };
+        try {
+          sent = await client.call("rescue", args);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          log(`lab attack ${id} got no answer: ${message}`);
+          // NEAR refused the transaction itself: most likely the lab keeper is out of testnet NEAR.
+          if (error instanceof VaultRejectedError) {
+            close(/balance/i.test(message) ? "the lab keeper has run out of testnet NEAR for gas" : "NEAR refused the lab keeper's transactions");
+            throw new LabClosed(`the lab is closed: ${closedBecause}`);
+          }
+          throw error;
+        }
+        const panic = panicOf(sent.failure);
         const result: AttackResult = {
           id,
           at: at.toISOString(),
-          txHash,
-          refused: failure !== null,
-          answer: panic ?? (failure === null ? "accepted" : "failed without a panic"),
+          txHash: sent.txHash,
+          refused: sent.failure !== null,
+          matched: panic === attack.expect,
+          answer: panic ?? (sent.failure === null ? "accepted" : "failed without a panic"),
           expected: attack.expect,
         };
-        if (!result.refused) {
-          closed = true;
-          log(`THE VAULT ACCEPTED A LAB ATTACK (${id}) in ${txHash}. The lab is closed; look at the vault.`);
-        }
+        if (!result.refused) close(`an attack got through (${id}, ${sent.txHash}), and the team is looking at the vault`);
+        else if (!result.matched) log(`lab attack ${id} was refused for another reason than expected, in ${sent.txHash}: ${result.answer}`);
         recent = [result, ...recent].slice(0, RECENT);
-        options.onResult?.(recent);
+        options.onSave?.({ recent, day, count });
         return result;
       } finally {
         running = false;

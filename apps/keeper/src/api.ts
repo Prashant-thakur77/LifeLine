@@ -124,9 +124,9 @@ function parseAttack(body: string): string {
   return attack;
 }
 
-async function runAttack(lab: AttackLab, id: string): Promise<unknown> {
+async function runAttack(lab: AttackLab, id: string, visitor: string): Promise<unknown> {
   try {
-    return await lab.run(id as Parameters<AttackLab["run"]>[0]);
+    return await lab.run(id as Parameters<AttackLab["run"]>[0], visitor);
   } catch (error) {
     if (error instanceof LabBusy) throw new HttpError(429, `${error.message} (try again in ${error.retryAfterSec} s)`);
     if (error instanceof LabClosed) throw new HttpError(503, error.message);
@@ -191,7 +191,8 @@ async function route(request: Request, deps: ApiDeps): Promise<unknown> {
       expect("POST");
       const attack = parseAttack(await readBody(request));
       if (!deps.lab) throw new HttpError(404, "the attack lab isn't set up on this keeper");
-      return runAttack(deps.lab, attack);
+      // Cloudflare names the visitor; the per-visitor allowance keeps one script from using up the day.
+      return runAttack(deps.lab, attack, request.headers.get("cf-connecting-ip") ?? "anyone");
     }
     case "/api/telegram/link": {
       expect("POST");
