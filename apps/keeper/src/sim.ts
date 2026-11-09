@@ -17,6 +17,14 @@ const LAST_SEEN_FEE_USD = 0.3153; // replaced as soon as a quote reports the fee
 /** ETH price at each tick from a 3,000 start: through warn at 2800 and the trigger at 2780, then flat. */
 export const PRICE_DROP = [3000, 2960, 2920, 2880, 2840, 2800, 2780, 2780, 2780, 2780, 2780, 2780];
 
+/**
+ * The hosted demo's second act, once the rescue has landed: a shallower dip, still
+ * inside the 2-minute cooldown, to health about 1.44. It's below the trigger, so the
+ * keeper asks, and the policy engine refuses with COOLDOWN, as the user's rules say.
+ * Then the price recovers above the trigger. Health stays well clear of 1.0 throughout.
+ */
+export const AFTERSHOCK = [2765, 2748, 2748, 2748, 2790, 2790];
+
 const SETTLEMENT: SwapStatus[] = ["KNOWN_DEPOSIT_TX", "PROCESSING", "SUCCESS"];
 
 export type SimWorld = {
@@ -174,12 +182,26 @@ export type SimLoop = {
   settled(): Promise<void>;
 };
 
-type Cycle = { world: SimWorld; keeper: Keeper; scale: number; step: number; doneAt: number | null };
+type Cycle = {
+  world: SimWorld;
+  keeper: Keeper;
+  scale: number;
+  /** Steps of PRICE_DROP taken. */
+  step: number;
+  /** The drop's rescue, if any, has finished. */
+  settled: boolean;
+  /** Steps of AFTERSHOCK taken. */
+  after: number;
+  ending: boolean;
+  doneAt: number | null;
+};
 
 /**
- * The scripted drop on repeat, for a hosted demo. Each tick moves the price one step;
- * at the end the price holds while the keeper keeps watching, so the API shows the
- * health after the rescue. After a rest, a new drop starts from the live price. Each
+ * The scripted drop on repeat, for a hosted demo. Each tick moves the price one step.
+ * Once the rescue has landed, a second dip inside the cooldown shows the policy engine
+ * refusing a rescue (AFTERSHOCK); a drop that ended without a rescue skips it. Then the
+ * price holds while the keeper keeps watching, so the API shows the recovered health.
+ * After a rest, a new drop starts from the live price. Each
  * drop gets a fresh pretend account and vault, so one drop's rescue can't count
  * against the next one's caps or cooldown. Like runSim, only the quotes are real,
  * and they're always dry.
@@ -220,7 +242,7 @@ export function createSimLoop(options: {
       log,
       ...(onRecord ? { onRecord } : {}),
     });
-    return { world, keeper, scale: entry / BASE_PRICE, step: 0, doneAt: null };
+    return { world, keeper, scale: entry / BASE_PRICE, step: 0, settled: false, after: 0, ending: false, doneAt: null };
   };
 
   return {
@@ -237,7 +259,21 @@ export function createSimLoop(options: {
           current.world.setPrice(scripted * current.scale);
           current.step += 1;
           if (current.step === PRICE_DROP.length) {
-            // The rest only counts once this drop's rescue has finished.
+            void current.keeper.settled().then(() => {
+              current.settled = true;
+            });
+          }
+        } else if (current.settled && !current.ending) {
+          // The second dip waits for the rescue to land: while one is in flight the keeper
+          // doesn't ask again, so there'd be nothing for the policy engine to refuse.
+          const next = current.world.sent.length > 0 ? AFTERSHOCK[current.after] : undefined;
+          if (next !== undefined) {
+            current.world.setPrice(next * current.scale);
+            current.after += 1;
+          }
+          if (next === undefined || current.after === AFTERSHOCK.length) {
+            current.ending = true;
+            // The rest only counts once everything this drop started has finished.
             void current.keeper.settled().then(() => {
               current.doneAt = now().getTime();
             });

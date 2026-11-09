@@ -1,7 +1,7 @@
 import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
 import type { Intents, QuoteParams } from "../src/ports";
-import { createSimLoop, createSimWorld, PRICE_DROP, runSim, SIM_USER } from "../src/sim";
+import { AFTERSHOCK, createSimLoop, createSimWorld, PRICE_DROP, runSim, SIM_USER } from "../src/sim";
 import { openStore } from "../src/sql-node";
 
 const AT_MS = Date.parse("2026-11-08T15:00:00.000Z");
@@ -255,19 +255,63 @@ describe("the hosted sim loop", () => {
     return { tick, count, store, seen, elapse: (ms: number) => (nowMs += ms) };
   };
 
-  it("rescues exactly once per drop, then holds at the rescued health", async () => {
+  it("rescues exactly once per drop, refuses the second dip, then holds above the trigger", async () => {
     const t = setup();
-    await t.tick(PRICE_DROP.length + 10);
+    await t.tick(PRICE_DROP.length + AFTERSHOCK.length + 10);
     expect(t.count("RESCUE_DONE")).toBe(1);
-    expect(t.count("RESCUE_FAILED") + t.count("RESCUE_BLOCKED")).toBe(0);
+    expect(t.count("RESCUE_FAILED")).toBe(0);
+    expect(t.count("RESCUE_BLOCKED")).toBe(1);
     const health = t.store.health(SIM_USER);
     expect(health?.status).toBe("ok");
     expect(health?.snapshot?.health).toBeGreaterThanOrEqual(health?.policy.trigger ?? Infinity);
   });
 
+  it("after the rescue lands, dips again inside the cooldown, and the policy engine refuses it: no money moves", async () => {
+    const t = setup();
+    await t.tick(PRICE_DROP.length + AFTERSHOCK.length + 3);
+    const ledger = t.store.ledger(200);
+    const blocked = ledger.filter((r) => r.kind === "RESCUE_BLOCKED");
+    const done = ledger.find((r) => r.kind === "RESCUE_DONE")!;
+    expect(blocked).toHaveLength(1);
+    expect(blocked[0]!.decision?.reasons).toEqual(["COOLDOWN"]);
+    // A real refusal: below the trigger, above liquidation, after the rescue had landed.
+    const trigger = t.store.health(SIM_USER)!.policy.trigger;
+    expect(blocked[0]!.healthBefore).toBeLessThan(trigger);
+    expect(blocked[0]!.healthBefore).toBeGreaterThan(1.2);
+    expect(Date.parse(blocked[0]!.at)).toBeGreaterThan(Date.parse(done.at));
+    expect(t.count("RESCUE_ALLOWED")).toBe(1);
+  });
+
+  it("doesn't dip again when the drop ended without a rescue, so a 1Click outage can't push the demo toward liquidation", async () => {
+    let nowMs = AT_MS;
+    const store = openStore(":memory:");
+    const loop = createSimLoop({
+      store,
+      quotes: { getQuote: async () => Promise.reject(new Error("1Click is down")) },
+      now: () => new Date(nowMs),
+      sleep: async (ms) => {
+        nowMs += ms;
+        await new Promise((resolve) => setImmediate(resolve));
+      },
+      log: () => {},
+      restMs: REST_MS,
+    });
+    for (let i = 0; i < PRICE_DROP.length + AFTERSHOCK.length + 3; i += 1) {
+      await loop.tick();
+      nowMs += TICK_MS;
+      await loop.settled();
+    }
+    expect(store.ledger(200).some((r) => r.kind === "RESCUE_BLOCKED")).toBe(false);
+    const lastScripted = PRICE_DROP[PRICE_DROP.length - 1]!;
+    expect(store.health(SIM_USER)?.snapshot?.positions[0]?.entryPx).toBe(3000);
+    const health = store.health(SIM_USER)!.snapshot!;
+    // Still at the drop's last price, not the second dip's.
+    expect(health.maintenanceMarginUsed).toBeCloseTo((300 / 3000) * lastScripted * 0.02, 9);
+  });
+
   it("starts the next drop only after resting, and rescues again", async () => {
     const t = setup();
-    await t.tick(PRICE_DROP.length + 3);
+    await t.tick(PRICE_DROP.length + AFTERSHOCK.length + 3);
     t.elapse(REST_MS - 60_000);
     await t.tick(3);
     expect(t.count("WARN")).toBe(1);
@@ -315,14 +359,14 @@ describe("the hosted sim loop", () => {
     });
     expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS);
     let lastStepAt = 0;
-    for (let i = 0; i < PRICE_DROP.length; i += 1) {
+    for (let i = 0; i < PRICE_DROP.length + AFTERSHOCK.length; i += 1) {
       await loop.tick();
       await loop.settled();
       expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS);
       lastStepAt = nowMs;
       nowMs += TICK_MS;
     }
-    // The rescue was done by the drop's last step, so the minute and the rest run from there.
+    // The drop, its rescue and the refused second dip are done by the last step, so the minute and the rest run from there.
     nowMs = lastStepAt + 59_000;
     await loop.tick();
     expect(loop.nextTickInMs(TICK_MS)).toBe(TICK_MS); // still showing the rescued health
