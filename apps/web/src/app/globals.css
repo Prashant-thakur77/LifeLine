@@ -93,7 +93,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Fine paper grain over everything: printed, not rendered. */
+/*
+ * Fine paper grain over everything: printed, not rendered. Plain alpha, not a blend mode,
+ * so the browser lays one still layer over the page instead of re-blending the whole
+ * screen on every scrolled frame.
+ */
 body::after {
   content: "";
   position: fixed;
@@ -101,7 +105,6 @@ body::after {
   z-index: 60;
   pointer-events: none;
   opacity: 0.07;
-  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.04 0 0 0 0 0.08 0 0 0 0 0.2 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -247,8 +250,14 @@ body::after {
   }
 }
 
-/* The paper scenes: one quiet motion each. Reduced motion stops them where they stand. */
+/*
+ * The paper scenes: one quiet motion each. Each moving part is its own layer the size of
+ * the scene, so these move it by fractions of the scene (the SVG is 320 x 220) and the
+ * browser slides or turns it without repainting. Reduced motion stops them where they stand.
+ */
 .art-beam {
+  /* The lamp, at (176, 70). */
+  transform-origin: 55% 31.82%;
   animation: art-beam 5s ease-in-out infinite alternate;
 }
 @keyframes art-beam {
@@ -264,7 +273,7 @@ body::after {
 }
 @keyframes art-drop {
   0% {
-    transform: translateY(-46px);
+    transform: translateY(-20.9%);
     opacity: 0;
   }
   20% {
@@ -272,19 +281,21 @@ body::after {
   }
   70%,
   100% {
-    transform: translateY(18px);
+    transform: translateY(8.18%);
     opacity: 0;
   }
 }
 .art-bob {
+  /* The buoy's centre, at (168, 132). */
+  transform-origin: 52.5% 60%;
   animation: art-bob 3.2s ease-in-out infinite alternate;
 }
 @keyframes art-bob {
   from {
-    transform: translateY(-3px) rotate(-3deg);
+    transform: translateY(-1.36%) rotate(-3deg);
   }
   to {
-    transform: translateY(4px) rotate(3deg);
+    transform: translateY(1.82%) rotate(3deg);
   }
 }
 .art-paint {
@@ -378,8 +389,9 @@ body::after {
   }
 }
 
+/* Backwards fill only: once the sheet has landed, the page carries no transform at all. */
 .page-in {
-  animation: page-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: page-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 @keyframes page-in {
   from {
@@ -466,18 +478,6 @@ body::after {
     transform: translateY(-10px);
     background-color: rgb(255 247 234 / 0.6);
   }
-}
-
-/* Lenis, on the landing page only. */
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-stopped {
-  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

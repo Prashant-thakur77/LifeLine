@@ -156,6 +156,11 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={cx("animate-pulse rounded-md bg-shade", className)} aria-hidden />;
 }
 
+/** A placeholder for a value inside a line of text, so the line keeps its height while it loads. */
+export function SkeletonText({ className }: { className?: string }) {
+  return <span className={cx("inline-block h-[0.8em] animate-pulse rounded-md bg-shade align-middle", className)} aria-hidden />;
+}
+
 export function ExternalLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
   return (
     <a href={href} target="_blank" rel="noreferrer noopener" className={cx("inline-flex items-center gap-1 underline decoration-rescue decoration-[1.5px] underline-offset-[3px] hover:text-rescue-ink", className)}>

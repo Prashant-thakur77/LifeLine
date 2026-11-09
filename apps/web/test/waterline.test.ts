@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RescueStory } from "../src/lib/replay";
-import { REPLAY, hullY, replayBeats, settle, levelAt, wavePath } from "../src/lib/waterline";
+import { REPLAY, hullY, replayBeats, settle, levelAt, sheetWidth, wavePath } from "../src/lib/waterline";
 
 const story: RescueStory = {
   warn: { health: 1.7857, at: "2026-11-08T18:22:09.478Z" },
@@ -104,5 +104,24 @@ describe("wavePath", () => {
     const starts = [...d.matchAll(/C [^C]*? (\d+) (-?[\d.]+)(?= C| L)/g)].map((m) => [Number(m[1]), Number(m[2])]);
     const atPeriods = starts.filter(([x]) => x! % 100 === 0).map(([, y]) => y);
     expect(new Set(atPeriods).size).toBe(1);
+  });
+});
+
+describe("sheetWidth", () => {
+  it("is a whole number of periods, at least one period wider than the stage, so the drift never shows an edge", () => {
+    for (const w of [360, 390, 768, 1024, 1440, 1920, 2561]) {
+      for (const period of [520, 640, 760, 900]) {
+        const width = sheetWidth(w, period);
+        expect(width % period).toBe(0);
+        expect(width).toBeGreaterThanOrEqual(w + period);
+        expect(width).toBeLessThan(w + 2 * period);
+      }
+    }
+  });
+
+  it("matches where wavePath's outline ends", () => {
+    const d = wavePath({ width: 1440, height: 600, period: 760, amp: 8, top: 0 });
+    const end = Number(/ L ([\d.]+) /.exec(d)![1]);
+    expect(end).toBe(sheetWidth(1440, 760));
   });
 });

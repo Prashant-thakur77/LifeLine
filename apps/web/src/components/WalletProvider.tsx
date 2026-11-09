@@ -21,7 +21,7 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 
 /**
  * HOT's near-connect, which runs each wallet's code in a sandboxed iframe. It loads in
- * the browser only, after the page is up, so the static pages never wait on it.
+ * the browser only, once the page is up and idle, so the static pages never wait on it.
  */
 export function WalletProvider({ children }: { children: ReactNode }) {
   const connectorRef = useRef<NearConnector | null>(null);
@@ -30,7 +30,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    // Started at the browser's first idle moment, so it never competes with the page's
+    // first frames and animations. The header shows "Connect wallet" meanwhile.
+    const start = async () => {
       try {
         const { NearConnector } = await import("@hot-labs/near-connect");
         if (cancelled) return;
@@ -54,9 +56,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch {
         if (!cancelled) setStatus("unavailable");
       }
-    })();
+    };
+    const idle = typeof window.requestIdleCallback === "function";
+    const handle = idle ? window.requestIdleCallback(() => void start(), { timeout: 2000 }) : window.setTimeout(() => void start(), 600);
     return () => {
       cancelled = true;
+      if (idle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
       connectorRef.current?.removeAllListeners();
     };
   }, []);

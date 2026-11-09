@@ -42,11 +42,23 @@ Scale: hero headline `clamp(52px, 7.6vw, 122px)` / leading 0.84; section titles 
 | wave-drift | 36–58 s linear, alternate directions | Each paper sheet drifts sideways |
 | throw | 260 ms ease-out, then 700 ms to taut; splash 620 ms | The rescue line, buoy and paper splash |
 | scene loops | lighthouse beam 5 s (the keeper's pace), coin drop 2.8 s, buoy bob 3.2 s | How-it-works scenes |
-| how-slide | CSS scroll timeline, section pinned for 290vh, range contain 4–96 % | Desktop: the four scenes slide sideways as you scroll, a rope fills underneath. Phones, reduced motion and browsers without scroll timelines get the plain grid |
-| smooth scroll | Lenis 1.3.25, lerp 0.11, landing page only, fine pointers only | The landing glides; tool pages keep native scrolling |
+| how-slide | CSS scroll timeline, section pinned for 210vh, range contain 4–96 % | Desktop: the four scenes slide sideways as you scroll, a rope fills underneath. Phones, reduced motion and browsers without scroll timelines get the plain grid |
+| scrolling | The browser's own, everywhere. No scroll library: native scrolling runs off the main thread, so nothing on the page can make it stutter (measured: a script-driven glide left 38-46% of desktop frames partial, native about 6%) | Same |
 | page-in | 520 ms, transform only | Every route change |
 
 Reduced motion: every animation and transition is cut to its end state; no smooth scrolling, no pinned slide; the sea sits still; no auto-replay; levels jump; the log shows every line.
+
+## Smoothness rules (measured; keep them)
+
+Every page is checked by scrolling it with the CPU slowed 2x (desktop) and 4x (phone) and reading Chrome's own frame verdicts. These rules are why it holds:
+
+- Anything that loops moves an HTML element holding a pre-drawn SVG, by `transform` or `opacity` only. Never animate an SVG child, a filter or a blend mode inside a painted layer: the browser repaints the whole layer every frame. The waves (`Waterline`) and the scene motions (`Sheet` layers in `art/Scenes.tsx`) follow this.
+- Shadows, grain and the second ink pass are drawn inside the SVG, once. No CSS `filter` or `mix-blend-mode` on anything that moves, and none on the full-screen grain.
+- No scroll library. The browser scrolls natively everywhere.
+- Script-driven motion (the water's spring, the thrown line) writes only what changed, reads layout only on resize or a throw, and stops when nothing moves.
+- Anything that depends on the screen width is laid out in CSS (`lg:` classes, or CSS variables as in `Waterline`'s `wideScale`), never a JS media query, so the server-rendered page already has the right shape.
+- A loading placeholder takes the space of what replaces it: same labels, a skeleton where the number goes.
+- Third-party code (the wallet connector) starts when the browser is idle.
 
 ## Signature moment
 
