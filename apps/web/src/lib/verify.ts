@@ -26,8 +26,11 @@ export type Deployment = {
   refusal: { txHash: string; signer: string; panic: string } | null;
 };
 
-/** The vault built from contracts/vault at commit 4595ece, as deployed on 2026-11-08. */
-export const VAULT_CODE_HASH = "HcUE1tpDmd5KzrC4iLEfLBo4c39kqA6t2txP7vzopQZS";
+/**
+ * `cargo near build reproducible-wasm` at commit 37e98488a59ecbfe51e49089846410a7588336e9,
+ * deployed to the testnet vault on 2026-11-09. The wasm names that commit itself.
+ */
+export const VAULT_CODE_HASH = "FUWd4fuXeaL5eu5k6YfkmufXfm7T8uq7gDD6PvuuzAnq";
 
 /**
  * Testnet runs the same vault code, but trusts a stand-in quote key the team holds,

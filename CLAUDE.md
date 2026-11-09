@@ -143,6 +143,7 @@ Checked on 2026-11-08 with the vault:
 - A non-dry quote's NEAR deposit address is a fresh implicit account (64 hex characters) that doesn't exist on chain and isn't registered with USDC (`storage_balance_of` is null), so a plain `ft_transfer` to it would fail. The vault pays USDC's `storage_deposit` for it first, with `registration_only`: 0.00125 NEAR, USDC's `storage_balance_bounds` on mainnet.
 - The quote also carries `timeEstimate`: 30 s for NEAR USDC to Hyperliquid USDC.
 - near-sdk 5.30.1, near-workspaces 0.24.0 and cargo-near 0.23.0 build and test the vault with Rust 1.98.1, and the wasm deploys and runs on the 2.14.0 sandbox and on testnet. `cargo near build` needs the Ledger feature off on this machine (`cargo install --no-default-features cargo-near`), because libudev's headers aren't installed.
+- `cargo near build reproducible-wasm` (image `sourcescan/cargo-near:0.22.0-rust-1.99.1`, pinned by digest in `contracts/vault/Cargo.toml`) builds the vault in about 36 s and gives the same bytes on every run. It needs a clean git tree, and it writes the repo and commit into the wasm's NEP-330 `build_info`, so the hash changes with every commit: build from a commit that's on GitHub. A non-reproducible build embeds this machine's paths (checked 2026-11-09).
 - near-workspaces downloads the sandbox node from S3 as one stream, which ran at about 30 KB/s here. `scripts/near-sandbox.mjs` fetches it in 16 ranges in about a minute and checks it against S3's multipart ETag.
 - In near-sdk unit tests, `#[private]` isn't enforced when a test calls the method directly, and the mocked chain keeps its storage between `testing_env!` calls. The vault's sandbox tests check the private callbacks.
 - 1Click signs the base58 SHA-256 of a stable (sorted-key) JSON text: the quote request's fields (not `appFees` or `correlationId`), the quote's fields, and `timestamp`. A live quote's text includes `depositAddress`. `packages/intents/src/signed.ts` rebuilds that text, and tests hold its hash equal to the SDK's `quoteHash` on real quotes. The vault verifies it on chain with `env::ed25519_verify` against 1Click's key `ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc`, and the real quote from 2026-11-06 passes in its unit tests.
@@ -181,7 +182,8 @@ pnpm demo:sim                    # the whole rescue story from the live ETH pric
 pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved on-chain refusal re-checked
 pnpm --filter intents live-quote [usdc] [hl address]   # one real dry 1Click quote, NEAR USDC to Hyperliquid USDC
 cargo test --manifest-path contracts/vault/Cargo.toml  # the vault alone: unit tests, then the sandbox tests
-cd contracts/vault && cargo near build non-reproducible-wasm   # target/near/lifeline_vault.wasm
+cd contracts/vault && cargo near build reproducible-wasm   # the deployable wasm: clean checkout, pinned Docker image, commit in its metadata
+cd contracts/vault && cargo near build non-reproducible-wasm   # a quick local build; its bytes depend on this machine
 node scripts/near-sandbox.mjs    # fetches the NEAR sandbox node the vault's tests run on (pnpm test does this itself)
 pnpm --filter hyperliquid live <address>   # print a real snapshot for an account
 pnpm --filter keeper cf:dev      # the sim keeper on Cloudflare's runtime, locally

@@ -6,8 +6,11 @@ There are no admin methods: nobody but the user can withdraw, change a policy or
 
 ```sh
 cargo test                                  # 51 unit tests, then 11 sandbox tests (they build the wasm first)
-cargo near build non-reproducible-wasm      # target/near/lifeline_vault.wasm
+cargo near build reproducible-wasm          # target/near/lifeline_vault.wasm, from a clean checkout, in Docker
+cargo near build non-reproducible-wasm      # the same contract, faster, but the bytes depend on this machine
 ```
+
+The deployed vault is the reproducible build. It runs in the Docker image pinned by digest in `Cargo.toml`, from the committed source, and writes the repo and commit into the wasm's NEP-330 metadata (`contract_source_metadata`). The testnet vault was built that way from commit `37e98488a59ecbfe51e49089846410a7588336e9`: check out that commit, run the command, and the wasm's base58 SHA-256 is `FUWd4fuXeaL5eu5k6YfkmufXfm7T8uq7gDD6PvuuzAnq`, the code hash `vault.lifeline-team.testnet` shows on chain. The dashboard's verify page compares the two.
 
 The unit tests check every rule on a mocked chain, including a real quote 1Click signed on 6 November 2026, verified with 1Click's real key. The sandbox tests run the contract on a local NEAR node with a real NEP-141 token:
 - a deposit, and a token that isn't on the list going straight back,
