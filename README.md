@@ -6,6 +6,7 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 
 - Dashboard: https://lifeline.prashantthakur.dev (no wallet needed to watch the live demo)
 - Keeper API, running the simulation around the clock: https://lifeline-sim.prashantthakur.dev
+- Telegram bot: [@LifeLineNearBot](https://t.me/LifeLineNearBot), run by the same keeper
 - Vault contract on testnet: [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
 
 ## Status
@@ -61,6 +62,7 @@ Each of these needs only Node 22 and pnpm, and no wallet, keys or funds. Clone t
 | Do | See |
 | --- | --- |
 | Open https://lifeline.prashantthakur.dev | The live demo, no wallet: `demo.near`'s health drawn as a sea level against its warn, rescue and liquidation lines. On load the page replays the keeper's last rescue from its log, step by step; every 15 minutes the price drops and the keeper rescues it live. Below: the keeper's stats, the attestation result and the vault's refusal codes |
+| Open https://lifeline.prashantthakur.dev/telegram?user=demo.near, get a code and tap "Open @LifeLineNearBot" | Telegram alerts for the demo account: each simulated warning and rescue as it happens, and `/status` for its health. `/unlink` stops them |
 | `pnpm demo:sim` | The real keeper rescue a pretend position opened at the live ETH price, with a real 1Click quote, the policy engine's verdict and the audit record, in under 30 seconds |
 | `pnpm demo:attack` | A hacked keeper's attacks refused by the policy engine, and a real on-chain transaction where the vault refused a redirected rescue, re-checked on a public NEAR node |
 | `pnpm --filter intents live-quote 5 0xYourHyperliquidAddress` | A real 1Click quote from NEAR USDC to Hyperliquid perps USDC, its signature checked |

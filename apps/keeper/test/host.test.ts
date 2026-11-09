@@ -235,6 +235,15 @@ describe("starting the hosted keeper", () => {
     expect(Date.parse(info.lastTickAt)).toBeGreaterThan(T0);
     expect(Date.parse(info.nextAlarmAt)).toBe(t.storage.alarmAt());
   });
+
+  it("says plainly at / what the simulation fakes, so mainnet prices aren't read as a mainnet deployment", async () => {
+    const t = setup(SIM);
+    await t.host.start();
+    const info = await t.json<{ network: string; simulation?: string }>("/");
+    expect(info.network).toBe("mainnet");
+    expect(info.simulation).toMatch(/pretend/);
+    expect(info.simulation).toMatch(/no keys and no funds/);
+  });
 });
 
 describe("each alarm", () => {
