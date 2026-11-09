@@ -170,7 +170,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     });
     const pipeline = createRecordPipeline({
       store,
-      explain: (record) => explainer.explain(record),
+      explain: (record) => explainer.explainWithProof(record),
       notify: async (record) => bot?.notify(record),
       log,
     });
@@ -288,7 +288,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
           startedAt: startedAt?.toISOString() ?? null,
           lastTickAt: lastTickAt?.toISOString() ?? null,
           nextAlarmAt: alarmAt === null ? null : new Date(alarmAt).toISOString(),
-          api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/stats", "/api/attestation", "POST /api/telegram/link"],
+          api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/stats", "/api/attestation", "/api/proof/:recordId", "/api/proof/latest?user=", "POST /api/telegram/link"],
         },
         running.config.corsOrigin,
       );

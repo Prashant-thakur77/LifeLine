@@ -1,4 +1,5 @@
 import type { AuditRecord } from "@lifeline/shared";
+import type { Explained } from "./explain";
 import type { Store } from "./store";
 
 const BACKFILL_LIMIT = 200;
@@ -10,7 +11,7 @@ const BACKFILL_LIMIT = 200;
  */
 export function createRecordPipeline(options: {
   store: Store;
-  explain: (record: AuditRecord) => Promise<string | undefined>;
+  explain: (record: AuditRecord) => Promise<Explained | undefined>;
   notify: (record: AuditRecord) => Promise<void>;
   log: (line: string) => void;
 }) {
@@ -23,8 +24,11 @@ export function createRecordPipeline(options: {
   const process = async (record: AuditRecord): Promise<void> => {
     let explanation: string | undefined;
     try {
-      explanation = await explain(record);
-      if (explanation !== undefined) store.setExplanation(record.id, explanation);
+      const explained = await explain(record);
+      if (explained !== undefined) {
+        explanation = explained.text;
+        store.setExplanation(record.id, explained.text, explained.proof);
+      }
     } catch {
       log(`couldn't explain record ${record.id}`);
     }
@@ -44,8 +48,8 @@ export function createRecordPipeline(options: {
       for (const record of store.unexplained(BACKFILL_LIMIT)) {
         enqueue(record.user, async () => {
           try {
-            const explanation = await explain(record);
-            if (explanation !== undefined) store.setExplanation(record.id, explanation);
+            const explained = await explain(record);
+            if (explained !== undefined) store.setExplanation(record.id, explained.text, explained.proof);
           } catch {
             log(`couldn't explain record ${record.id}`);
           }

@@ -8,7 +8,7 @@ const setup = (options: { explain?: Parameters<typeof createRecordPipeline>[0]["
   const notified: { id: string; explanation?: string }[] = [];
   const pipeline = createRecordPipeline({
     store,
-    explain: options.explain ?? (async () => "Plain words."),
+    explain: options.explain ?? (async () => ({ text: "Plain words." })),
     notify: async (r) => {
       if (options.notifyThrows) throw new Error("telegram down");
       notified.push({ id: r.id, ...(r.explanation ? { explanation: r.explanation } : {}) });
@@ -28,6 +28,20 @@ describe("the record pipeline", () => {
     expect(store.audit(USER, 1)[0]?.explanation).toBe("Plain words.");
     expect(store.ledger(1)[0]?.explanation).toBe("Plain words.");
     expect(store.latest(USER, "RESCUE_DONE")?.explanation).toBe("Plain words.");
+  });
+
+  it("keeps the proof behind the model's words, for anyone to check", async () => {
+    const proof = { model: "m", requestBase64: "", responseBase64: "", signedText: "m:a:b", signature: "0x", signingAddress: "0xabc", verifiedAt: "2026-11-09T09:00:00.000Z" };
+    const { store, pipeline } = setup({ explain: async () => ({ text: "Facts. Words.", proof }) });
+    const r = record({ id: "a", kind: "RESCUE_DONE" });
+    store.append(r);
+    pipeline.handle(r);
+    await pipeline.settled();
+    expect(store.proof("a")?.proof).toEqual(proof);
+    store.append(record({ id: "b", kind: "RESCUE_BLOCKED" }));
+    pipeline.backfill();
+    await pipeline.settled();
+    expect(store.proof("b")?.proof).toEqual(proof);
   });
 
   it("sends the explanation to Telegram too", async () => {
@@ -56,7 +70,7 @@ describe("the record pipeline", () => {
     const { store, notified, pipeline } = setup({
       explain: async (r) => {
         if (r.id === "first") await gate;
-        return "x";
+        return { text: "x" };
       },
     });
     for (const id of ["first", "second"]) {
@@ -79,7 +93,7 @@ describe("the record pipeline", () => {
     const { store, notified, pipeline } = setup({
       explain: async (r) => {
         if (r.id === "slow") await gate;
-        return "x";
+        return { text: "x" };
       },
     });
     const slow = record({ id: "slow", kind: "RESCUE_DONE" });

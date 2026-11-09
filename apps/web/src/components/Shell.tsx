@@ -37,6 +37,7 @@ const NAV = [
   { href: "/position", label: "Position", keepsUser: true },
   { href: "/check", label: "Check", keepsUser: false },
   { href: "/ledger", label: "Ledger", keepsUser: false },
+  { href: "/verify", label: "Verify", keepsUser: false },
   { href: "/fund", label: "Fund", keepsUser: false },
   { href: "/start", label: "Set up", keepsUser: false },
   { href: "/telegram", label: "Alerts", keepsUser: false },

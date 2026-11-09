@@ -96,7 +96,19 @@ function EventRow({ event, showUser, now }: { event: LedgerEvent; showUser: bool
               ))}
             </ul>
           ) : null}
-          {event.explanation ? <p className="mb-3 max-w-3xl border-l-[3px] border-rescue pl-3 text-[14.5px] leading-relaxed text-ink">{event.explanation}</p> : null}
+          {event.explanation ? (
+            <div className="mb-3 max-w-3xl border-l-[3px] border-rescue pl-3">
+              <p className="text-[14.5px] leading-relaxed text-ink">{event.explanation}</p>
+              {event.explainedRecordId ? (
+                <Link
+                  href={`/verify?record=${encodeURIComponent(event.explainedRecordId)}&user=${encodeURIComponent(event.user)}#ai`}
+                  className="mt-1 inline-block text-[12.5px] font-semibold text-ink-2 underline decoration-rescue decoration-[1.5px] underline-offset-[3px] hover:text-ink"
+                >
+                  Check these words yourself
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
           <ol className="space-y-1.5">
             {event.records.map((record) => (
               <li key={record.id} className="flex flex-wrap justify-between gap-x-3">

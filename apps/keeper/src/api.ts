@@ -132,6 +132,15 @@ async function route(request: Request, deps: ApiDeps): Promise<unknown> {
     return health;
   }
 
+  if (pathname.startsWith("/api/proof/")) {
+    expect("GET");
+    const id = decodeSegment(pathname.slice("/api/proof/".length));
+    const user = searchParams.get("user");
+    const proved = id === "latest" ? store.latestProof(user ?? undefined) : store.proof(id);
+    if (proved === null) throw new HttpError(404, "no signed model answer is kept for this record");
+    return proved;
+  }
+
   switch (pathname) {
     case "/api/audit": {
       expect("GET");

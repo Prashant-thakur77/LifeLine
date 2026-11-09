@@ -231,6 +231,9 @@ function Safety() {
               The rules live in the vault contract, where a hacked keeper still can&apos;t break them. Each code below is what the contract answers when it refuses.
             </p>
             <RefusalReceipt className="mt-8 -rotate-1" />
+            <ButtonLink href="/verify" variant="secondary" size="lg" className="mt-8">
+              Check every claim yourself <span aria-hidden>→</span>
+            </ButtonLink>
           </div>
           <dl className="lg:col-span-7">
             {GUARANTEES.map((g) => (

@@ -10,6 +10,16 @@ publish = false
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# `cargo near build reproducible-wasm` builds inside this exact image (pinned by digest), from a
+# clean checkout, and records the repo and commit in the wasm's NEP-330 metadata. Anyone who
+# checks out that commit and runs the same command gets the same bytes, and so the code hash
+# the vault account shows on chain.
+[package.metadata.near.reproducible_build]
+image = "sourcescan/cargo-near:0.22.0-rust-1.99.1"
+image_digest = "sha256:c9655eaf7436b90c87ea8b25739f91063032c5c30ba24cfeafe72c142943b5bb"
+passed_env = []
+container_build_command = ["cargo", "near", "build", "non-reproducible-wasm", "--locked"]
+
 [dependencies]
 near-sdk = "5.30.1"
 
