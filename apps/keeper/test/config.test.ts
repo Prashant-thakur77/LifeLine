@@ -127,6 +127,14 @@ describe("readLiveConfig", () => {
     expect(config.corsOrigin).toBe("*");
   });
 
+  it("lets CORS_ORIGIN open the API wider than the dashboard, as the public demo needs", () => {
+    // The hosted sim runs a bot (so it needs DASHBOARD_URL), but a dashboard run locally must still read it.
+    const config = readLiveConfig({ ...env, DASHBOARD_URL: "https://lifeline.example", CORS_ORIGIN: "*" });
+    expect(config.corsOrigin).toBe("*");
+    expect(config.dashboardUrl).toBe("https://lifeline.example");
+    expect(readLiveConfig({ ...env, DASHBOARD_URL: "https://lifeline.example", CORS_ORIGIN: " " }).corsOrigin).toBe("https://lifeline.example");
+  });
+
   it("passes the optional settings through", () => {
     const config = readLiveConfig({
       ...env,
