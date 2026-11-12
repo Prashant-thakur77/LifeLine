@@ -4,9 +4,11 @@ import type { Intents, Quote, QuoteParams } from "@lifeline/keeper";
 import {
   ATTACKER_HL,
   checkProof,
+  checkProofOnNodes,
   formatAttempt,
   explorerFor,
   parseProof,
+  proofRpcs,
   rpcFor,
   runEngineAttacks,
   sendContractAttack,
@@ -265,5 +267,71 @@ describe("checkProof, which lets anyone re-check the refusal on chain with no ke
     const result = await checkProof(proof, "https://rpc.test", empty);
     expect(result.refused).toBe(false);
     expect(result.detail).toMatch(/couldn't/i);
+  });
+});
+
+describe("checkProofOnNodes, which falls back to an archival node once the regular one forgets the transaction", () => {
+  const proof: AttackProof = { network: "testnet", txHash: "HASH", signer: "keeper.team.testnet", vault: "vault.team.testnet", failure: "x", recordedAt: "t" };
+  const failedOnChain = {
+    status: { Failure: { ActionError: { index: 0, kind: { FunctionCallError: { ExecutionError: "Smart contract panicked: BAD_QUOTE" } } } } },
+    transaction: { receiver_id: "vault.team.testnet", signer_id: "keeper.team.testnet", hash: "HASH" },
+  };
+  const nodes = (answers: Record<string, "unknown" | "down" | "refused" | "succeeded">, asked: string[] = []) =>
+    (async (url: string) => {
+      asked.push(url);
+      const answer = answers[url];
+      if (answer === "down") throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      const body =
+        answer === "unknown"
+          ? { jsonrpc: "2.0", id: 1, error: { name: "HANDLER_ERROR", cause: { name: "UNKNOWN_TRANSACTION" } } }
+          : { jsonrpc: "2.0", id: 1, result: answer === "refused" ? failedOnChain : { ...failedOnChain, status: { SuccessValue: "" } } };
+      return new Response(JSON.stringify(body));
+    }) as unknown as typeof fetch;
+  const noWait = async () => {};
+
+  it("asks the regular node first, and stops there when it has the transaction", async () => {
+    const asked: string[] = [];
+    const result = await checkProofOnNodes(proof, ["https://regular", "https://archival"], nodes({ "https://regular": "refused" }, asked), noWait);
+    expect(result.refused).toBe(true);
+    expect(asked).toEqual(["https://regular"]);
+  });
+
+  it("asks the archival node when the regular one doesn't know the transaction", async () => {
+    const asked: string[] = [];
+    const result = await checkProofOnNodes(proof, ["https://regular", "https://archival"], nodes({ "https://regular": "unknown", "https://archival": "refused" }, asked), noWait);
+    expect(result).toMatchObject({ refused: true });
+    expect(result.detail).toContain("BAD_QUOTE");
+    expect(asked).toEqual(["https://regular", "https://archival"]);
+  });
+
+  it("asks the archival node when the regular one times out, trying the regular one only once", async () => {
+    const asked: string[] = [];
+    const result = await checkProofOnNodes(proof, ["https://regular", "https://archival"], nodes({ "https://regular": "down", "https://archival": "refused" }, asked), noWait);
+    expect(result.refused).toBe(true);
+    expect(asked).toEqual(["https://regular", "https://archival"]);
+  });
+
+  it("isn't fooled into the fallback: a regular node's success answer stands", async () => {
+    const asked: string[] = [];
+    const result = await checkProofOnNodes(proof, ["https://regular", "https://archival"], nodes({ "https://regular": "succeeded", "https://archival": "refused" }, asked), noWait);
+    expect(result.refused).toBe(false);
+    expect(asked).toEqual(["https://regular"]);
+  });
+
+  it("says it couldn't find the transaction when no node has it", async () => {
+    const result = await checkProofOnNodes(proof, ["https://regular", "https://archival"], nodes({ "https://regular": "unknown", "https://archival": "unknown" }), noWait);
+    expect(result).toEqual({ refused: false, detail: "couldn't find this transaction on the node" });
+  });
+});
+
+describe("proofRpcs", () => {
+  it("defaults to fastnear's regular node, then its archival node, on each network", () => {
+    expect(proofRpcs("testnet", {})).toEqual(["https://test.rpc.fastnear.com", "https://archival-rpc.testnet.fastnear.com"]);
+    expect(proofRpcs("mainnet", {})).toEqual(["https://free.rpc.fastnear.com", "https://archival-rpc.mainnet.fastnear.com"]);
+  });
+
+  it("takes either node from the environment, ignoring empty values", () => {
+    expect(proofRpcs("testnet", { PROOF_RPC_URL: "https://my.node", PROOF_ARCHIVAL_RPC_URL: " " })).toEqual(["https://my.node", "https://archival-rpc.testnet.fastnear.com"]);
+    expect(proofRpcs("testnet", { PROOF_ARCHIVAL_RPC_URL: "https://my.archive" })).toEqual(["https://test.rpc.fastnear.com", "https://my.archive"]);
   });
 });
