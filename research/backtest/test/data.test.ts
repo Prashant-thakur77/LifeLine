@@ -21,7 +21,7 @@ const tempDir = () => {
 
 describe("the raw candle files", () => {
   it("names a file for each coin and interval", () => {
-    expect(candleFile("/x", "BTC", "4h")).toBe("/x/BTC-4h.json");
+    expect(candleFile("/x", "BTC", "4h")).toBe(join("/x", "BTC-4h.json"));
   });
 
   it("gives back exactly what was saved", () => {
