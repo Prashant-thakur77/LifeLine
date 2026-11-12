@@ -195,6 +195,15 @@ pnpm --filter web cf:dev          # the built dashboard on Cloudflare's runtime
 
 `docs/mainnet.md` is the runbook for deploying the vault and keeper to mainnet.
 
+## AI tools used
+
+The code was written with Claude Code (Anthropic), under human direction: the team planned each task, and reviewed and tested what it wrote. At runtime, Lifeline uses NEAR AI Cloud (`deepseek-ai/DeepSeek-V4.1-Flash-1017`) for the plain-language explanation of each rescue decision. Those explanations have no authority over money, as the safety model above explains.
+
+## Team
+
+- Prashant Thakur (GitHub: [Prashant-thakur77](https://github.com/Prashant-thakur77))
+- Soham Juneja (GitHub: [SohamJuneja](https://github.com/SohamJuneja))
+
 ## Licence
 
 MIT
