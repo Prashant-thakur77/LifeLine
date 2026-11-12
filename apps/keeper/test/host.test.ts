@@ -240,9 +240,17 @@ describe("starting the hosted keeper", () => {
     const t = setup(SIM);
     await t.host.start();
     const info = await t.json<{ network: string; simulation?: string }>("/");
-    expect(info.network).toBe("mainnet");
+    expect(info.network).toBe("Simulation · live mainnet prices");
     expect(info.simulation).toMatch(/pretend/);
     expect(info.simulation).toMatch(/no keys and no funds/);
+  });
+
+  it("names the testnet at / when it runs live on testnet", async () => {
+    const t = setup(LIVE, { seams: () => ({ vault: fakeVault(), readHealth: healthy }) });
+    await t.host.start();
+    const info = await t.json<{ mode: string; network: string; simulation?: string }>("/");
+    expect(info).toMatchObject({ mode: "live", network: "testnet" });
+    expect(info.simulation).toBeUndefined();
   });
 });
 
