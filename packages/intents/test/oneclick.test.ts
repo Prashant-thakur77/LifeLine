@@ -1,7 +1,10 @@
 import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 import { ASSETS } from "@lifeline/shared";
 import { describe, expect, it } from "vitest";
-import { createOneClick, isSignedBy1Click } from "../src/oneclick";
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { base58 } from "@scure/base";
+import { ONE_CLICK_QUOTE_SIGNER, createOneClick, isSignedBy, isSignedBy1Click, signerKeyBytes } from "../src/oneclick";
 import { signedQuotePayload } from "../src/signed";
 import dry from "./recorded/quote-dry.json";
 import real from "./recorded/quote-real.json";
@@ -193,6 +196,53 @@ describe("the quote signature check", () => {
   it("refuses junk instead of throwing", () => {
     expect(isSignedBy1Click({ ...(real as object), signature: "not base58 !" } as never)).toBe(false);
     expect(isSignedBy1Click({} as never)).toBe(false);
+  });
+});
+
+describe("another quote signer, such as a testnet sandbox's", () => {
+  type Raw = Parameters<typeof verifyQuoteSignature>[0];
+  const secret = ed25519.utils.randomSecretKey();
+  const testKey = `ed25519:${base58.encode(ed25519.getPublicKey(secret))}`;
+  /** A recorded quote, signed again the way 1Click signs, but with the test key. */
+  const signedWithTestKey = <T extends object>(recorded: T): T => {
+    const hash = base58.encode(sha256(new TextEncoder().encode(signedQuotePayload(recorded as unknown as Raw))));
+    return { ...recorded, signature: `ed25519:${base58.encode(ed25519.sign(new TextEncoder().encode(hash), secret))}` };
+  };
+
+  it("verifies a quote signed by a test key with that key only, as the 1Click SDK does", () => {
+    const quote = signedWithTestKey(real) as unknown as Raw;
+    expect(isSignedBy(quote, testKey)).toBe(true);
+    expect(verifyQuoteSignature(quote, testKey)).toBe(true);
+    expect(isSignedBy(quote)).toBe(false);
+    expect(isSignedBy1Click(quote)).toBe(false);
+    expect(verifyQuoteSignature(quote)).toBe(false);
+    expect(isSignedBy(real as unknown as Raw, testKey)).toBe(false);
+  });
+
+  it("defaults to 1Click's key, the one the 1Click SDK uses", () => {
+    expect(ONE_CLICK_QUOTE_SIGNER).toBe("ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc");
+    expect(isSignedBy(real as unknown as Raw)).toBe(true);
+    expect(verifyQuoteSignature(real as unknown as Raw, ONE_CLICK_QUOTE_SIGNER)).toBe(true);
+  });
+
+  it("makes createOneClick accept only quotes signed by the key it was given", async () => {
+    const resigned = signedWithTestKey(dry);
+    const withTestKey = (body: unknown) =>
+      createOneClick({ apiUrl: "https://sandbox.test", nearSenderAccount: "vault.team.testnet", quoteSigner: testKey, now: () => new Date("2026-11-08T15:00:00.000Z"), fetch: (async () => json(body)) as unknown as typeof fetch });
+    expect((await withTestKey(resigned).getQuote({ ...params, dry: true })).quoteId).toBe(dry.correlationId);
+    await expect(withTestKey(dry).getQuote({ ...params, dry: true })).rejects.toThrow(/signature is invalid/);
+  });
+
+  it("keeps createOneClick on 1Click's key when no signer is given", async () => {
+    await expect(client(() => json(signedWithTestKey(dry))).oneClick.getQuote({ ...params, dry: true })).rejects.toThrow(/signature is invalid/);
+    expect((await client(() => json(dry)).oneClick.getQuote({ ...params, dry: true })).quoteId).toBe(dry.correlationId);
+  });
+
+  it("refuses a malformed signer key when the client is made, not on the first quote", () => {
+    for (const bad of ["reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc", "ed25519:abc", "ed25519:not base58 !"]) {
+      expect(() => signerKeyBytes(bad)).toThrow();
+      expect(() => createOneClick({ apiUrl: "https://x.test", nearSenderAccount: "v.testnet", quoteSigner: bad })).toThrow();
+    }
   });
 });
 

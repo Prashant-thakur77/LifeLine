@@ -13,6 +13,8 @@ export type OneClickOptions = {
   apiUrl: string;
   jwt?: string;
   nearSenderAccount: string; // the vault, which is what sends the deposit
+  /** The key quotes must be signed with, `ed25519:…`. Default: 1Click's. */
+  quoteSigner?: string;
   now?: () => Date;
   fetch?: typeof fetch;
 };
@@ -32,7 +34,15 @@ type QuoteResponse = Parameters<typeof verifyQuoteSignature>[0] & {
 const isString = (value: unknown): value is string => typeof value === "string" && value !== "";
 
 /** 1Click's signing key: the 1Click SDK's own default, which a test holds this to. */
-const ONE_CLICK_MANAGER_KEY = base58.decode("reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc");
+export const ONE_CLICK_QUOTE_SIGNER = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc";
+
+/** The 32 bytes of an `ed25519:<base58>` public key. Throws on anything else. */
+export function signerKeyBytes(key: string): Uint8Array {
+  if (!key.startsWith("ed25519:")) throw new Error("a quote signer key must start with ed25519:");
+  const bytes = base58.decode(key.slice("ed25519:".length));
+  if (bytes.length !== 32) throw new Error("a quote signer key must be 32 bytes");
+  return bytes;
+}
 
 /**
  * The SDK's verifyQuoteSignature, over the same message (the base58 SHA-256 of the signed
@@ -41,15 +51,23 @@ const ONE_CLICK_MANAGER_KEY = base58.decode("reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL1
  * capped, like a Cloudflare Worker. Tests hold the two to the same answer on real quotes
  * and on every field a tamperer would change. The vault runs the same check on chain.
  */
-export function isSignedBy1Click(raw: Parameters<typeof verifyQuoteSignature>[0]): boolean {
+export function isSignedBy(raw: Parameters<typeof verifyQuoteSignature>[0], signer: string | Uint8Array = ONE_CLICK_QUOTE_SIGNER): boolean {
   try {
+    const key = typeof signer === "string" ? signerKeyBytes(signer) : signer;
     const signature = base58.decode(raw.signature.replace(/^ed25519:/, ""));
     const hash = base58.encode(sha256(new TextEncoder().encode(signedQuotePayload(raw))));
     const message = new TextEncoder().encode(hash);
-    return ed25519.verify(signature, message, ONE_CLICK_MANAGER_KEY, { zip215: false });
+    return ed25519.verify(signature, message, key, { zip215: false });
   } catch {
     return false;
   }
+}
+
+const ONE_CLICK_KEY = signerKeyBytes(ONE_CLICK_QUOTE_SIGNER);
+
+/** isSignedBy with 1Click's own key. */
+export function isSignedBy1Click(raw: Parameters<typeof verifyQuoteSignature>[0]): boolean {
+  return isSignedBy(raw, ONE_CLICK_KEY);
 }
 
 /**
@@ -67,9 +85,9 @@ function checkEcho(raw: QuoteResponse, sent: Record<string, unknown>): void {
   }
 }
 
-function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>): Quote {
+function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>, signer: Uint8Array): Quote {
   // Checked before anything is read, so a tampered field can never be used.
-  if (!isSignedBy1Click(raw)) throw new QuoteRefusedError("the quote's signature is invalid");
+  if (!isSignedBy(raw, signer)) throw new QuoteRefusedError("the quote's signature is invalid");
   checkEcho(raw, sent);
 
   const { correlationId, timestamp, quote, quoteRequest } = raw;
@@ -105,6 +123,7 @@ function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>): Quote {
  */
 export function createOneClick(options: OneClickOptions): Intents {
   const { apiUrl, jwt, nearSenderAccount } = options;
+  const signer = options.quoteSigner === undefined ? ONE_CLICK_KEY : signerKeyBytes(options.quoteSigner);
   const now = options.now ?? (() => new Date());
   const doFetch = options.fetch ?? fetch;
 
@@ -148,7 +167,7 @@ export function createOneClick(options: OneClickOptions): Intents {
         deadline: new Date(now().getTime() + QUOTE_DEADLINE_MS).toISOString(),
       };
       const raw = await request("/v0/quote", { method: "POST", body: JSON.stringify(body) });
-      return parseQuote(raw as QuoteResponse, body);
+      return parseQuote(raw as QuoteResponse, body, signer);
     },
 
     async getStatus(depositAddress) {
