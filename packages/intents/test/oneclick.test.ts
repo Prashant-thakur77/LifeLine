@@ -81,6 +81,23 @@ describe("getQuote", () => {
     });
   });
 
+  it("asks for other assets when given them, such as a testnet sandbox's, and still checks the echo", async () => {
+    const calls: Call[] = [];
+    const sandbox = createOneClick({
+      apiUrl: "https://sandbox.test",
+      nearSenderAccount: "me.testnet",
+      originAsset: "nep141:usdc.sandbox.testnet",
+      destinationAsset: "nep141:hypercore.sandbox.testnet",
+      fetch: (async (url: string, init: RequestInit) => {
+        calls.push({ url: String(url), init });
+        return json(dry);
+      }) as typeof fetch,
+    });
+    // The recorded quote answers for mainnet's assets, so it doesn't echo this request.
+    await expect(sandbox.getQuote({ ...params, dry: true })).rejects.toThrow(/originAsset differs/);
+    expect(bodyOf(calls[0])).toMatchObject({ originAsset: "nep141:usdc.sandbox.testnet", destinationAsset: "nep141:hypercore.sandbox.testnet" });
+  });
+
   it("rejects a quote whose recipient was changed after 1Click signed it", async () => {
     const tampered = structuredClone(real);
     tampered.quoteRequest.recipient = "0x9999999999999999999999999999999999999999";
@@ -236,6 +253,23 @@ describe("another quote signer, such as a testnet sandbox's", () => {
   it("keeps createOneClick on 1Click's key when no signer is given", async () => {
     await expect(client(() => json(signedWithTestKey(dry))).oneClick.getQuote({ ...params, dry: true })).rejects.toThrow(/signature is invalid/);
     expect((await client(() => json(dry)).oneClick.getQuote({ ...params, dry: true })).quoteId).toBe(dry.correlationId);
+  });
+
+  it("reads a signed quote with no withdrawFee as a fee of 0 only when told to, and refuses it by default", async () => {
+    const { withdrawFee: _fee, ...quoteFields } = dry.quote;
+    const feeless = signedWithTestKey({ ...dry, quote: quoteFields });
+    const make = (withdrawFeeOptional?: boolean) =>
+      createOneClick({
+        apiUrl: "https://sandbox.test",
+        nearSenderAccount: "vault.team.testnet",
+        quoteSigner: testKey,
+        ...(withdrawFeeOptional === undefined ? {} : { withdrawFeeOptional }),
+        now: () => new Date("2026-11-08T15:00:00.000Z"),
+        fetch: (async () => json(feeless)) as unknown as typeof fetch,
+      });
+    expect((await make(true).getQuote({ ...params, dry: true })).withdrawFee).toBe("0");
+    await expect(make().getQuote({ ...params, dry: true })).rejects.toThrow(/missing a field/);
+    await expect(make(false).getQuote({ ...params, dry: true })).rejects.toThrow(/missing a field/);
   });
 
   it("refuses a malformed signer key when the client is made, not on the first quote", () => {

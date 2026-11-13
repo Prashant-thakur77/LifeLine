@@ -15,6 +15,11 @@ export type OneClickOptions = {
   nearSenderAccount: string; // the vault, which is what sends the deposit
   /** The key quotes must be signed with, `ed25519:…`. Default: 1Click's. */
   quoteSigner?: string;
+  /** The assets quoted. Default: NEAR USDC to Hyperliquid perps USDC on mainnet. */
+  originAsset?: string;
+  destinationAsset?: string;
+  /** Read a quote with no withdrawFee as a fee of 0, as a sandbox that prices its fee into amountOut sends. Default: refuse it. */
+  withdrawFeeOptional?: boolean;
   now?: () => Date;
   fetch?: typeof fetch;
 };
@@ -85,12 +90,13 @@ function checkEcho(raw: QuoteResponse, sent: Record<string, unknown>): void {
   }
 }
 
-function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>, signer: Uint8Array): Quote {
+function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>, signer: Uint8Array, withdrawFeeOptional: boolean): Quote {
   // Checked before anything is read, so a tampered field can never be used.
   if (!isSignedBy(raw, signer)) throw new QuoteRefusedError("the quote's signature is invalid");
   checkEcho(raw, sent);
 
-  const { correlationId, timestamp, quote, quoteRequest } = raw;
+  const { correlationId, timestamp, quoteRequest } = raw;
+  const quote = withdrawFeeOptional && raw.quote?.withdrawFee === undefined ? { ...raw.quote, withdrawFee: "0" } : raw.quote;
   const fields = [
     correlationId,
     timestamp,
@@ -122,7 +128,7 @@ function parseQuote(raw: QuoteResponse, sent: Record<string, unknown>, signer: U
  * signature and echoed request are checked before any field of it is read.
  */
 export function createOneClick(options: OneClickOptions): Intents {
-  const { apiUrl, jwt, nearSenderAccount } = options;
+  const { apiUrl, jwt, nearSenderAccount, originAsset = ASSETS.NEAR_USDC.assetId, destinationAsset = ASSETS.HYPERLIQUID_USDC.assetId } = options;
   const signer = options.quoteSigner === undefined ? ONE_CLICK_KEY : signerKeyBytes(options.quoteSigner);
   const now = options.now ?? (() => new Date());
   const doFetch = options.fetch ?? fetch;
@@ -156,9 +162,9 @@ export function createOneClick(options: OneClickOptions): Intents {
         dry,
         swapType: "EXACT_INPUT",
         slippageTolerance: MAX_QUOTE_SLIPPAGE_BPS,
-        originAsset: ASSETS.NEAR_USDC.assetId,
+        originAsset,
         depositType: "ORIGIN_CHAIN",
-        destinationAsset: ASSETS.HYPERLIQUID_USDC.assetId,
+        destinationAsset,
         amount,
         refundTo,
         refundType: "ORIGIN_CHAIN",
@@ -167,7 +173,7 @@ export function createOneClick(options: OneClickOptions): Intents {
         deadline: new Date(now().getTime() + QUOTE_DEADLINE_MS).toISOString(),
       };
       const raw = await request("/v0/quote", { method: "POST", body: JSON.stringify(body) });
-      return parseQuote(raw as QuoteResponse, body, signer);
+      return parseQuote(raw as QuoteResponse, body, signer, options.withdrawFeeOptional === true);
     },
 
     async getStatus(depositAddress) {
