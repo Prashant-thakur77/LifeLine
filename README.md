@@ -67,6 +67,7 @@ Each of these needs only Node 22 and pnpm, and no wallet, keys or funds. Clone t
 | Open https://lifeline.prashantthakur.dev/telegram?user=demo.near, get a code and tap "Open @LifeLineNearBot" | Telegram alerts for the demo account: each simulated warning and rescue as it happens, and `/status` for its health. `/unlink` stops them |
 | `pnpm demo:sim` | The real keeper rescue a pretend position opened at the live ETH price, with a real 1Click quote, the policy engine's verdict and the audit record, in under 30 seconds |
 | `pnpm demo:attack` | A hacked keeper's attacks refused by the policy engine, and a real on-chain transaction where the vault refused a redirected rescue, re-checked on a public NEAR node |
+| `pnpm demo:tidepool --dry 0xAnyAddress` | A live quote from Tidepool's testnet sandbox, NEAR testnet USDC to that address's Hyperliquid testnet perps balance, its signature and every field checked. It stops before paying; the full run is in [Proven on testnet via Tidepool](#proven-on-testnet-via-tidepool) |
 | `pnpm --filter intents live-quote 5 0xYourHyperliquidAddress` | A real 1Click quote from NEAR USDC to Hyperliquid perps USDC, its signature checked |
 | `pnpm --filter keeper attest` | The NEAR AI model's attestation verified through NVIDIA and Intel with a fresh nonce; with a NEAR AI key in `.env`, one answer's signature checked against the attested key |
 | `pnpm --filter hyperliquid live 0xAnyAddress` | Health, margin and liquidation prices for any Hyperliquid account |
@@ -86,6 +87,10 @@ Measured with `pnpm latency` on 8 November 2026, against the vault code that's d
 | The vault's `rescue` transaction, on testnet (10 samples, 2 USDC each) | 4.0 s | 45.0 s |
 
 Nine of the ten transactions took 3.7 to 6.4 s; one took 45 s waiting on the public testnet node, and with ten samples that one is the p95. After the transaction, 1Click has to swap and deliver to Hyperliquid, which its quotes estimate at 30 s. With the keeper looking every 5 s, a rescue would take about 38 s at p50 from health crossing the trigger to USDC on Hyperliquid. The 1Click part is measured on mainnet once a rescue moves real money, and `/api/stats` reports real rescues' p50 and p95 from then on.
+
+## Proven on testnet via Tidepool
+
+1Click has no testnet, so Lifeline's money path can't run end to end on NEAR testnet through 1Click itself. [Tidepool](https://www.usetidepool.tech) is a community-built sandbox with 1Click's API on NEAR testnet and quotes signed the same way; it isn't official NEAR Intents infrastructure. On 13 November 2026 the keeper's own 1Click client, pointed at Tidepool, got a signed quote, checked the signature and every field, and paid it with a real NEAR testnet deposit ([transaction](https://testnet.nearblocks.io/txns/5TcTu5rQ4yejKkkZwpwnf16zhcTpaUmMzD9AvtrcPD2T)), and the USDC landed in a Hyperliquid testnet perps balance 14.6 seconds later: 1.9922 of the 3 sent, after Hyperliquid's 1 USDC fee for a first transfer to a new address. Every link, including Hyperliquid's ledger entry, is in [research/tidepool/RESULTS.md](research/tidepool/RESULTS.md). To check it yourself, `pnpm demo:tidepool --dry 0xAnyAddress` gets and checks a live quote with no keys or funds, and `pnpm demo:tidepool` repeats the whole run with a funded testnet account in `.env`.
 
 ## Safety model
 
@@ -180,14 +185,15 @@ These are the ones we know about.
 | `apps/keeper` | The watch loop, rescues, audit log, REST API, AI explanations and attestation; runs in Node or on Cloudflare |
 | `apps/bot` | The Telegram bot: one-time linking, alerts, `/status`, `/pause` |
 | `apps/web` | The dashboard |
-| `research/backtest`, `research/latency` | The backtest and the latency measurements |
-| `scripts` | `demo:sim`, `demo:attack`, `latency` |
+| `research/backtest`, `research/latency`, `research/tidepool` | The backtest, the latency measurements and the Tidepool testnet run |
+| `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `latency` |
 
 Running it yourself:
 
 ```sh
 pnpm --filter keeper sim          # the keeper with a scripted price drop: no wallet, keys or funds
 pnpm --filter keeper live         # the real keeper: reads .env (see .env.example); mainnet also needs KEEPER_ALLOW_MAINNET=yes
+pnpm demo:tidepool                # the Tidepool testnet run: sends 3 test USDC from NEAR_TESTNET_ACCOUNT to HL_TESTNET_ADDRESS
 pnpm --filter web dev             # the dashboard at http://localhost:3000
 pnpm --filter keeper cf:dev       # the sim keeper on Cloudflare's runtime, locally
 pnpm --filter web cf:dev          # the built dashboard on Cloudflare's runtime
