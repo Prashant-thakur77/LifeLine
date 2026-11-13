@@ -19,6 +19,16 @@ A leveraged position gets liquidated when its margin runs out, even if the trade
 
 Centralised exchanges sell a fix for part of this. Binance has an Auto Top-up switch for isolated margin ([Binance](https://www.binance.com/en/support/faq/0e879254bc9440d5b06c68e97f7c31a1)), and MEXC an Auto Margin Addition for futures ([MEXC](https://www.mexc.com/learn/article/how-to-use-the-auto-margin-addition-function/1)). They work because the exchange holds the backup money. An onchain trader's backup money usually sits on another chain, in another wallet, and nothing moves it in time.
 
+## Why this is a business
+
+Onchain, the same idea already has users. In Ethereum lending, DeFi Saver says its automation defended $446.3 million of Aave V3 collateral in one selloff, with no protected position liquidated ([Crypto Briefing](https://cryptobriefing.com/defi-saver-aave-v3-liquidation-protection/)).
+
+Hyperliquid has the most open interest of any onchain perps venue ([DefiLlama](https://defillama.com/open-interest), 13 November 2026), and the October 2025 cascade wiped out over $7.4 billion of it ([The Block](https://www.theblock.co/amp/post/375347/hyperliquid-traders-double-down-after-historic-wipeout-keep-getting-liquidated)).
+
+The plan is a small fee per rescue, on top of 1Click's, charged by the vault. It isn't built yet. We'd reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume.
+
+Next: the mainnet vault, yield on the idle reserve, keeper signing inside a TEE, and more venues.
+
 ## How it works
 
 ```mermaid
