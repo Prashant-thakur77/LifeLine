@@ -1,16 +1,9 @@
 import type { Quote, SwapStatus } from "@lifeline/intents";
 import { describe, expect, it } from "vitest";
-import {
-  AMOUNT,
-  DRY_REFUND_ACCOUNT,
-  TIDEPOOL,
-  depositActions,
-  formatSummary,
-  quoteProblems,
-  readSettings,
-  waitForBalanceChange,
-  waitForFinalStatus,
-} from "../src/tidepool";
+import { formatSummary as formatRouteSummary, waitForBalanceChange, waitForFinalStatus, type Summary } from "../src/proof";
+import { AMOUNT, DRY_REFUND_ACCOUNT, TIDEPOOL, depositActions, quoteProblems, readSettings } from "../src/tidepool";
+
+const formatSummary = (s: Summary) => formatRouteSummary(TIDEPOOL, s);
 
 const HL = "0xeb53d86545691F875b0F35745899A7A1E27706a9";
 const DEPOSIT = "03cfd0be9c1e30dea1df9b68f4fb6aa7aa023efc4c8ac57d57204937898cdc6e";
