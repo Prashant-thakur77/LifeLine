@@ -8,6 +8,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "demo:sim": "tsx src/demo-sim.ts",
     "demo:attack": "tsx src/demo-attack.ts",
+    "demo:tidepool": "tsx src/demo-tidepool.ts",
     "latency": "tsx src/latency.ts"
   },
   "dependencies": {
@@ -18,7 +19,8 @@
     "@lifeline/shared": "workspace:*",
     "@noble/curves": "2.2.0",
     "@noble/hashes": "2.2.0",
-    "@scure/base": "2.2.0"
+    "@scure/base": "2.2.0",
+    "near-api-js": "7.4.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
