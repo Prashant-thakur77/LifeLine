@@ -18,10 +18,10 @@ export const Captions: React.FC<{ file: string }> = ({ file }) => {
   const page = pages.find((p) => ms >= p.startMs && ms < p.startMs + p.durationMs);
   if (!page) return null;
   return (
-    <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "center", paddingBottom: 96, pointerEvents: "none" }}>
-      <div style={{ maxWidth: 1400, textAlign: "center", fontFamily: T.font, fontWeight: 700, fontSize: 54, lineHeight: 1.25,
-        whiteSpace: "pre-wrap", WebkitTextStroke: "2.5px rgba(0,0,0,.6)", paintOrder: "stroke fill",
-        textShadow: "0 3px 10px rgba(0,0,0,.55)" }}>
+    <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "center", paddingBottom: 70, pointerEvents: "none" }}>
+      <div style={{ maxWidth: 1400, textAlign: "center", fontFamily: T.font, fontWeight: 700, fontSize: 50, lineHeight: 1.25,
+        whiteSpace: "pre-wrap", background: "rgba(11,21,51,.86)", padding: "10px 30px 12px", borderRadius: 14,
+        boxShadow: "0 10px 30px rgba(11,21,51,.35)" }}>
         {page.tokens.map((t, i) => (
           <span key={i} style={{ display: "inline-block", whiteSpace: "pre", color: ms >= t.fromMs && ms < t.toMs ? T.accent : T.fg,
             scale: ms >= t.fromMs && ms < t.toMs ? "1.08" : "1" }}>{t.text}</span>

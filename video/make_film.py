@@ -11,12 +11,15 @@ import json, os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-TL_PATH = os.path.join(HERE, "narration/timeline.json")
+# VARIANT=full builds the long cut (film-full/), with the extra beats below; the default is the 2:20 cut for X.
+FULL = os.environ.get("VARIANT") == "full"
+SUFFIX = "_full" if FULL else ""
+TL_PATH = os.path.join(HERE, f"narration{SUFFIX}/timeline.json")
 TL = json.load(open(TL_PATH)) if os.path.exists(TL_PATH) else None
-NARR = {l["id"]: l for l in json.load(open(os.path.join(HERE, "narration.json")))}
+NARR = {l["id"]: l for l in json.load(open(os.path.join(HERE, f"narration{SUFFIX}.json")))}
 lines = {l["id"]: l for l in TL["lines"]} if TL else {}
 scene_start = {s["id"]: s["start"] for s in TL["scenes"]} if TL else {}
-FILM = os.path.join(HERE, "film/film.json")
+FILM = os.path.join(HERE, "film-full/film.json" if FULL else "film/film.json")
 old = {s["id"]: s for s in json.load(open(FILM))["scenes"]} if os.path.exists(FILM) else {}
 
 
@@ -89,6 +92,55 @@ scenes = [
     {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
      "links": ["lifeline.prashantthakur.dev", "/attack", "/verify"], "duration": 4.5},
 ]
+if FULL:
+    import datetime
+    CAP = os.path.join(HERE, "film/public/captures")
+    rc = json.load(open(os.path.join(HERE, "film/public/data/rescues.json")))
+    rows = [{"at": datetime.datetime.fromtimestamp(int(r["at"]) / 1e9, datetime.timezone.utc).strftime("%d %b %Y %H:%M UTC"),
+             "amount": f"{int(r['amount']) / 1e6:.2f} USDC", "quote": r["quote_id"], "deposit": r["deposit_address"]} for r in rc["rescues"]][::-1]
+    t1 = [e["t"] for e in json.load(open(os.path.join(CAP, "T1.events.json")))["events"] if e["type"] == "click"]
+    FLASH = float(re.search(r"those become [\d.]+%, ([\d.]+)%", bt).group(1))
+    readme = open(os.path.join(REPO, "README.md")).read()
+    TS = re.search(r"\| ([\d,]+) TypeScript, (\d+) vault unit, (\d+) vault sandbox", readme)
+    connected = os.path.exists(os.path.join(CAP, "C1.mp4"))
+    extra = {
+        "rules": [{"id": "owner", "type": "screen", "src": "captures/C1.mp4" if connected else "captures/S1.mp4", "trimBefore": 1.0 if connected else 4.0, "full": True, "ground": "paper",
+                   "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 200, "y": 160, "w": 1400, "h": 788}}],
+                   "label": {"text": "testnet dashboard · wallet connected · the policy, read from the vault" if connected else f"{LIVE}/start · your policy, signed by your wallet"}}],
+        "wake": [{"id": "history", "type": "chainlist", "user": rc["user"], "vault": rc["vault"], "count": rc["count"], "rows": rows, "drift": False,
+                  "label": {"text": "real rescues on NEAR testnet · read live from the vault"}}],
+        "verify": [{"id": "aiproof", "type": "screen", "src": "captures/T2.mp4", "trimBefore": 17.6, "full": True, "ground": "paper",
+                    "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 260, "y": 150, "w": 1160, "h": 652}}], "label": {"text": f"{LIVE}/verify · NEAR AI Cloud, checked in your browser"}}],
+        "proof": [{"id": "stress", "type": "proof", "ground": "night", "title": "One-minute crash test", "metric": "every adverse move within one minute", "unit": "%", "better": "lower",
+                   "rows": [{"label": "No protection", "value": NO_PROT}, {"label": "With Lifeline", "value": FLASH, "ours": True}],
+                   "footnote": "same positions · each 4h candle's move squeezed into one minute · research/backtest", "min": 6},
+                  {"id": "tests", "type": "kinetic", "kicker": "pnpm test · CI on every pull request", "lines": [f"{TS.group(1)} TypeScript tests", f"{int(TS.group(2)) + int(TS.group(3))} contract tests"], "emphasis": [TS.group(1)]}],
+    }
+    before = {
+        "arch": [{"id": "compare", "type": "board", "mode": "compare", "kicker": "WHY LIFELINE", "title": "Not another exchange switch",
+                  "left": "EXCHANGE AUTO TOP-UP", "right": "LIFELINE",
+                  "rows": [{"left": "Inside one exchange", "right": "Your own wallet, funded from any chain"},
+                           {"left": "Isolated margin only", "right": "Protects your cross-margin account"},
+                           {"left": "You trust the exchange", "right": "Even our keeper can't take the money"}],
+                  "start": 1.4, "each": 2.6},
+                 {"id": "near", "type": "board", "mode": "pillars", "kicker": "WHY NEAR", "title": "It only works on NEAR",
+                  "cards": [{"name": "NEAR Intents", "does": "move the money from any chain in one step"},
+                            {"name": "Function-call key", "does": "the keeper can call rescue, and nothing else"},
+                            {"name": "On-chain checks", "does": "the vault verifies 1Click's signature itself"},
+                            {"name": "NEAR AI", "does": "explains every rescue from verified hardware"}],
+                  "start": 1.6, "each": 2.6}],
+    }
+    out = []
+    for sc in scenes:
+        out += before.get(sc["id"], [])
+        out.append(sc)
+        out += extra.get(sc["id"], [])
+    scenes = out
+    if os.path.exists(os.path.join(CAP, "C2.mp4")):
+        for sc in scenes:
+            if sc["id"] == "fund":
+                sc.update({"src": "captures/C2.mp4", "trimBefore": 1.0, "label": {"text": "testnet dashboard · wallet connected · reserve read from the vault"}})
+
 for s in scenes:
     s.setdefault("duration", old.get(s["id"], {}).get("duration", 5.0))
     if s["type"] == "sea":
@@ -101,10 +153,12 @@ film = {
     "fps": 30, "width": 1920, "height": 1080,
     "theme": {"bg": "#0a1230", "surface": "#142257", "fg": "#fff7ea", "muted": "#b7c2e6", "accent": "#ff5a1f", "accent2": "#ffc93c",
               "good": "#19c79a", "bad": "#e5243b"},
-    "captions": "captions/captions.json" if os.path.exists(os.path.join(HERE, "film/public/captions/captions.json")) else None,
+    "captions": (f"captions{SUFFIX}/captions.json" if os.path.exists(os.path.join(HERE, ("film-full" if FULL else "film") + f"/public/captions{SUFFIX}/captions.json")) else None),
     "scenes": scenes,
 }
 if film["captions"] is None:
     del film["captions"]
+if os.path.exists(FILM):
+    os.remove(FILM)  # film-full is hard-linked from film: never write through a shared file
 json.dump(film, open(FILM, "w"), indent=1, ensure_ascii=False)
 print(len(scenes), "scenes,", round(sum(s["duration"] for s in scenes), 1), "s")

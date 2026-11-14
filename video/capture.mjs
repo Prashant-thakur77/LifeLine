@@ -89,10 +89,15 @@ for (const shot of cfg.shots) {
   if (only && !only.includes(shot.id)) continue;
   // dpr lets a 1536x864 desktop layout fill exactly 1920x1080 ("viewport": [1920,1080], "dpr": 1.25)
   const dpr = cfg.dpr || 1;
-  const ctx = await browser.newContext({ viewport: { width: Math.round(W / dpr), height: Math.round(H / dpr) }, deviceScaleFactor: dpr,
-    colorScheme: cfg.colorScheme || "dark", reducedMotion: "no-preference" });
+  const ctxOpts = { viewport: { width: Math.round(W / dpr), height: Math.round(H / dpr) }, deviceScaleFactor: dpr,
+    colorScheme: cfg.colorScheme || "dark", reducedMotion: "no-preference" };
+  // "profile": a saved browser profile (e.g. with a wallet already connected by hand) for every shot of this file.
+  const ctx = cfg.profile
+    ? await chromium.launchPersistentContext(path.resolve(cfg.profile), { ...ctxOpts, headless: !process.argv.includes("--headed"),
+        executablePath: process.env.CHROME_PATH || undefined, args: ["--use-angle=gl", "--enable-gpu", "--ignore-gpu-blocklist", "--hide-scrollbars"] })
+    : await browser.newContext(ctxOpts);
   await ctx.addInitScript(CURSOR);
-  const page = await ctx.newPage();
+  const page = cfg.profile ? (ctx.pages()[0] ?? (await ctx.newPage())) : await ctx.newPage();
   const cdp = await ctx.newCDPSession(page);
   const dir = path.join(OUT, `${shot.id}_frames`);
   fs.rmSync(dir, { recursive: true, force: true });

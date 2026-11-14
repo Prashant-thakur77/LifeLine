@@ -1,0 +1,81 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Cap,Inter,64,&H00D4EA5E,&H00FFFFFF,&H66000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,2,2,120,120,110,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.49,Cap,,0,0,0,,{\k76}Three {\k12}in {\k12}the {\k34}morning.
+Dialogue: 0,0:00:02.14,0:00:04.01,Cap,,0,0,0,,{\k10}Your {\k50}Hyperliquid {\k58}position {\k24}is {\k30}minutes
+Dialogue: 0,0:00:03.86,0:00:05.03,Cap,,0,0,0,,{\k34}from {\k68}liquidation,
+Dialogue: 0,0:00:04.88,0:00:06.07,Cap,,0,0,0,,{\k48}and {\k22}you're {\k34}asleep.
+Dialogue: 0,0:00:07.22,0:00:09.33,Cap,,0,0,0,,{\k22}It {\k32}happens {\k28}to {\k30}traders {\k48}every {\k36}day.
+Dialogue: 0,0:00:09.90,0:00:11.49,Cap,,0,0,0,,{\k14}In {\k22}one {\k46}October {\k62}cascade,
+Dialogue: 0,0:00:11.90,0:00:13.84,Cap,,0,0,0,,{\k22}over {\k36}seven {\k36}point {\k36}four {\k44}billion {\k5}dollars
+Dialogue: 0,0:00:13.64,0:00:16.83,Cap,,0,0,0,,{\k80}of {\k58}Hyperliquid {\k58}positions {\k32}were {\k24}wiped {\k52}out.
+Dialogue: 0,0:00:18.36,0:00:18.99,Cap,,0,0,0,,{\k48}Lifeline,
+Dialogue: 0,0:00:19.26,0:00:20.15,Cap,,0,0,0,,{\k20}built {\k32}on {\k22}NEAR,
+Dialogue: 0,0:00:20.40,0:00:21.15,Cap,,0,0,0,,{\k16}stops {\k44}that.
+Dialogue: 0,0:00:21.70,0:00:24.03,Cap,,0,0,0,,{\k18}It {\k28}watches {\k28}your {\k36}account {\k38}every {\k30}five {\k40}seconds,
+Dialogue: 0,0:00:23.88,0:00:25.95,Cap,,0,0,0,,{\k64}and {\k28}tops {\k18}up {\k18}your {\k34}margin {\k30}from
+Dialogue: 0,0:00:25.80,0:00:27.49,Cap,,0,0,0,,{\k16}a {\k28}reserve {\k28}you {\k26}fund {\k22}from {\k34}any
+Dialogue: 0,0:00:27.34,0:00:28.93,Cap,,0,0,0,,{\k32}chain {\k32}through {\k22}NEAR {\k58}Intents.
+Dialogue: 0,0:00:30.32,0:00:32.55,Cap,,0,0,0,,{\k12}NEAR {\k64}Intents {\k50}swaps {\k26}your {\k30}funds {\k26}from
+Dialogue: 0,0:00:32.40,0:00:34.95,Cap,,0,0,0,,{\k32}any {\k34}chain {\k32}into {\k82}USDC {\k36}on {\k24}NEAR,
+Dialogue: 0,0:00:34.80,0:00:36.75,Cap,,0,0,0,,{\k58}and {\k14}you {\k32}deposit {\k34}it {\k24}into {\k18}the
+Dialogue: 0,0:00:36.60,0:00:37.45,Cap,,0,0,0,,{\k42}Lifeline {\k28}vault.
+Dialogue: 0,0:00:39.16,0:00:40.27,Cap,,0,0,0,,{\k12}Then {\k26}set {\k20}your {\k38}rules:
+Dialogue: 0,0:00:40.74,0:00:41.69,Cap,,0,0,0,,{\k8}when {\k18}to {\k22}warn {\k32}you,
+Dialogue: 0,0:00:41.74,0:00:42.63,Cap,,0,0,0,,{\k22}when {\k18}to {\k34}rescue,
+Dialogue: 0,0:00:43.00,0:00:43.89,Cap,,0,0,0,,{\k16}and {\k24}how {\k34}much.
+Dialogue: 0,0:00:45.34,0:00:47.13,Cap,,0,0,0,,{\k16}The {\k22}keeper {\k38}reads {\k18}your {\k26}health {\k44}every
+Dialogue: 0,0:00:46.98,0:00:47.89,Cap,,0,0,0,,{\k32}five {\k44}seconds.
+Dialogue: 0,0:00:48.46,0:00:49.13,Cap,,0,0,0,,{\k16}At {\k36}one,
+Dialogue: 0,0:00:49.26,0:00:50.21,Cap,,0,0,0,,{\k22}you're {\k58}liquidated.
+Dialogue: 0,0:00:51.46,0:00:52.47,Cap,,0,0,0,,{\k24}Below {\k28}your {\k34}trigger,
+Dialogue: 0,0:00:52.66,0:00:54.81,Cap,,0,0,0,,{\k18}it {\k16}gets {\k16}a {\k30}signed {\k32}quote {\k30}from {\k58}1Click,
+Dialogue: 0,0:00:54.66,0:00:56.61,Cap,,0,0,0,,{\k62}and {\k12}the {\k22}vault {\k26}pays {\k22}it {\k36}straight
+Dialogue: 0,0:00:56.46,0:00:58.17,Cap,,0,0,0,,{\k32}into {\k24}your {\k50}Hyperliquid {\k50}margin.
+Dialogue: 0,0:00:59.64,0:01:00.61,Cap,,0,0,0,,{\k30}On {\k52}testnet,
+Dialogue: 0,0:01:00.86,0:01:03.03,Cap,,0,0,0,,{\k14}that {\k18}money {\k36}reached {\k66}Hyperliquid {\k40}in {\k28}under
+Dialogue: 0,0:01:02.88,0:01:04.09,Cap,,0,0,0,,{\k44}fifteen {\k62}seconds.
+Dialogue: 0,0:01:05.34,0:01:06.75,Cap,,0,0,0,,{\k20}You {\k22}wake {\k20}up {\k20}to {\k12}a {\k32}message
+Dialogue: 0,0:01:06.60,0:01:07.69,Cap,,0,0,0,,{\k52}explaining {\k42}it.
+Dialogue: 0,0:01:07.96,0:01:09.83,Cap,,0,0,0,,{\k26}Every {\k34}step {\k20}is {\k14}on {\k12}a {\k30}public {\k36}ledger.
+Dialogue: 0,0:01:11.00,0:01:12.77,Cap,,0,0,0,,{\k22}A {\k18}bot {\k22}that {\k26}moves {\k34}money {\k40}is
+Dialogue: 0,0:01:12.62,0:01:13.29,Cap,,0,0,0,,{\k16}a {\k36}target.
+Dialogue: 0,0:01:13.58,0:01:15.67,Cap,,0,0,0,,{\k48}So {\k38}we {\k32}assume {\k22}it {\k20}gets {\k34}hacked.
+Dialogue: 0,0:01:17.00,0:01:18.25,Cap,,0,0,0,,{\k28}On {\k12}the {\k26}attack {\k44}page,
+Dialogue: 0,0:01:18.62,0:01:20.29,Cap,,0,0,0,,{\k16}anyone {\k34}can {\k22}play {\k14}a {\k26}hacked {\k40}keeper
+Dialogue: 0,0:01:20.14,0:01:21.39,Cap,,0,0,0,,{\k36}holding {\k20}the {\k20}real {\k34}key.
+Dialogue: 0,0:01:21.78,0:01:23.11,Cap,,0,0,0,,{\k18}It {\k22}tries {\k20}to {\k18}pay {\k40}itself.
+Dialogue: 0,0:01:24.10,0:01:25.65,Cap,,0,0,0,,{\k68}The {\k20}vault {\k52}refuses,
+Dialogue: 0,0:01:26.00,0:01:26.59,Cap,,0,0,0,,{\k8}on {\k36}chain.
+Dialogue: 0,0:01:27.54,0:01:28.97,Cap,,0,0,0,,{\k8}The {\k20}key {\k20}can {\k20}only {\k22}call {\k38}rescue,
+Dialogue: 0,0:01:29.24,0:01:31.27,Cap,,0,0,0,,{\k12}and {\k10}the {\k24}vault {\k28}checks {\k40}every {\k22}quote {\k52}itself.
+Dialogue: 0,0:01:32.94,0:01:34.09,Cap,,0,0,0,,{\k10}Edit {\k16}a {\k32}signed {\k42}quote.
+Dialogue: 0,0:01:34.52,0:01:35.91,Cap,,0,0,0,,{\k18}Take {\k38}more {\k26}than {\k12}the {\k30}cap.
+Dialogue: 0,0:01:36.30,0:01:37.57,Cap,,0,0,0,,{\k38}Replay {\k22}an {\k20}old {\k32}one.
+Dialogue: 0,0:01:38.14,0:01:38.83,Cap,,0,0,0,,{\k20}Seven {\k34}tricks,
+Dialogue: 0,0:01:39.26,0:01:40.31,Cap,,0,0,0,,{\k24}seven {\k66}refusals.
+Dialogue: 0,0:01:41.50,0:01:42.67,Cap,,0,0,0,,{\k46}Don't {\k14}trust {\k42}us:
+Dialogue: 0,0:01:42.92,0:01:45.09,Cap,,0,0,0,,{\k24}the {\k24}verify {\k54}page {\k34}checks {\k38}every {\k28}claim
+Dialogue: 0,0:01:44.94,0:01:45.77,Cap,,0,0,0,,{\k14}in {\k14}your {\k40}browser,
+Dialogue: 0,0:01:46.20,0:01:48.51,Cap,,0,0,0,,{\k22}even {\k34}each {\k42}AI {\k52}explanation's {\k66}signature.
+Dialogue: 0,0:01:49.40,0:01:50.73,Cap,,0,0,0,,{\k72}Under {\k22}the {\k24}hood:
+Dialogue: 0,0:01:50.96,0:01:52.85,Cap,,0,0,0,,{\k16}a {\k66}sixteen-rule {\k48}policy {\k44}engine,
+Dialogue: 0,0:01:53.26,0:01:54.71,Cap,,0,0,0,,{\k4}a {\k28}Rust {\k24}vault {\k44}on {\k30}NEAR,
+Dialogue: 0,0:01:54.90,0:01:56.57,Cap,,0,0,0,,{\k30}NEAR {\k52}Intents {\k34}for {\k10}the {\k26}money,
+Dialogue: 0,0:01:57.00,0:01:58.61,Cap,,0,0,0,,{\k6}and {\k24}NEAR {\k30}AI {\k40}for {\k12}the {\k34}words.
+Dialogue: 0,0:02:00.24,0:02:02.63,Cap,,0,0,0,,{\k30}On {\k49}eighteen {\k49}thousand {\k42}replayed {\k54}positions,
+Dialogue: 0,0:02:03.18,0:02:04.95,Cap,,0,0,0,,{\k40}thirty-four {\k40}percent {\k26}were {\k56}liquidated
+Dialogue: 0,0:02:04.80,0:02:05.89,Cap,,0,0,0,,{\k36}without {\k58}protection.
+Dialogue: 0,0:02:06.26,0:02:07.29,Cap,,0,0,0,,{\k30}With {\k58}Lifeline,
+Dialogue: 0,0:02:07.46,0:02:09.75,Cap,,0,0,0,,{\k71}twenty {\k72}point {\k72}six.
+Dialogue: 0,0:02:09.60,0:02:10.97,Cap,,0,0,0,,{\k72}Three {\k12}in {\k12}the {\k26}morning.
+Dialogue: 0,0:02:11.34,0:02:12.17,Cap,,0,0,0,,{\k30}You're {\k38}asleep.
+Dialogue: 0,0:02:12.56,0:02:14.23,Cap,,0,0,0,,{\k14}And {\k14}your {\k36}position {\k24}is {\k24}still {\k40}open.

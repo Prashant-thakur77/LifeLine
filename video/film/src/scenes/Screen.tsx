@@ -67,8 +67,10 @@ export const Screen: React.FC<{
   const FY = kf.length > 1 ? interp(f, ts, kf.map((p) => p.y)) : H / 2;
   const S2 = kf.length > 1 ? interp(f + 1, ts, kf.map((p) => p.s)) : 1;
   const blur = Math.min(3, Math.abs(S2 - S) * 60);
-  const tx = S === 1 && FX === W / 2 ? 0 : C[0] - S * FX;
-  const ty = S === 1 && FY === H / 2 ? 0 : C[1] - S * FY;
+  // Never pan past the recording's edge: a zoom near the bottom would otherwise show empty space below the page.
+  const clampT = (v: number, size: number) => (full ? Math.min(0, Math.max(size - S * size, v)) : v);
+  const tx = S === 1 && FX === W / 2 ? 0 : clampT(C[0] - S * FX, W);
+  const ty = S === 1 && FY === H / 2 ? 0 : clampT(C[1] - S * FY, H);
 
   const enter = ramp(f, 0, Math.round(fps * 0.6));
   return (

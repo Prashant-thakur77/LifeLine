@@ -42,6 +42,8 @@ export type Scene = Base &
     | { type: "montage"; items: { src: string; from: number; line: string; at: number; zoom?: [number, number] }[] }
     | ({ type: "sea" } & Omit<import("./scenes/Sea").SeaProps, "dur">)
     | { type: "trickwall"; items: { title: string; answer: string }[]; start?: number; each?: number }
+    | ({ type: "board" } & Omit<import("./scenes/Board").BoardProps, "dur">)
+    | ({ type: "chainlist" } & Omit<import("./scenes/ChainList").ChainListProps, "dur">)
   );
 
 export type Film = {

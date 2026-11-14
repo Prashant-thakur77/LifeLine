@@ -1,0 +1,35 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/3_g8996whd9hi.js"
+3:"/_next/static/chunks/3rrb7y4lx-9zi.js"
+4:I[89440,["$2","$3"],"WalletProvider"]
+5:I[23923,["$2","$3"],"Header"]
+6:I[91383,["$2","$3"],"default"]
+7:I[41174,["$2","$3"],"default"]
+8:"/_next/static/chunks/1migujzibufwl.js"
+9:I[55323,["$2","$3","$8"],"ButtonLink"]
+a:I[23923,["$2","$3"],"Footer"]
+11:"$Sreact.suspense"
+12:I[55323,["$2","$3","$8"],"Skeleton"]
+13:I[38715,["$2","$3","$8"],"PositionView"]
+14:I[20044,["$2","$3"],"OutletBoundary"]
+17:"ViewportBoundary"
+18:I[20044,["$2","$3"],"$17"]
+19:"MetadataBoundary"
+1a:I[20044,["$2","$3"],"$19"]
+1b:I[57098,["$2","$3"],"IconMark"]
+:HL["/_next/static/chunks/3iq4eg0w8hnc6.css","style"]
+c:X
+f:X
+f:C
+10:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","$11",null,{"fallback":["$","div",null,{"className":"flex flex-col gap-4","aria-busy":true,"children":[["$","$L12",null,{"className":"h-4 w-24"}],["$","$L12",null,{"className":"h-10 w-72 max-w-full"}],["$","$L12",null,{"className":"mt-4 h-72"}]]}],"children":["$","$L13",null,{}]}],[["$","script","script-0",{"src":"/_next/static/chunks/1migujzibufwl.js","async":true}]],["$","$L14",null,{"children":["$","$11",null,{"name":"Next.MetadataOutlet","children":"$@15"}]}]]}],"p":"$@16","v":null,"s":"$c"}}]]
+d:[["children",{"s":"position","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L6",null,{"parallelRouterKey":"children","template":["$","$L7",null,{}]}]]}],"p":"$@e","v":"$f","s":"$c"},"c":"$Q10"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/3iq4eg0w8hnc6.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/3_g8996whd9hi.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/3rrb7y4lx-9zi.js","async":true}]],["$","html",null,{"lang":"en","className":"iX1fDW_variable WU9wEq_variable _0VTLG_variable","children":["$","body",null,{"children":[["$","a",null,{"href":"#main","className":"sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:bg-paper focus:px-3 focus:py-2 focus:text-[14px] focus:font-semibold focus:text-ink","children":"Skip to content"}],["$","$L4",null,{"children":[["$","$L5",null,{}],["$","main",null,{"id":"main","className":"mx-auto min-h-[calc(100svh-64px)] w-full max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12","children":["$","$L6",null,{"parallelRouterKey":"children","template":["$","div",null,{"className":"page-in","children":["$","$L7",null,{}]}],"templateStyles":[],"templateScripts":null,"notFound":[["$","div",null,{"className":"flex flex-col items-start gap-4 py-16","children":[["$","p",null,{"className":"num text-[13px] text-rescue-ink","children":"404"}],["$","h1",null,{"className":"font-display text-[34px] text-ink","children":"Nothing here"}],["$","p",null,{"className":"max-w-md text-[15px] text-body","children":"This page doesn't exist. The live demo and the public ledger are a click away."}],["$","div",null,{"className":"flex flex-col gap-2 sm:flex-row","children":[["$","$L9",null,{"href":"/position?user=demo.near","variant":"primary","children":"Watch the live demo"}],["$","$L9",null,{"href":"/","children":"Home"}]]}]]}],[]]}]}],["$","$La",null,{}]]}]]}]}]]}],"p":"$@b","v":null,"s":"$c"},"c":"$Qd"},"h":{"r":["$","$1","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#fff7ea"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$11",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Position · Lifeline"}],["$","meta","1",{"name":"description","content":"Lifeline watches your Hyperliquid margin every 5 seconds and tops it up from a reserve you fund from any chain, before liquidation. The vault only ever pays your own Hyperliquid address."}],["$","meta","2",{"name":"application-name","content":"Lifeline"}],["$","link","3",{"rel":"icon","href":"/icon.svg?icon.0eab5lvq5fk1q.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1b","4",{}]]}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":"$@1c","v":null,"s":"$c"}},"a":"$@1d","u":"$@1e","b":"tcmRFVmgsW2RU9Vox_TBx"}
+15:null
+c:300
+1e:true
+c:C
+1d:0
+e:"$undefined"
+b:"$undefined"
+1c:"$undefined"
+16:"$undefined"

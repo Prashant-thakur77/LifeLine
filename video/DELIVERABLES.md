@@ -4,8 +4,9 @@ Two films, both built from code in this folder:
 
 | File | Length | Use |
 | --- | --- | --- |
-| `final.mp4` (1080p) / `final_720p.mp4` | 2:20 | The demo film. Attach it to the X post (the hackathon's required demo post). Fits X's 2:20 limit for standard accounts |
-| `final_tech.mp4` (1080p) / `final_tech_720p.mp4` | about 3:20 | The technical walkthrough. Upload to YouTube (unlisted or public) and link it from the post and the README |
+| `final_full.mp4` | 3:33 | The main film: problem, solution, real testnet activity, the attack lab, how it differs, why NEAR, the numbers. Use it on X if the posting account has X Premium, and on YouTube |
+| `final.mp4` | 2:19 | The same story cut to fit a standard X account's 2:20 upload limit |
+| `final_tech.mp4` | 3:36 | The technical walkthrough, for YouTube, with chapters in `chapters_tech.txt` |
 
 Captions are burned into both, because most people watch muted on X.
 
