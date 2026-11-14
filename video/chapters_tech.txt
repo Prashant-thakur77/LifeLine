@@ -7,7 +7,7 @@
 1:30 The attack lab, live
 1:58 Check it yourself, and the reproducible build
 2:15 NEAR AI, signed and attested
-2:30 Testnet money path
-2:43 Under the hood
-2:54 Backtest
-3:13 Tests
+2:30 Real money on mainnet
+2:50 Under the hood
+3:01 Backtest
+3:21 Tests
