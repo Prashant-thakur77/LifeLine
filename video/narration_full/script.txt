@@ -1,7 +1,7 @@
-Three in the morning. Your Hyperliquid position is minutes from liquidation, and you're asleep.
-It happens to traders every day. In one October cascade, over seven point four billion dollars of Hyperliquid positions were wiped out.
-Lifeline, built on NEAR, stops that. It watches your account every five seconds, and tops up your margin from a reserve you fund from any chain through NEAR Intents.
-And it's proven on NEAR mainnet: real money moved from NEAR into a Hyperliquid perps balance in under a minute.
+Hi, I'm Prashant. If you trade perps on Hyperliquid, you know this fear. The price moves at three in the morning, and you wake up liquidated, even though you had money sitting on another chain.
+One October cascade: over $7.4 billion of Hyperliquid positions were wiped out. And so that's why we built Lifeline, on NEAR.
+Lifeline watches your account every five seconds, and when it gets close to liquidation, it tops up your margin from a reserve you funded from any chain, through NEAR Intents.
+And this isn't a mockup. We ran it on NEAR mainnet with real money, and it landed in a Hyperliquid account in under a minute.
 Hyperliquid's own explorer shows the payout, from 1Click to our account.
 NEAR Intents swaps your funds from any chain into USDC on NEAR, and you deposit it into the Lifeline vault.
 Then set your rules: when to warn you, when to rescue, and how much.
@@ -10,16 +10,16 @@ The keeper reads your health every five seconds. At one, you're liquidated.
 Below your trigger, it gets a signed quote from 1Click, and the vault pays it straight into your Hyperliquid margin.
 You wake up to a message explaining it. Every step is on a public ledger.
 This test account has thirty-four real rescues on NEAR testnet, and each one is a transaction you can open.
-A bot that moves money is a target. So we assume it gets hacked.
+The hard part isn't moving money. It's making sure a bot that can move your money can't steal it. So that's why we built Lifeline assuming the bot gets hacked.
 On the attack page, anyone can play a hacked keeper holding the real key. It tries to pay itself.
 The vault refuses, on chain. The key can only call rescue, and the vault checks every quote itself.
 Edit a signed quote. Take more than the cap. Replay an old one. Seven tricks, seven refusals.
 Don't trust us: the verify page checks every claim in your browser, even each AI explanation's signature.
-Each AI explanation is signed inside a verified enclave, and your browser checks it against a fresh hardware report from Intel.
-Centralised exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even our own keeper can take the money.
+Exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even your own keeper can take your money.
 And it needs NEAR. Intents move the money from any chain in one step. A function-call key lets the keeper call rescue and nothing else. The vault checks 1Click's signature on chain. And NEAR AI explains every rescue from verified hardware.
-Under the hood: a sixteen-rule policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words.
+Under the hood: the keeper's sixteen-rule policy engine sees your health fall, and its only key can call rescue. The Rust vault on NEAR checks 1Click's signature on chain, then NEAR Intents moves the USDC into your margin. A hacked keeper gets refused, and NEAR AI explains every rescue.
 On eighteen thousand replayed positions, thirty-four percent were liquidated without protection. With Lifeline, twenty point six.
-Even in a harsher test, where every crash lands within one minute, liquidations still fell, to twenty-nine point one percent.
-Fifteen hundred and nineteen TypeScript tests and sixty-two contract tests run on every change.
+Fifteen hundred and thirty-five TypeScript tests and sixty-two contract tests run on every change.
 Three in the morning. You're asleep. And your position is still open.
+Lifeline. Topped up before liquidation, live on NEAR mainnet. Go to lifeline.prashantthakur.dev/attack, try to rob the vault, and tell us which attack you'd try first.
+This is just the start. Follow us on X to be part of the journey. We are live on mainnet, so try us out.

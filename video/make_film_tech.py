@@ -105,7 +105,7 @@ scenes = [
     {"id": "t_tests", "type": "kinetic", "kicker": "pnpm test · CI on every pull request", "lines": [f"{TS.group(1)} TypeScript tests", f"{int(TS.group(2)) + int(TS.group(3))} contract tests"], "emphasis": [TS.group(1)]},
     {"id": "t_close", "type": "sea", "mode": "calm", "sky": "night", "from": 2.01, "to": 2.01, "clock": "3:12", "waterIn": True, "min": 6},
     {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Proven on NEAR mainnet.",
-     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify"], "duration": 4.5},
+     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify", "Follow @LifelineNear on X"], "duration": 4.5},
 ]
 for s in scenes:
     s.setdefault("duration", old.get(s["id"], {}).get("duration", 6.0))
