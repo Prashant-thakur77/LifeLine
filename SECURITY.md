@@ -9,6 +9,12 @@ Lifeline is designed on the assumption that its own keeper gets hacked. The [saf
 - Caps per rescue and per 24 hours, a cooldown, and single-use deposit addresses hold even against a hacked keeper.
 - The user can pause rescues or withdraw the whole reserve at any time.
 
+What these guarantees rest on:
+
+- The vault pays the 1Click deposit address named in the signed quote. Delivery from there to Hyperliquid is 1Click's job.
+- The testnet vault trusts a team key to sign quotes in 1Click's place, because 1Click has no testnet. A mainnet vault is deployed trusting 1Click's own key ([docs/mainnet.md](docs/mainnet.md)); `get_config` shows which key a vault trusts.
+- The vault account keeps its full-access key, so the team could deploy different code. The verify page shows whether that key still exists, and deleting it after an audit is on the [roadmap](ROADMAP.md).
+
 ## Check it yourself
 
 - Try to rob the testnet vault: https://lifeline.prashantthakur.dev/attack
