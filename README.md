@@ -7,6 +7,7 @@
 [![Vault](https://img.shields.io/badge/vault-NEAR%20mainnet%20and%20testnet-00C08B)](https://nearblocks.io/address/vault.lifeline-hq.near)
 [![First mainnet rescue](https://img.shields.io/badge/first%20mainnet%20rescue-48.6%20s%20to%20Hyperliquid-00C08B)](research/mainnet/RESCUE.md)
 [![Demo](https://img.shields.io/badge/live%20demo-lifeline.prashantthakur.dev-ff5a1f)](https://lifeline.prashantthakur.dev)
+[![Demo film](https://img.shields.io/badge/demo%20film-YouTube-red)](https://youtu.be/TEpRwWO4cIc)
 [![Built at NEAR HACKATHON](https://img.shields.io/badge/built%20at-NEAR%20HACKATHON-black)](https://nearhackathon.com)
 
 [![Lifeline: topped up before liquidation](video/thumbnail.png)](https://lifeline.prashantthakur.dev)
@@ -15,6 +16,7 @@ Auto top-up for onchain perps, funded from any chain.
 
 Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their account health falls below a line they chose, it sends USDC from a reserve they hold in a NEAR contract, through NEAR Intents, into their Hyperliquid perps balance, before liquidation gets close. The reserve can be funded from Ethereum, Solana, Base, Bitcoin and the other chains 1Click supports.
 
+- Demo film (3:43): https://youtu.be/TEpRwWO4cIc
 - Dashboard: https://lifeline.prashantthakur.dev (no wallet needed to watch the live demo)
 - Attack lab: https://lifeline.prashantthakur.dev/attack (send the testnet vault a hacked keeper's rescue and watch it refuse)
 - Verify page: https://lifeline.prashantthakur.dev/verify (the on-chain and attestation claims, checked in your browser)
@@ -92,7 +94,7 @@ Three films, each built entirely from code in [video/](video/): the narration, t
 
 | Film | Length | What it shows |
 | --- | --- | --- |
-| Full demo | 3:43 | Prashant on camera with the problem, then the product, the vault's first mainnet rescue (48.6 s, read from research/mainnet/RESCUE.md), real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
+| [Full demo](https://youtu.be/TEpRwWO4cIc) | 3:43 | Prashant on camera with the problem, then the product, the vault's first mainnet rescue (48.6 s, read from research/mainnet/RESCUE.md), real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
 | Short demo | 2:19 | The same story, cut for a standard X upload |
 | Technical walkthrough | 3:44 | Health and rescue sizing, the policy engine, the vault's on-chain checks in its real Rust code, the rescue-only key, live attacks, the reproducible build, NEAR AI's signed answers, the mainnet run, the backtest and the tests |
 
