@@ -1,0 +1,149 @@
+{
+ "base": "https://lifeline.prashantthakur.dev",
+ "viewport": [
+  1920,
+  1080
+ ],
+ "dpr": 1.25,
+ "colorScheme": "light",
+ "out": "film/public/captures",
+ "shots": [
+  {
+   "id": "T1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/attack"
+    },
+    {
+     "hold": 3000
+    },
+    {
+     "scroll": 640
+    },
+    {
+     "hold": 1500
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Pay itself\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Pay itself\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Pay the attacker\\'s Hyperliquid\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Pay the attacker\\'s Hyperliquid\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Edit a signed quote\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Edit a signed quote\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "scroll": 440
+    },
+    {
+     "hold": 800
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Take more than the cap\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Take more than the cap\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Replay an old quote\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Replay an old quote\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Keep the refund\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Keep the refund\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "scroll": 380
+    },
+    {
+     "hold": 800
+    },
+    {
+     "click": "section:has(> div > h3:text-is(\"Pay an old deposit address twice\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "section:has(> div > h3:text-is(\"Pay an old deposit address twice\")) >> text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 8600
+    },
+    {
+     "scroll": 700
+    },
+    {
+     "hold": 3500
+    }
+   ]
+  },
+  {
+   "id": "T2",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/verify"
+    },
+    {
+     "hold": 15000
+    },
+    {
+     "scroll": 2300
+    },
+    {
+     "hold": 4000
+    },
+    {
+     "scroll": 700
+    },
+    {
+     "hold": 5000
+    }
+   ]
+  }
+ ]
+}

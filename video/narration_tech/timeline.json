@@ -1,0 +1,260 @@
+{
+ "duration": 216.533,
+ "scenes": [
+  {
+   "id": "t_intro",
+   "start": 0.0,
+   "duration": 9.667,
+   "voice": true
+  },
+  {
+   "id": "t_health",
+   "start": 9.667,
+   "duration": 10.633,
+   "voice": true
+  },
+  {
+   "id": "t_watch",
+   "start": 20.3,
+   "duration": 9.333,
+   "voice": true
+  },
+  {
+   "id": "t_size",
+   "start": 29.633,
+   "duration": 9.133,
+   "voice": true
+  },
+  {
+   "id": "t_quote",
+   "start": 38.767,
+   "duration": 11.6,
+   "voice": true
+  },
+  {
+   "id": "t_policy",
+   "start": 50.367,
+   "duration": 14.467,
+   "voice": true
+  },
+  {
+   "id": "t_vault",
+   "start": 64.833,
+   "duration": 13.767,
+   "voice": true
+  },
+  {
+   "id": "t_key",
+   "start": 78.6,
+   "duration": 11.467,
+   "voice": true
+  },
+  {
+   "id": "t_lab",
+   "start": 90.067,
+   "duration": 14.233,
+   "voice": true
+  },
+  {
+   "id": "t_wall",
+   "start": 104.3,
+   "duration": 14.3,
+   "voice": true
+  },
+  {
+   "id": "t_verify",
+   "start": 118.6,
+   "duration": 7.867,
+   "voice": true
+  },
+  {
+   "id": "t_repro",
+   "start": 126.467,
+   "duration": 8.833,
+   "voice": true
+  },
+  {
+   "id": "t_ai",
+   "start": 135.3,
+   "duration": 15.467,
+   "voice": true
+  },
+  {
+   "id": "t_money",
+   "start": 150.767,
+   "duration": 12.333,
+   "voice": true
+  },
+  {
+   "id": "t_arch",
+   "start": 163.1,
+   "duration": 11.2,
+   "voice": true
+  },
+  {
+   "id": "t_proof",
+   "start": 174.3,
+   "duration": 11.1,
+   "voice": true
+  },
+  {
+   "id": "t_stress",
+   "start": 185.4,
+   "duration": 8.567,
+   "voice": true
+  },
+  {
+   "id": "t_tests",
+   "start": 193.967,
+   "duration": 9.267,
+   "voice": true
+  },
+  {
+   "id": "t_close",
+   "start": 203.233,
+   "duration": 8.8,
+   "voice": true
+  },
+  {
+   "id": "end",
+   "start": 212.033,
+   "duration": 4.5,
+   "voice": false
+  }
+ ],
+ "lines": [
+  {
+   "id": "t01",
+   "scene": "t_intro",
+   "start": 0.3,
+   "end": 9.18,
+   "caption": "This is a technical walkthrough of Lifeline: how a rescue works, why a hacked keeper can't steal, and how to check every claim yourself."
+  },
+  {
+   "id": "t02",
+   "scene": "t_health",
+   "start": 9.967,
+   "end": 19.687,
+   "caption": "Health is your cross-margin account value, divided by the maintenance margin Hyperliquid requires. As it approaches one, Hyperliquid liquidates."
+  },
+  {
+   "id": "t03",
+   "scene": "t_watch",
+   "start": 20.6,
+   "end": 29.08,
+   "caption": "The keeper reads it from Hyperliquid every five seconds. Below your trigger, one point five by default, a rescue starts."
+  },
+  {
+   "id": "t04",
+   "scene": "t_size",
+   "start": 29.933,
+   "end": 38.093,
+   "caption": "It sizes the top-up to bring health back to your target, adds 1Click's flat fee, and caps it at your limits and your reserve."
+  },
+  {
+   "id": "t05",
+   "scene": "t_quote",
+   "start": 39.067,
+   "end": 49.787,
+   "caption": "Then it asks 1Click for a quote, from USDC on NEAR into your Hyperliquid perps balance, and checks 1Click's signature before trusting a single field."
+  },
+  {
+   "id": "t06",
+   "scene": "t_policy",
+   "start": 50.667,
+   "end": 64.307,
+   "caption": "A pure policy engine checks sixteen rules, including the recipient, the refund account, both caps, the cooldown, the quote's age and slippage. Anything it can't read blocks the rescue."
+  },
+  {
+   "id": "t07",
+   "scene": "t_vault",
+   "start": 65.133,
+   "end": 77.973,
+   "caption": "Then the vault on NEAR checks again, on chain. It verifies 1Click's signature itself, and reads the deposit address, recipient, amount and refund account from the signed quote."
+  },
+  {
+   "id": "t08",
+   "scene": "t_key",
+   "start": 78.9,
+   "end": 89.5,
+   "caption": "The keeper's only key is a NEAR function-call key. It can call rescue on the vault, and nothing else: no withdrawals, no transfers, no policy changes."
+  },
+  {
+   "id": "t09",
+   "scene": "t_lab",
+   "start": 90.367,
+   "end": 103.607,
+   "caption": "So we let anyone attack it. The attack lab holds a keeper's real key and sends rescue tricks to the testnet vault. Every one is refused on chain, and your browser reads the refusal back from a public node."
+  },
+  {
+   "id": "t10",
+   "scene": "t_wall",
+   "start": 104.6,
+   "end": 118.0,
+   "caption": "Paying itself. Paying the attacker. An edited quote. Over the cap. A stale quote. Keeping the refund. A reused deposit address. Seven tricks, seven refusals."
+  },
+  {
+   "id": "t11",
+   "scene": "t_verify",
+   "start": 118.9,
+   "end": 125.94,
+   "caption": "The verify page checks the rest in your browser: the keeper's keys, and the vault's code against the chain."
+  },
+  {
+   "id": "t12",
+   "scene": "t_repro",
+   "start": 126.767,
+   "end": 134.647,
+   "caption": "The vault is a reproducible build. Rebuild the commit it names, and you get the exact code hash deployed on testnet."
+  },
+  {
+   "id": "t13",
+   "scene": "t_ai",
+   "start": 135.6,
+   "end": 150.2,
+   "caption": "Explanations come from a model on NEAR AI Cloud, in attested hardware. Each answer is signed inside the enclave. Your browser checks that signature, finds the key in a fresh hardware report, and verifies Intel's signature on it."
+  },
+  {
+   "id": "t14",
+   "scene": "t_money",
+   "start": 151.067,
+   "end": 162.587,
+   "caption": "The money path runs end to end on testnet: a signed quote, a real NEAR deposit, and the USDC in a Hyperliquid perps balance fourteen point six seconds later."
+  },
+  {
+   "id": "t15",
+   "scene": "t_arch",
+   "start": 163.4,
+   "end": 173.68,
+   "caption": "Under the hood: Hyperliquid for health, the policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words."
+  },
+  {
+   "id": "t16",
+   "scene": "t_proof",
+   "start": 174.6,
+   "end": 184.84,
+   "caption": "On eighteen thousand positions replayed over two years of real Hyperliquid prices, liquidations fell from thirty-four point two percent to twenty point six."
+  },
+  {
+   "id": "t17",
+   "scene": "t_stress",
+   "start": 185.7,
+   "end": 193.3,
+   "caption": "In a harsher test, where every price move lands within one minute, they still fell, to twenty-nine point one."
+  },
+  {
+   "id": "t18",
+   "scene": "t_tests",
+   "start": 194.267,
+   "end": 202.627,
+   "caption": "Fifteen hundred and nineteen TypeScript tests, sixty-two contract tests, and CI on every change."
+  },
+  {
+   "id": "t19",
+   "scene": "t_close",
+   "start": 203.533,
+   "end": 211.493,
+   "caption": "Lifeline. Topped up before liquidation, funded from any chain, on NEAR. Try to rob it yourself."
+  }
+ ]
+}

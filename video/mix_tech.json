@@ -1,0 +1,8 @@
+{
+ "duration": 216.53,
+ "vo": "narration_tech/vo_full.wav",
+ "music": [{"file": "audio/music_tech.wav", "start": 0, "in": 0, "gain_db": -7, "fade_in": 0.6, "fade_out": 2.5, "end": 216.53}],
+ "sfx": [{"file": "audio/sfx_track_tech.wav", "at": 0, "gain_db": -2}],
+ "duck": {"threshold": 0.03, "ratio": 8, "attack": 20, "release": 500},
+ "target_lufs": -14
+}

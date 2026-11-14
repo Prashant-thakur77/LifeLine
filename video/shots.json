@@ -1,0 +1,255 @@
+{
+ "base": "https://lifeline.prashantthakur.dev",
+ "viewport": [
+  1920,
+  1080
+ ],
+ "dpr": 1.25,
+ "colorScheme": "light",
+ "out": "film/public/captures",
+ "shots": [
+  {
+   "id": "L1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/"
+    },
+    {
+     "hold": 16000
+    }
+   ]
+  },
+  {
+   "id": "F1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/fund"
+    },
+    {
+     "hold": 3000
+    },
+    {
+     "scroll": 260
+    },
+    {
+     "hold": 8000
+    }
+   ]
+  },
+  {
+   "id": "S1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/start"
+    },
+    {
+     "hold": 2000
+    },
+    {
+     "scroll": 450
+    },
+    {
+     "hold": 2500
+    },
+    {
+     "scroll": 450
+    },
+    {
+     "hold": 2500
+    }
+   ]
+  },
+  {
+   "id": "P1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/position?user=demo.near"
+    },
+    {
+     "hold": 9000
+    },
+    {
+     "scroll": 520
+    },
+    {
+     "hold": 3500
+    }
+   ]
+  },
+  {
+   "id": "G1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/ledger"
+    },
+    {
+     "hold": 2500
+    },
+    {
+     "scroll": 520
+    },
+    {
+     "hold": 1500
+    },
+    {
+     "click": "role=button[name=\"Details\"] >> nth=0",
+     "after": 2500
+    },
+    {
+     "hold": 2000
+    }
+   ]
+  },
+  {
+   "id": "A1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/attack"
+    },
+    {
+     "hold": 3500
+    },
+    {
+     "scroll": 640
+    },
+    {
+     "hold": 1200
+    },
+    {
+     "click": "section:has(h3:text-is(\"Pay itself\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 3500
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/attack"
+    },
+    {
+     "hold": 2500
+    },
+    {
+     "scroll": 640
+    },
+    {
+     "hold": 9000
+    },
+    {
+     "click": "section:has(h3:text-is(\"Edit a signed quote\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 2500
+    }
+   ]
+  },
+  {
+   "id": "A3",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/attack"
+    },
+    {
+     "hold": 2500
+    },
+    {
+     "scroll": 1080
+    },
+    {
+     "hold": 9000
+    },
+    {
+     "click": "section:has(h3:text-is(\"Take more than the cap\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 2500
+    }
+   ]
+  },
+  {
+   "id": "A4",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/attack"
+    },
+    {
+     "hold": 2500
+    },
+    {
+     "scroll": 1080
+    },
+    {
+     "hold": 9000
+    },
+    {
+     "click": "section:has(h3:text-is(\"Replay an old quote\")) >> role=button",
+     "after": 500
+    },
+    {
+     "waitFor": "text=Your browser read it back",
+     "timeout": 60000
+    },
+    {
+     "hold": 2500
+    },
+    {
+     "scroll": 900
+    },
+    {
+     "hold": 3000
+    }
+   ]
+  },
+  {
+   "id": "V1",
+   "fresh": true,
+   "steps": [
+    {
+     "goto": "/verify"
+    },
+    {
+     "hold": 14000
+    },
+    {
+     "scroll": 700
+    },
+    {
+     "hold": 3000
+    },
+    {
+     "scroll": 1400
+    },
+    {
+     "hold": 5000
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,438 @@
+{
+ "title": "Lifeline: technical walkthrough",
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "theme": {
+  "bg": "#0a1230",
+  "surface": "#142257",
+  "fg": "#fff7ea",
+  "muted": "#b7c2e6",
+  "accent": "#ff5a1f",
+  "accent2": "#ffc93c",
+  "good": "#19c79a",
+  "bad": "#e5243b"
+ },
+ "scenes": [
+  {
+   "id": "t_intro",
+   "type": "screen",
+   "src": "captures/L1.mp4",
+   "trimBefore": 0.4,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 1.0,
+     "dur": 30,
+     "box": {
+      "x": 140,
+      "y": 420,
+      "w": 1180,
+      "h": 664
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev · technical walkthrough"
+   },
+   "duration": 9.667
+  },
+  {
+   "id": "t_health",
+   "type": "kinetic",
+   "kicker": "cross margin · from Hyperliquid's clearinghouseState",
+   "lines": [
+    "health =",
+    "account value ÷ maintenance margin"
+   ],
+   "emphasis": [
+    "health"
+   ],
+   "duration": 10.633
+  },
+  {
+   "id": "t_watch",
+   "type": "screen",
+   "src": "captures/P1.mp4",
+   "trimBefore": 1.5,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 0.4,
+     "dur": 30,
+     "box": {
+      "x": 250,
+      "y": 520,
+      "w": 900,
+      "h": 506
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/position · demo account, live keeper"
+   },
+   "duration": 9.333
+  },
+  {
+   "id": "t_size",
+   "type": "kinetic",
+   "kicker": "rescue size",
+   "lines": [
+    "target × margin − value",
+    "+ 1Click's flat fee",
+    "capped by your limits and reserve"
+   ],
+   "emphasis": [
+    "target"
+   ],
+   "duration": 9.133
+  },
+  {
+   "id": "t_quote",
+   "type": "kinetic",
+   "kicker": "USDC on NEAR → Hyperliquid perps · NEAR Intents",
+   "lines": [
+    "1Click quote",
+    "signature checked first"
+   ],
+   "emphasis": [
+    "signature"
+   ],
+   "duration": 11.6
+  },
+  {
+   "id": "t_policy",
+   "type": "code",
+   "title": "The policy engine's refusal codes",
+   "file": "packages/shared/src/constants.ts",
+   "code": "export const REASON_CODES = [\n  \"RECIPIENT_MISMATCH\",\n  \"WRONG_DEST_ASSET\",\n  \"PAUSED\",\n  \"OVER_PER_RESCUE\",\n  \"OVER_DAILY\",\n  \"COOLDOWN\",\n  \"NOT_BELOW_TRIGGER\",\n  \"SNAPSHOT_STALE\",\n  \"QUOTE_STALE\",\n  \"SLIPPAGE\",\n  \"INSUFFICIENT_RESERVE\",\n  \"UNKNOWN_TOKEN\",\n];",
+   "duration": 14.467
+  },
+  {
+   "id": "t_vault",
+   "type": "code",
+   "title": "The vault checks it again, on chain",
+   "file": "contracts/vault/src/lib.rs · rescue()",
+   "code": "require!(amount.0 <= policy.max_per_rescue, \"OVER_PER_RESCUE: over this user's limit per rescue\");\nrequire!(\n    !quote_id.is_empty() && quote_id.len() <= MAX_QUOTE_ID_LEN,\n    \"BAD_QUOTE_ID: the quote id must be 1 to 128 characters\"\n);\nrequire!(!self.used_deposits.contains(&deposit_address), \"DEPOSIT_REUSED: this deposit address was already paid\");\nrequire!(quote.len() <= MAX_QUOTE_LEN, \"BAD_QUOTE: the quote is too long\");\nrequire!(quote::is_signed(&quote, &signature, &self.quote_signer), \"BAD_QUOTE: 1Click didn't sign this quote\");\nlet expected = quote::Expected {\n    user: user.as_str(),\n    token: token.as_str(),\n    amount: amount.0,\n    deposit_address: deposit_address.as_str(),\n    hl_address: &policy.hl_address,\n    now_ms: env::block_timestamp_ms(),\n};\nif let Err(problems) = quote::check(&quote, &expected) {\n    env::panic_str(&format!(\"BAD_QUOTE: {problems}\"));\n}",
+   "highlight": [
+    [
+     8,
+     8
+    ]
+   ],
+   "duration": 13.767
+  },
+  {
+   "id": "t_key",
+   "type": "screen",
+   "src": "captures/T2.mp4",
+   "trimBefore": 6.0,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 0.3,
+     "dur": 30,
+     "box": {
+      "x": 200,
+      "y": 560,
+      "w": 900,
+      "h": 506
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/verify · the keeper's keys, read from NEAR testnet"
+   },
+   "duration": 11.467
+  },
+  {
+   "id": "t_lab",
+   "type": "screen",
+   "src": "captures/T1.mp4",
+   "trimBefore": 4.96,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 1.6,
+     "dur": 30,
+     "box": {
+      "x": 200,
+      "y": 300,
+      "w": 1100,
+      "h": 620
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/attack · real transactions on NEAR testnet"
+   },
+   "duration": 14.233
+  },
+  {
+   "id": "t_wall",
+   "type": "montage",
+   "items": [
+    {
+     "src": "captures/T1.mp4",
+     "from": 10.16,
+     "line": "Pay itself",
+     "at": 0.0
+    },
+    {
+     "src": "captures/T1.mp4",
+     "from": 25.7,
+     "line": "Pay the attacker's Hyperliquid",
+     "at": 2.043
+    },
+    {
+     "src": "captures/T1.mp4",
+     "from": 42.09,
+     "line": "Edit a signed quote",
+     "at": 4.086
+    },
+    {
+     "src": "captures/T1.mp4",
+     "from": 60.01,
+     "line": "Take more than the cap",
+     "at": 6.129
+    },
+    {
+     "src": "captures/T1.mp4",
+     "from": 75.36,
+     "line": "Replay an old quote",
+     "at": 8.172
+    },
+    {
+     "src": "captures/T1.mp4",
+     "from": 90.79,
+     "line": "Keep the refund",
+     "at": 10.215
+    },
+    {
+     "src": "captures/T1.mp4",
+     "from": 107.99,
+     "line": "Pay an old deposit address twice",
+     "at": 12.258
+    }
+   ],
+   "label": {
+    "text": "all seven, refused on chain · one live take"
+   },
+   "duration": 14.3
+  },
+  {
+   "id": "t_verify",
+   "type": "screen",
+   "src": "captures/T2.mp4",
+   "trimBefore": 9.0,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 0.3,
+     "dur": 30,
+     "box": {
+      "x": 200,
+      "y": 300,
+      "w": 1400,
+      "h": 788
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/verify · checked in your browser"
+   },
+   "duration": 7.867
+  },
+  {
+   "id": "t_repro",
+   "type": "screen",
+   "src": "captures/V1.mp4",
+   "trimBefore": 12.2,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 0.2,
+     "dur": 30,
+     "box": {
+      "x": 660,
+      "y": 60,
+      "w": 1060,
+      "h": 596
+     }
+    }
+   ],
+   "label": {
+    "text": "cargo near build reproducible-wasm · commit 37e98488"
+   },
+   "duration": 8.833
+  },
+  {
+   "id": "t_ai",
+   "type": "screen",
+   "src": "captures/T2.mp4",
+   "trimBefore": 17.6,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 0.3,
+     "dur": 30,
+     "box": {
+      "x": 260,
+      "y": 150,
+      "w": 1160,
+      "h": 652
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/verify · NEAR AI Cloud, checked in your browser"
+   },
+   "duration": 15.467
+  },
+  {
+   "id": "t_money",
+   "type": "kinetic",
+   "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026",
+   "lines": [
+    "14.6 seconds",
+    "signed quote → deposit → margin"
+   ],
+   "emphasis": [
+    "14.6"
+   ],
+   "duration": 12.333
+  },
+  {
+   "id": "t_arch",
+   "type": "arch3d",
+   "title": "Under the hood",
+   "min": 9,
+   "layers": [
+    {
+     "id": "hl",
+     "label": "Hyperliquid",
+     "sub": "health every 5 s"
+    },
+    {
+     "id": "policy",
+     "label": "Policy engine",
+     "sub": "12+ refusal codes, no network"
+    },
+    {
+     "id": "vault",
+     "label": "Vault on NEAR",
+     "sub": "Rust · checks 1Click's signature"
+    },
+    {
+     "id": "intents",
+     "label": "NEAR Intents",
+     "sub": "1Click moves the USDC"
+    }
+   ],
+   "satellites": [
+    {
+     "id": "ai",
+     "label": "NEAR AI Cloud"
+    }
+   ],
+   "traces": [
+    {
+     "from": "policy",
+     "to": "ai",
+     "at": 6.0
+    }
+   ],
+   "duration": 11.2
+  },
+  {
+   "id": "t_proof",
+   "type": "proof",
+   "title": "Liquidated within 7 days",
+   "metric": "share of positions liquidated",
+   "unit": "%",
+   "better": "lower",
+   "rows": [
+    {
+     "label": "No protection",
+     "value": 34.2
+    },
+    {
+     "label": "With Lifeline",
+     "value": 20.6,
+     "ours": true
+    }
+   ],
+   "footnote": "18,000 positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest",
+   "min": 7,
+   "duration": 11.1
+  },
+  {
+   "id": "t_stress",
+   "type": "proof",
+   "title": "One-minute crash test",
+   "metric": "every adverse move within one minute",
+   "unit": "%",
+   "better": "lower",
+   "rows": [
+    {
+     "label": "No protection",
+     "value": 34.2
+    },
+    {
+     "label": "With Lifeline",
+     "value": 29.1,
+     "ours": true
+    }
+   ],
+   "footnote": "same positions · each 4h candle's move squeezed into one minute · research/backtest",
+   "min": 6,
+   "duration": 8.567
+  },
+  {
+   "id": "t_tests",
+   "type": "kinetic",
+   "kicker": "pnpm test · CI on every pull request",
+   "lines": [
+    "1,519 TypeScript tests",
+    "62 contract tests"
+   ],
+   "emphasis": [
+    "1,519"
+   ],
+   "duration": 9.267
+  },
+  {
+   "id": "t_close",
+   "type": "sea",
+   "mode": "calm",
+   "sky": "night",
+   "from": 2.01,
+   "to": 2.01,
+   "clock": "3:12",
+   "waterIn": true,
+   "min": 6,
+   "duration": 8.8,
+   "drift": false
+  },
+  {
+   "id": "end",
+   "type": "endcard",
+   "name": "Lifeline",
+   "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
+   "links": [
+    "lifeline.prashantthakur.dev",
+    "/attack",
+    "/verify"
+   ],
+   "duration": 4.5
+  }
+ ],
+ "captions": "captions-tech/captions.json"
+}

@@ -1,0 +1,29 @@
+# Large or regenerated media: everything here is rebuilt by the scripts.
+node_modules/
+film/node_modules/
+film/out/
+film/public/captures/
+film/public/audio/
+narration/takes/
+narration/audition/
+narration/*.wav
+narration/*.log
+audio/*.wav
+audio/sfx/
+refs/
+qa/
+captures/
+_halftime/
+film/_halftime/
+*.mp4
+master.wav
+film-tech/node_modules/
+film-tech/out/
+film-tech/public/captures/
+film-tech/public/audio/
+narration_tech/takes/
+narration_tech/*.wav
+*.wav
+# film-tech/ is a hard-linked copy of film/ (cp -al film film-tech) with its own film.json
+film-tech/*
+!film-tech/film.json

@@ -1,0 +1,16 @@
+[
+ {
+  "scene": "a",
+  "id": "hook",
+  "caption": "Lifeline watches your Hyperliquid account every five seconds, and tops up your margin before you're liquidated.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "a",
+  "id": "proof",
+  "caption": "We replayed eighteen thousand positions on two years of real Hyperliquid prices. Without protection, thirty-four percent were liquidated. With Lifeline, twenty point six.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ }
+]
