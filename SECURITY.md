@@ -12,7 +12,7 @@ Lifeline is designed on the assumption that its own keeper gets hacked. The [saf
 What these guarantees rest on:
 
 - The vault pays the 1Click deposit address named in the signed quote. Delivery from there to Hyperliquid is 1Click's job.
-- The testnet vault trusts a team key to sign quotes in 1Click's place, because 1Click has no testnet. A mainnet vault is deployed trusting 1Click's own key ([docs/mainnet.md](docs/mainnet.md)); `get_config` shows which key a vault trusts.
+- The testnet vault trusts a team key to sign quotes in 1Click's place, because 1Click has no testnet. The mainnet vault, [`vault.lifeline-hq.near`](https://nearblocks.io/address/vault.lifeline-hq.near), trusts 1Click's own key; `get_config` shows which key a vault trusts.
 - The vault account keeps its full-access key, so the team could deploy different code. The verify page shows whether that key still exists, and deleting it after an audit is on the [roadmap](ROADMAP.md).
 
 ## Check it yourself

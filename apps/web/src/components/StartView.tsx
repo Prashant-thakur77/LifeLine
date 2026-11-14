@@ -29,8 +29,9 @@ export function StartView() {
       </PageHeader>
 
       {!config.vaultId ? (
-        <Notice tone="info" title="The mainnet vault opens soon" className="mb-6">
-          Fill this in and see exactly what you&apos;ll sign when the mainnet vault opens. Meanwhile, the{" "}
+        <Notice tone="info" title="The mainnet vault is live; sign-up opens next" className="mb-6">
+          <a href="https://nearblocks.io/address/vault.lifeline-hq.near">vault.lifeline-hq.near</a> has paid its first real rescue. Sign-up opens once the
+          keeper watches it around the clock. Fill this in to see exactly what you&apos;ll sign. Meanwhile, the{" "}
           <a href={pageHref("/position", "demo.near")}>live demo</a> shows the whole thing working.
         </Notice>
       ) : null}
@@ -132,7 +133,7 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
 
   const blockers: string[] = [];
   if (!accountId) blockers.push("Connect a wallet first (step 1).");
-  if (!vault) blockers.push("The mainnet vault opens soon.");
+  if (!vault) blockers.push("Sign-up for the mainnet vault opens once its keeper runs around the clock.");
   else if (accountId && existing.loading) blockers.push("Reading your current policy from the vault…");
   else if (existing.error) blockers.push(`Couldn't read the vault: ${existing.error.message}`);
   if (!config.keeperAccountId) blockers.push("No keeper account is configured for this dashboard.");
