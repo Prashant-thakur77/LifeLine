@@ -1,0 +1,777 @@
+{
+  "title": "Lifeline",
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": {
+    "bg": "#0a1230",
+    "surface": "#142257",
+    "fg": "#fff7ea",
+    "muted": "#b7c2e6",
+    "accent": "#ff5a1f",
+    "accent2": "#ffc93c",
+    "good": "#19c79a",
+    "bad": "#e5243b"
+  },
+  "captions": "captions_full/captions.json",
+  "scenes": [
+    {
+      "id": "cold",
+      "type": "sea",
+      "mode": "fall",
+      "sky": "night",
+      "from": 1.62,
+      "to": 1.07,
+      "clock": "3:07",
+      "clockTo": "3:09",
+      "label": {
+        "text": "illustration · the night the price falls"
+      },
+      "min": 5,
+      "duration": 6.8,
+      "drift": false
+    },
+    {
+      "id": "scale",
+      "type": "kinetic",
+      "kicker": "Hyperliquid perps traders · October 2025 · source: The Block",
+      "lines": [
+        "$7.4 billion",
+        "of Hyperliquid positions,",
+        "wiped out in one cascade."
+      ],
+      "emphasis": [
+        "$7.4"
+      ],
+      "waterOut": true,
+      "min": 5,
+      "duration": 10.933
+    },
+    {
+      "id": "hook",
+      "type": "screen",
+      "src": "captures/L1.mp4",
+      "trimBefore": 0.4,
+      "zooms": [
+        {
+          "at": 1.2,
+          "dur": 30,
+          "box": {
+            "x": 140,
+            "y": 420,
+            "w": 1180,
+            "h": 664
+          }
+        }
+      ],
+      "full": true,
+      "ground": "paper",
+      "waterIn": true,
+      "label": {
+        "text": "live site · vault on NEAR, funded from any chain via NEAR Intents · replay of a simulated rescue"
+      },
+      "duration": 11.933
+    },
+    {
+      "id": "fund",
+      "type": "screen",
+      "src": "captures/F1.mp4",
+      "trimBefore": 0.5,
+      "zooms": [
+        {
+          "at": 1.0,
+          "dur": 30,
+          "box": {
+            "x": 240,
+            "y": 240,
+            "w": 1200,
+            "h": 675
+          }
+        }
+      ],
+      "full": true,
+      "ground": "paper",
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/fund · NEAR Intents (1Click)"
+      },
+      "duration": 8.933
+    },
+    {
+      "id": "rules",
+      "type": "screen",
+      "src": "captures/S1.mp4",
+      "trimBefore": 1.2,
+      "zooms": [
+        {
+          "at": 0.6,
+          "dur": 30,
+          "box": {
+            "x": 330,
+            "y": 470,
+            "w": 1100,
+            "h": 619
+          }
+        }
+      ],
+      "full": true,
+      "ground": "paper",
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/start · your policy"
+      },
+      "duration": 6.267
+    },
+    {
+      "id": "owner",
+      "type": "screen",
+      "src": "captures/S1.mp4",
+      "trimBefore": 4.0,
+      "full": true,
+      "ground": "paper",
+      "zooms": [
+        {
+          "at": 0.3,
+          "dur": 30,
+          "box": {
+            "x": 200,
+            "y": 160,
+            "w": 1400,
+            "h": 788
+          }
+        }
+      ],
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/start · your policy, signed by your wallet"
+      },
+      "duration": 6.1
+    },
+    {
+      "id": "health",
+      "type": "screen",
+      "src": "captures/P1.mp4",
+      "trimBefore": 1.5,
+      "zooms": [
+        {
+          "at": 0.4,
+          "dur": 30,
+          "box": {
+            "x": 250,
+            "y": 520,
+            "w": 900,
+            "h": 506
+          }
+        }
+      ],
+      "full": true,
+      "ground": "paper",
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/position · demo account, live keeper"
+      },
+      "duration": 6.233
+    },
+    {
+      "id": "rescue",
+      "type": "sea",
+      "mode": "rescue",
+      "sky": "day",
+      "from": 1.44,
+      "to": 2.01,
+      "throwAt": 4.34,
+      "amount": "+3.47 USDC",
+      "tag": "Reserve · vault on NEAR",
+      "label": {
+        "text": "the demo keeper's rescue · simulated position, real 1Click quote"
+      },
+      "duration": 8.2,
+      "drift": false
+    },
+    {
+      "id": "speed",
+      "type": "kinetic",
+      "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026",
+      "lines": [
+        "14.6 seconds",
+        "deposit to margin."
+      ],
+      "emphasis": [
+        "14.6"
+      ],
+      "duration": 5.733
+    },
+    {
+      "id": "wake",
+      "type": "screen",
+      "src": "captures/G1.mp4",
+      "trimBefore": 4.0,
+      "zooms": [
+        {
+          "at": 0.3,
+          "dur": 30,
+          "box": {
+            "x": 260,
+            "y": 420,
+            "w": 1100,
+            "h": 619
+          }
+        }
+      ],
+      "full": true,
+      "ground": "paper",
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/ledger · public audit log"
+      },
+      "duration": 5.667
+    },
+    {
+      "id": "history",
+      "type": "chainlist",
+      "user": "alice.lifeline-team.testnet",
+      "vault": "vault.lifeline-team.testnet",
+      "count": 34,
+      "rows": [
+        {
+          "at": "14 Nov 2026 10:49 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653382246",
+          "deposit": "74a619d4a99e6f786e7b9086cc5907cd8ed1baee9028e53fc4ffb6cb613a0c26"
+        },
+        {
+          "at": "14 Nov 2026 10:49 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653346317",
+          "deposit": "af173ae7b31c4e167f6c38ed5b9fdbd0e2f6273f138f989d4f588f97838265ed"
+        },
+        {
+          "at": "14 Nov 2026 10:48 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653309741",
+          "deposit": "ecf3ea90eb827452d54c3bcf7c31749924b852450a00b71adbb53fb6c5ff98f6"
+        },
+        {
+          "at": "14 Nov 2026 10:47 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653273588",
+          "deposit": "64b8bbc4820ff84ce4a96c24eb2ad1a8d3b0336db4f57cfe1a0967e75aecd446"
+        },
+        {
+          "at": "14 Nov 2026 10:47 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653236845",
+          "deposit": "247a42c898b4723d477770972c5f49b6728242ee7c90af076d53f5078cd45b2e"
+        },
+        {
+          "at": "14 Nov 2026 10:46 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653200373",
+          "deposit": "ff44433f1317e8cf010b20306a7973d0f6a841a1f53ef337b3e0013f303ff752"
+        },
+        {
+          "at": "14 Nov 2026 10:46 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653164012",
+          "deposit": "4826ade30aa7d012789164e43f05be8be8812caf31bfb3dde2c69901310d35ce"
+        },
+        {
+          "at": "14 Nov 2026 10:45 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794653127583",
+          "deposit": "b7192722e74264ca44d24af56e7e0a7177623d06457496ca622da5a3330106be"
+        },
+        {
+          "at": "08 Nov 2026 19:14 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165270579",
+          "deposit": "c79422d7b73e20ba6e30c9c323822a828267e36c4fbcaf82c4a34b7524c600b5"
+        },
+        {
+          "at": "08 Nov 2026 19:13 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165234155",
+          "deposit": "dbab5fb54421466dff409c83a27442dd65758f40dcb308a6f585b0e6ef88930b"
+        },
+        {
+          "at": "08 Nov 2026 19:13 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165198415",
+          "deposit": "6835dd99745f827741d5ca7af6d9975caa191b1e7dbfcbed9bd155f70a8c3133"
+        },
+        {
+          "at": "08 Nov 2026 19:12 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165162718",
+          "deposit": "cd75da6ea0b7527956327a71f39733b07f05e2aaa757c56405bfc20a3235e6c2"
+        },
+        {
+          "at": "08 Nov 2026 19:12 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165126625",
+          "deposit": "97877ea29425fbbc136b69c66ffb378784d530d22f4bd9c1384e92329eb995b0"
+        },
+        {
+          "at": "08 Nov 2026 19:11 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165090555",
+          "deposit": "0428f28a56af67793e5f863eb0a41b11c421f8ff000f1d724a88c661bc91c234"
+        },
+        {
+          "at": "08 Nov 2026 19:10 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165054534",
+          "deposit": "a75665e58483342db44dbf55ec86a577f75615b2f17df5d6253ba2e7e25149ec"
+        },
+        {
+          "at": "08 Nov 2026 19:10 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794165018284",
+          "deposit": "c5021932d7d0fbe27afcaf4eca190be0642654f5819ca346d0ff30b459567550"
+        },
+        {
+          "at": "08 Nov 2026 19:09 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164941306",
+          "deposit": "b5810b29bf3f9648ee349d0ef2afa4bf3a626625409f08e8d75bd48243a434c9"
+        },
+        {
+          "at": "08 Nov 2026 19:08 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164905235",
+          "deposit": "2495799923f2fa1026bf27923eb021a80940fcfb540fff2780d9137a174c25ff"
+        },
+        {
+          "at": "08 Nov 2026 19:04 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164680389",
+          "deposit": "ef616f0b91e3e5476cc3e4ad75b5cf53528108d88564f3131b3503145c2bc6a8"
+        },
+        {
+          "at": "08 Nov 2026 19:04 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164633762",
+          "deposit": "23b9fa69b6c3f1635918e55ee7be2c6819b49d01d02cdf06ee5aa9367d1d5669"
+        },
+        {
+          "at": "08 Nov 2026 19:03 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164597268",
+          "deposit": "4f5d0df39e7a1be6ebfdf8b136e0f746b8a4994060d922ceac636a8bae9934bf"
+        },
+        {
+          "at": "08 Nov 2026 19:02 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164561097",
+          "deposit": "27404ee20e6a539ce625ff67e3b29011441ed1dac7e5a823104f33070e3856d6"
+        },
+        {
+          "at": "08 Nov 2026 19:02 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794164524767",
+          "deposit": "c254ea621b6b758ecf17f61033790cc778fbd400194794893968540379162de8"
+        },
+        {
+          "at": "08 Nov 2026 14:35 UTC",
+          "amount": "2.00 USDC",
+          "quote": "latency-1794148540025",
+          "deposit": "3c7e6f328189784dd3231dc1364ee6cb910f0f2d050544f3289c158e010e9e35"
+        },
+        {
+          "at": "08 Nov 2026 14:25 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147931771",
+          "deposit": "93b2b25d6ece4f324f539c124960c1b651b5f11b1cd6f1a4a46e18157b0532a6"
+        },
+        {
+          "at": "08 Nov 2026 14:24 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147895304",
+          "deposit": "312168586ed4fb51cb1b79ca9a9251c03bcedffd17564489a2f66d941d0b2260"
+        },
+        {
+          "at": "08 Nov 2026 14:24 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147858651",
+          "deposit": "2fd354c1b839191b61aba55d30d47aa2b67beb5a5ece4b468619231e1bbba8f8"
+        },
+        {
+          "at": "08 Nov 2026 14:23 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147821864",
+          "deposit": "e3975a04f70e0af0a5afb2c878ec3765d9d2ebedcffe4ed158c9434e038a3632"
+        },
+        {
+          "at": "08 Nov 2026 14:23 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147785364",
+          "deposit": "ebd380fba6d2d6a2f4449e6b36f4ec1a431e4fa4edaadd0a2049e53e8c5a9df2"
+        },
+        {
+          "at": "08 Nov 2026 14:22 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147748923",
+          "deposit": "580426c0f254c15cd411efb9abdd20e71e4755ead27847af1a3b3f64c0a14663"
+        },
+        {
+          "at": "08 Nov 2026 14:21 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147713126",
+          "deposit": "5f2b12c8ce8549182fc4670543f441fa8aa0d1676d2c4bbd80343fc90307e9ae"
+        },
+        {
+          "at": "08 Nov 2026 14:21 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147676997",
+          "deposit": "6ea89694a44394cd0e743fefa882f682ded6f46e7390cb57cc1812521e50b56f"
+        },
+        {
+          "at": "08 Nov 2026 14:20 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147640718",
+          "deposit": "1669e4b74c5748e65f6e5f1a2c06726b6543a2d7dd5a5159a8819b45baec3ad4"
+        },
+        {
+          "at": "08 Nov 2026 14:20 UTC",
+          "amount": "1.00 USDC",
+          "quote": "latency-1794147604297",
+          "deposit": "f6c876e369c73e30f3dd503c35aebe7beca2b5be355304450c7eb98883dd9461"
+        }
+      ],
+      "drift": false,
+      "label": {
+        "text": "real rescues on NEAR testnet · read live from the vault"
+      },
+      "duration": 8.1
+    },
+    {
+      "id": "threat",
+      "type": "kinetic",
+      "lines": [
+        "Assume the bot",
+        "gets hacked."
+      ],
+      "emphasis": [
+        "hacked."
+      ],
+      "waterOut": true,
+      "duration": 6.033
+    },
+    {
+      "id": "lab",
+      "type": "screen",
+      "src": "captures/A1.mp4",
+      "trimBefore": 3.2,
+      "full": true,
+      "ground": "paper",
+      "waterIn": true,
+      "zooms": [
+        {
+          "at": 2.6,
+          "dur": 3.4,
+          "box": {
+            "x": 200,
+            "y": 300,
+            "w": 1100,
+            "h": 620
+          }
+        }
+      ],
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/attack · a real transaction on NEAR testnet"
+      },
+      "duration": 7.6
+    },
+    {
+      "id": "refuse",
+      "type": "screen",
+      "src": "captures/A1.mp4",
+      "trimBefore": 9.6,
+      "full": true,
+      "ground": "paper",
+      "zooms": [
+        {
+          "at": 0.0,
+          "dur": 6.5,
+          "box": {
+            "x": 250,
+            "y": 340,
+            "w": 880,
+            "h": 495
+          }
+        }
+      ],
+      "label": {
+        "text": "the vault's answer, on chain · read back by the browser"
+      },
+      "duration": 7.967
+    },
+    {
+      "id": "montage",
+      "type": "trickwall",
+      "items": [
+        {
+          "title": "Pay itself",
+          "answer": "BAD_QUOTE: its deposit address isn't the one this rescue pays"
+        },
+        {
+          "title": "Pay the attacker's Hyperliquid",
+          "answer": "BAD_QUOTE: it pays someone other than this user's Hyperliquid address"
+        },
+        {
+          "title": "Edit a signed quote",
+          "answer": "BAD_QUOTE: 1Click didn't sign this quote"
+        },
+        {
+          "title": "Take more than the cap",
+          "answer": "OVER_PER_RESCUE: over this user's limit per rescue"
+        },
+        {
+          "title": "Replay an old quote",
+          "answer": "BAD_QUOTE: it's more than 2 minutes old"
+        },
+        {
+          "title": "Keep the refund",
+          "answer": "BAD_QUOTE: a failed swap wouldn't refund this user"
+        },
+        {
+          "title": "Pay an old deposit address twice",
+          "answer": "DEPOSIT_REUSED: this deposit address was already paid"
+        }
+      ],
+      "start": 0.2,
+      "each": 1.038,
+      "drift": true,
+      "duration": 8.867
+    },
+    {
+      "id": "verify",
+      "type": "screen",
+      "src": "captures/V1.mp4",
+      "trimBefore": 12.5,
+      "zooms": [
+        {
+          "at": 0.3,
+          "dur": 30,
+          "box": {
+            "x": 250,
+            "y": 380,
+            "w": 1300,
+            "h": 731
+          }
+        }
+      ],
+      "full": true,
+      "ground": "paper",
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/verify · checked in the browser"
+      },
+      "duration": 8.333
+    },
+    {
+      "id": "aiproof",
+      "type": "screen",
+      "src": "captures/T2.mp4",
+      "trimBefore": 17.6,
+      "full": true,
+      "ground": "paper",
+      "zooms": [
+        {
+          "at": 0.3,
+          "dur": 30,
+          "box": {
+            "x": 260,
+            "y": 150,
+            "w": 1160,
+            "h": 652
+          }
+        }
+      ],
+      "label": {
+        "text": "live site · lifeline.prashantthakur.dev/verify · NEAR AI Cloud, checked in your browser"
+      },
+      "duration": 8.833
+    },
+    {
+      "id": "compare",
+      "type": "board",
+      "mode": "compare",
+      "kicker": "WHY LIFELINE",
+      "title": "Not another exchange switch",
+      "left": "EXCHANGE AUTO TOP-UP",
+      "right": "LIFELINE",
+      "rows": [
+        {
+          "left": "Inside one exchange",
+          "right": "Your own wallet, funded from any chain"
+        },
+        {
+          "left": "Isolated margin only",
+          "right": "Protects your cross-margin account"
+        },
+        {
+          "left": "You trust the exchange",
+          "right": "Even our keeper can't take the money"
+        }
+      ],
+      "start": 1.4,
+      "each": 2.6,
+      "duration": 15.1
+    },
+    {
+      "id": "near",
+      "type": "board",
+      "mode": "pillars",
+      "kicker": "WHY NEAR",
+      "title": "It only works on NEAR",
+      "cards": [
+        {
+          "name": "NEAR Intents",
+          "does": "move the money from any chain in one step"
+        },
+        {
+          "name": "Function-call key",
+          "does": "the keeper can call rescue, and nothing else"
+        },
+        {
+          "name": "On-chain checks",
+          "does": "the vault verifies 1Click's signature itself"
+        },
+        {
+          "name": "NEAR AI",
+          "does": "explains every rescue from verified hardware"
+        }
+      ],
+      "start": 1.6,
+      "each": 2.6,
+      "duration": 17.533
+    },
+    {
+      "id": "arch",
+      "type": "arch3d",
+      "title": "Under the hood",
+      "min": 9,
+      "layers": [
+        {
+          "id": "hl",
+          "label": "Hyperliquid",
+          "sub": "health every 5 s"
+        },
+        {
+          "id": "policy",
+          "label": "Policy engine",
+          "sub": "16 rules, no network"
+        },
+        {
+          "id": "vault",
+          "label": "Vault on NEAR",
+          "sub": "Rust · checks 1Click's signature"
+        },
+        {
+          "id": "intents",
+          "label": "NEAR Intents",
+          "sub": "1Click moves the USDC"
+        }
+      ],
+      "satellites": [
+        {
+          "id": "ai",
+          "label": "NEAR AI Cloud"
+        }
+      ],
+      "cues": {
+        "hl": 0.3,
+        "policy": 1.7,
+        "vault": 4.03,
+        "intents": 5.97
+      },
+      "traces": [
+        {
+          "from": "policy",
+          "to": "ai",
+          "at": 8.07
+        }
+      ],
+      "duration": 10.433
+    },
+    {
+      "id": "proof",
+      "type": "proof",
+      "ground": "night",
+      "title": "Liquidated within 7 days",
+      "metric": "share of positions liquidated",
+      "unit": "%",
+      "better": "lower",
+      "rows": [
+        {
+          "label": "No protection",
+          "value": 34.2
+        },
+        {
+          "label": "With Lifeline",
+          "value": 20.6,
+          "ours": true
+        }
+      ],
+      "footnote": "18,000 BTC, ETH and SOL positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest",
+      "min": 7,
+      "duration": 9.767
+    },
+    {
+      "id": "stress",
+      "type": "proof",
+      "ground": "night",
+      "title": "One-minute crash test",
+      "metric": "every adverse move within one minute",
+      "unit": "%",
+      "better": "lower",
+      "rows": [
+        {
+          "label": "No protection",
+          "value": 34.2
+        },
+        {
+          "label": "With Lifeline",
+          "value": 29.1,
+          "ours": true
+        }
+      ],
+      "footnote": "same positions · each 4h candle's move squeezed into one minute · research/backtest",
+      "min": 6,
+      "duration": 8.9
+    },
+    {
+      "id": "tests",
+      "type": "kinetic",
+      "kicker": "pnpm test · CI on every pull request",
+      "lines": [
+        "1,519 TypeScript tests",
+        "62 contract tests"
+      ],
+      "emphasis": [
+        "1,519"
+      ],
+      "duration": 9.233
+    },
+    {
+      "id": "close",
+      "type": "sea",
+      "mode": "calm",
+      "sky": "night",
+      "from": 2.01,
+      "to": 2.01,
+      "clock": "3:12",
+      "waterIn": true,
+      "min": 4.5,
+      "duration": 5.4,
+      "drift": false
+    },
+    {
+      "id": "end",
+      "type": "endcard",
+      "name": "Lifeline",
+      "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
+      "links": [
+        "lifeline.prashantthakur.dev",
+        "/attack",
+        "/verify"
+      ],
+      "duration": 4.5
+    }
+  ]
+}

@@ -1,421 +1,421 @@
 {
-  "title": "Lifeline",
-  "fps": 30,
-  "width": 1920,
-  "height": 1080,
-  "theme": {
-    "bg": "#0a1230",
-    "surface": "#142257",
-    "fg": "#fff7ea",
-    "muted": "#b7c2e6",
-    "accent": "#ff5a1f",
-    "accent2": "#ffc93c",
-    "good": "#19c79a",
-    "bad": "#e5243b"
+ "title": "Lifeline",
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "theme": {
+  "bg": "#0a1230",
+  "surface": "#142257",
+  "fg": "#fff7ea",
+  "muted": "#b7c2e6",
+  "accent": "#ff5a1f",
+  "accent2": "#ffc93c",
+  "good": "#19c79a",
+  "bad": "#e5243b"
+ },
+ "captions": "captions/captions.json",
+ "scenes": [
+  {
+   "id": "cold",
+   "type": "sea",
+   "mode": "fall",
+   "sky": "night",
+   "from": 1.62,
+   "to": 1.07,
+   "clock": "3:07",
+   "clockTo": "3:09",
+   "label": {
+    "text": "illustration · the night the price falls"
+   },
+   "min": 5,
+   "duration": 6.8,
+   "drift": false
   },
-  "captions": "captions/captions.json",
-  "scenes": [
+  {
+   "id": "scale",
+   "type": "kinetic",
+   "kicker": "Hyperliquid perps traders · October 2025 · source: The Block",
+   "lines": [
+    "$7.4 billion",
+    "of Hyperliquid positions,",
+    "wiped out in one cascade."
+   ],
+   "emphasis": [
+    "$7.4"
+   ],
+   "waterOut": true,
+   "min": 5,
+   "duration": 10.933
+  },
+  {
+   "id": "hook",
+   "type": "screen",
+   "src": "captures/L1.mp4",
+   "trimBefore": 0.4,
+   "zooms": [
     {
-      "id": "cold",
-      "type": "sea",
-      "mode": "fall",
-      "sky": "night",
-      "from": 1.62,
-      "to": 1.07,
-      "clock": "3:07",
-      "clockTo": "3:09",
-      "label": {
-        "text": "illustration · the night the price falls"
-      },
-      "min": 5,
-      "duration": 6.8,
-      "drift": false
-    },
-    {
-      "id": "scale",
-      "type": "kinetic",
-      "kicker": "Hyperliquid perps traders · October 2025 · source: The Block",
-      "lines": [
-        "$7.4 billion",
-        "of Hyperliquid positions,",
-        "wiped out in one cascade."
-      ],
-      "emphasis": [
-        "$7.4"
-      ],
-      "waterOut": true,
-      "min": 5,
-      "duration": 10.933
-    },
-    {
-      "id": "hook",
-      "type": "screen",
-      "src": "captures/L1.mp4",
-      "trimBefore": 0.4,
-      "zooms": [
-        {
-          "at": 1.2,
-          "dur": 30,
-          "box": {
-            "x": 140,
-            "y": 420,
-            "w": 1180,
-            "h": 664
-          }
-        }
-      ],
-      "full": true,
-      "ground": "paper",
-      "waterIn": true,
-      "label": {
-        "text": "live site · vault on NEAR, funded from any chain via NEAR Intents · replay of a simulated rescue"
-      },
-      "duration": 11.933
-    },
-    {
-      "id": "fund",
-      "type": "screen",
-      "src": "captures/F1.mp4",
-      "trimBefore": 0.5,
-      "zooms": [
-        {
-          "at": 1.0,
-          "dur": 30,
-          "box": {
-            "x": 240,
-            "y": 240,
-            "w": 1200,
-            "h": 675
-          }
-        }
-      ],
-      "full": true,
-      "ground": "paper",
-      "label": {
-        "text": "live site · lifeline.prashantthakur.dev/fund · NEAR Intents (1Click)"
-      },
-      "duration": 8.933
-    },
-    {
-      "id": "rules",
-      "type": "screen",
-      "src": "captures/S1.mp4",
-      "trimBefore": 1.2,
-      "zooms": [
-        {
-          "at": 0.6,
-          "dur": 30,
-          "box": {
-            "x": 330,
-            "y": 470,
-            "w": 1100,
-            "h": 619
-          }
-        }
-      ],
-      "full": true,
-      "ground": "paper",
-      "label": {
-        "text": "live site · lifeline.prashantthakur.dev/start · your policy"
-      },
-      "duration": 6.267
-    },
-    {
-      "id": "health",
-      "type": "screen",
-      "src": "captures/P1.mp4",
-      "trimBefore": 1.5,
-      "zooms": [
-        {
-          "at": 0.4,
-          "dur": 30,
-          "box": {
-            "x": 250,
-            "y": 520,
-            "w": 900,
-            "h": 506
-          }
-        }
-      ],
-      "full": true,
-      "ground": "paper",
-      "label": {
-        "text": "live site · lifeline.prashantthakur.dev/position · demo account, live keeper"
-      },
-      "duration": 6.1
-    },
-    {
-      "id": "rescue",
-      "type": "sea",
-      "mode": "rescue",
-      "sky": "day",
-      "from": 1.44,
-      "to": 2.01,
-      "throwAt": 4.34,
-      "amount": "+3.47 USDC",
-      "tag": "Reserve · vault on NEAR",
-      "label": {
-        "text": "the demo keeper's rescue · simulated position, real 1Click quote"
-      },
-      "duration": 8.267,
-      "drift": false
-    },
-    {
-      "id": "speed",
-      "type": "kinetic",
-      "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026",
-      "lines": [
-        "14.6 seconds",
-        "deposit to margin."
-      ],
-      "emphasis": [
-        "14.6"
-      ],
-      "duration": 5.633
-    },
-    {
-      "id": "wake",
-      "type": "screen",
-      "src": "captures/G1.mp4",
-      "trimBefore": 4.0,
-      "zooms": [
-        {
-          "at": 0.3,
-          "dur": 30,
-          "box": {
-            "x": 260,
-            "y": 420,
-            "w": 1100,
-            "h": 619
-          }
-        }
-      ],
-      "full": true,
-      "ground": "paper",
-      "label": {
-        "text": "live site · lifeline.prashantthakur.dev/ledger · public audit log"
-      },
-      "duration": 5.733
-    },
-    {
-      "id": "threat",
-      "type": "kinetic",
-      "lines": [
-        "Assume the bot",
-        "gets hacked."
-      ],
-      "emphasis": [
-        "hacked."
-      ],
-      "waterOut": true,
-      "duration": 6.0
-    },
-    {
-      "id": "lab",
-      "type": "screen",
-      "src": "captures/A1.mp4",
-      "trimBefore": 3.2,
-      "full": true,
-      "ground": "paper",
-      "waterIn": true,
-      "zooms": [
-        {
-          "at": 2.6,
-          "dur": 3.4,
-          "box": {
-            "x": 200,
-            "y": 300,
-            "w": 1100,
-            "h": 620
-          }
-        }
-      ],
-      "label": {
-        "text": "live site · lifeline.prashantthakur.dev/attack · a real transaction on NEAR testnet"
-      },
-      "duration": 7.567
-    },
-    {
-      "id": "refuse",
-      "type": "screen",
-      "src": "captures/A1.mp4",
-      "trimBefore": 9.6,
-      "full": true,
-      "ground": "paper",
-      "zooms": [
-        {
-          "at": 0.0,
-          "dur": 6.5,
-          "box": {
-            "x": 250,
-            "y": 340,
-            "w": 880,
-            "h": 495
-          }
-        }
-      ],
-      "label": {
-        "text": "the vault's answer, on chain · read back by the browser"
-      },
-      "duration": 8.133
-    },
-    {
-      "id": "montage",
-      "type": "trickwall",
-      "items": [
-        {
-          "title": "Pay itself",
-          "answer": "BAD_QUOTE: its deposit address isn't the one this rescue pays"
-        },
-        {
-          "title": "Pay the attacker's Hyperliquid",
-          "answer": "BAD_QUOTE: it pays someone other than this user's Hyperliquid address"
-        },
-        {
-          "title": "Edit a signed quote",
-          "answer": "BAD_QUOTE: 1Click didn't sign this quote"
-        },
-        {
-          "title": "Take more than the cap",
-          "answer": "OVER_PER_RESCUE: over this user's limit per rescue"
-        },
-        {
-          "title": "Replay an old quote",
-          "answer": "BAD_QUOTE: it's more than 2 minutes old"
-        },
-        {
-          "title": "Keep the refund",
-          "answer": "BAD_QUOTE: a failed swap wouldn't refund this user"
-        },
-        {
-          "title": "Pay an old deposit address twice",
-          "answer": "DEPOSIT_REUSED: this deposit address was already paid"
-        }
-      ],
-      "start": 0.2,
-      "each": 1.029,
-      "drift": true,
-      "duration": 8.8
-    },
-    {
-      "id": "verify",
-      "type": "screen",
-      "src": "captures/V1.mp4",
-      "trimBefore": 12.5,
-      "zooms": [
-        {
-          "at": 0.3,
-          "dur": 30,
-          "box": {
-            "x": 250,
-            "y": 380,
-            "w": 1300,
-            "h": 731
-          }
-        }
-      ],
-      "full": true,
-      "ground": "paper",
-      "label": {
-        "text": "live site · lifeline.prashantthakur.dev/verify · checked in the browser"
-      },
-      "duration": 8.3
-    },
-    {
-      "id": "arch",
-      "type": "arch3d",
-      "title": "Under the hood",
-      "min": 9,
-      "layers": [
-        {
-          "id": "hl",
-          "label": "Hyperliquid",
-          "sub": "health every 5 s"
-        },
-        {
-          "id": "policy",
-          "label": "Policy engine",
-          "sub": "16 rules, no network"
-        },
-        {
-          "id": "vault",
-          "label": "Vault on NEAR",
-          "sub": "Rust · checks 1Click's signature"
-        },
-        {
-          "id": "intents",
-          "label": "NEAR Intents",
-          "sub": "1Click moves the USDC"
-        }
-      ],
-      "satellites": [
-        {
-          "id": "ai",
-          "label": "NEAR AI Cloud"
-        }
-      ],
-      "cues": {
-        "hl": 0.3,
-        "policy": 1.7,
-        "vault": 4.03,
-        "intents": 5.97
-      },
-      "traces": [
-        {
-          "from": "policy",
-          "to": "ai",
-          "at": 8.07
-        }
-      ],
-      "duration": 10.4
-    },
-    {
-      "id": "proof",
-      "type": "proof",
-      "ground": "night",
-      "title": "Liquidated within 7 days",
-      "metric": "share of positions liquidated",
-      "unit": "%",
-      "better": "lower",
-      "rows": [
-        {
-          "label": "No protection",
-          "value": 34.2
-        },
-        {
-          "label": "With Lifeline",
-          "value": 20.6,
-          "ours": true
-        }
-      ],
-      "footnote": "18,000 BTC, ETH and SOL positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest",
-      "min": 7,
-      "duration": 9.733
-    },
-    {
-      "id": "close",
-      "type": "sea",
-      "mode": "calm",
-      "sky": "night",
-      "from": 2.01,
-      "to": 2.01,
-      "clock": "3:12",
-      "waterIn": true,
-      "min": 4.5,
-      "duration": 5.533,
-      "drift": false
-    },
-    {
-      "id": "end",
-      "type": "endcard",
-      "name": "Lifeline",
-      "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
-      "links": [
-        "lifeline.prashantthakur.dev",
-        "/attack",
-        "/verify"
-      ],
-      "duration": 4.5
+     "at": 1.2,
+     "dur": 30,
+     "box": {
+      "x": 140,
+      "y": 420,
+      "w": 1180,
+      "h": 664
+     }
     }
-  ]
+   ],
+   "full": true,
+   "ground": "paper",
+   "waterIn": true,
+   "label": {
+    "text": "live site · vault on NEAR, funded from any chain via NEAR Intents · replay of a simulated rescue"
+   },
+   "duration": 11.933
+  },
+  {
+   "id": "fund",
+   "type": "screen",
+   "src": "captures/F1.mp4",
+   "trimBefore": 0.5,
+   "zooms": [
+    {
+     "at": 1.0,
+     "dur": 30,
+     "box": {
+      "x": 240,
+      "y": 240,
+      "w": 1200,
+      "h": 675
+     }
+    }
+   ],
+   "full": true,
+   "ground": "paper",
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/fund · NEAR Intents (1Click)"
+   },
+   "duration": 8.933
+  },
+  {
+   "id": "rules",
+   "type": "screen",
+   "src": "captures/S1.mp4",
+   "trimBefore": 1.2,
+   "zooms": [
+    {
+     "at": 0.6,
+     "dur": 30,
+     "box": {
+      "x": 330,
+      "y": 470,
+      "w": 1100,
+      "h": 619
+     }
+    }
+   ],
+   "full": true,
+   "ground": "paper",
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/start · your policy"
+   },
+   "duration": 6.267
+  },
+  {
+   "id": "health",
+   "type": "screen",
+   "src": "captures/P1.mp4",
+   "trimBefore": 1.5,
+   "zooms": [
+    {
+     "at": 0.4,
+     "dur": 30,
+     "box": {
+      "x": 250,
+      "y": 520,
+      "w": 900,
+      "h": 506
+     }
+    }
+   ],
+   "full": true,
+   "ground": "paper",
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/position · demo account, live keeper"
+   },
+   "duration": 6.1
+  },
+  {
+   "id": "rescue",
+   "type": "sea",
+   "mode": "rescue",
+   "sky": "day",
+   "from": 1.44,
+   "to": 2.01,
+   "throwAt": 4.34,
+   "amount": "+3.47 USDC",
+   "tag": "Reserve · vault on NEAR",
+   "label": {
+    "text": "the demo keeper's rescue · simulated position, real 1Click quote"
+   },
+   "duration": 8.267,
+   "drift": false
+  },
+  {
+   "id": "speed",
+   "type": "kinetic",
+   "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026",
+   "lines": [
+    "14.6 seconds",
+    "deposit to margin."
+   ],
+   "emphasis": [
+    "14.6"
+   ],
+   "duration": 5.633
+  },
+  {
+   "id": "wake",
+   "type": "screen",
+   "src": "captures/G1.mp4",
+   "trimBefore": 4.0,
+   "zooms": [
+    {
+     "at": 0.3,
+     "dur": 30,
+     "box": {
+      "x": 260,
+      "y": 420,
+      "w": 1100,
+      "h": 619
+     }
+    }
+   ],
+   "full": true,
+   "ground": "paper",
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/ledger · public audit log"
+   },
+   "duration": 5.733
+  },
+  {
+   "id": "threat",
+   "type": "kinetic",
+   "lines": [
+    "Assume the bot",
+    "gets hacked."
+   ],
+   "emphasis": [
+    "hacked."
+   ],
+   "waterOut": true,
+   "duration": 6.0
+  },
+  {
+   "id": "lab",
+   "type": "screen",
+   "src": "captures/A1.mp4",
+   "trimBefore": 3.2,
+   "full": true,
+   "ground": "paper",
+   "waterIn": true,
+   "zooms": [
+    {
+     "at": 2.6,
+     "dur": 3.4,
+     "box": {
+      "x": 200,
+      "y": 300,
+      "w": 1100,
+      "h": 620
+     }
+    }
+   ],
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/attack · a real transaction on NEAR testnet"
+   },
+   "duration": 7.567
+  },
+  {
+   "id": "refuse",
+   "type": "screen",
+   "src": "captures/A1.mp4",
+   "trimBefore": 9.6,
+   "full": true,
+   "ground": "paper",
+   "zooms": [
+    {
+     "at": 0.0,
+     "dur": 6.5,
+     "box": {
+      "x": 250,
+      "y": 340,
+      "w": 880,
+      "h": 495
+     }
+    }
+   ],
+   "label": {
+    "text": "the vault's answer, on chain · read back by the browser"
+   },
+   "duration": 8.133
+  },
+  {
+   "id": "montage",
+   "type": "trickwall",
+   "items": [
+    {
+     "title": "Pay itself",
+     "answer": "BAD_QUOTE: its deposit address isn't the one this rescue pays"
+    },
+    {
+     "title": "Pay the attacker's Hyperliquid",
+     "answer": "BAD_QUOTE: it pays someone other than this user's Hyperliquid address"
+    },
+    {
+     "title": "Edit a signed quote",
+     "answer": "BAD_QUOTE: 1Click didn't sign this quote"
+    },
+    {
+     "title": "Take more than the cap",
+     "answer": "OVER_PER_RESCUE: over this user's limit per rescue"
+    },
+    {
+     "title": "Replay an old quote",
+     "answer": "BAD_QUOTE: it's more than 2 minutes old"
+    },
+    {
+     "title": "Keep the refund",
+     "answer": "BAD_QUOTE: a failed swap wouldn't refund this user"
+    },
+    {
+     "title": "Pay an old deposit address twice",
+     "answer": "DEPOSIT_REUSED: this deposit address was already paid"
+    }
+   ],
+   "start": 0.2,
+   "each": 1.029,
+   "drift": true,
+   "duration": 8.8
+  },
+  {
+   "id": "verify",
+   "type": "screen",
+   "src": "captures/V1.mp4",
+   "trimBefore": 12.5,
+   "zooms": [
+    {
+     "at": 0.3,
+     "dur": 30,
+     "box": {
+      "x": 250,
+      "y": 380,
+      "w": 1300,
+      "h": 731
+     }
+    }
+   ],
+   "full": true,
+   "ground": "paper",
+   "label": {
+    "text": "live site · lifeline.prashantthakur.dev/verify · checked in the browser"
+   },
+   "duration": 8.3
+  },
+  {
+   "id": "arch",
+   "type": "arch3d",
+   "title": "Under the hood",
+   "min": 9,
+   "layers": [
+    {
+     "id": "hl",
+     "label": "Hyperliquid",
+     "sub": "health every 5 s"
+    },
+    {
+     "id": "policy",
+     "label": "Policy engine",
+     "sub": "16 rules, no network"
+    },
+    {
+     "id": "vault",
+     "label": "Vault on NEAR",
+     "sub": "Rust · checks 1Click's signature"
+    },
+    {
+     "id": "intents",
+     "label": "NEAR Intents",
+     "sub": "1Click moves the USDC"
+    }
+   ],
+   "satellites": [
+    {
+     "id": "ai",
+     "label": "NEAR AI Cloud"
+    }
+   ],
+   "cues": {
+    "hl": 0.3,
+    "policy": 1.7,
+    "vault": 4.03,
+    "intents": 5.97
+   },
+   "traces": [
+    {
+     "from": "policy",
+     "to": "ai",
+     "at": 8.07
+    }
+   ],
+   "duration": 10.4
+  },
+  {
+   "id": "proof",
+   "type": "proof",
+   "ground": "night",
+   "title": "Liquidated within 7 days",
+   "metric": "share of positions liquidated",
+   "unit": "%",
+   "better": "lower",
+   "rows": [
+    {
+     "label": "No protection",
+     "value": 34.2
+    },
+    {
+     "label": "With Lifeline",
+     "value": 20.6,
+     "ours": true
+    }
+   ],
+   "footnote": "18,000 BTC, ETH and SOL positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest",
+   "min": 7,
+   "duration": 9.733
+  },
+  {
+   "id": "close",
+   "type": "sea",
+   "mode": "calm",
+   "sky": "night",
+   "from": 2.01,
+   "to": 2.01,
+   "clock": "3:12",
+   "waterIn": true,
+   "min": 4.5,
+   "duration": 5.533,
+   "drift": false
+  },
+  {
+   "id": "end",
+   "type": "endcard",
+   "name": "Lifeline",
+   "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
+   "links": [
+    "lifeline.prashantthakur.dev",
+    "/attack",
+    "/verify"
+   ],
+   "duration": 4.5
+  }
+ ]
 }
