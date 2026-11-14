@@ -9,6 +9,7 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 - Verify page: https://lifeline.prashantthakur.dev/verify (the on-chain and attestation claims, checked in your browser)
 - Keeper API, running the simulation around the clock: https://lifeline-sim.prashantthakur.dev
 - Telegram bot: [@LifeLineNearBot](https://t.me/LifeLineNearBot), run by the same keeper
+- On X: [@LifelineNear](https://x.com/LifelineNear)
 - Vault contract on testnet: [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
 
 | In numbers | Value | Source |

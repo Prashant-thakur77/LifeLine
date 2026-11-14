@@ -28,8 +28,26 @@
     "text": "illustration · the night the price falls"
    },
    "min": 5,
-   "duration": 6.8,
+   "duration": 4.5,
    "drift": false
+  },
+  {
+   "id": "me1",
+   "type": "footage",
+   "src": "founder/raw.mp4",
+   "trimBefore": 1.3,
+   "grade": "product",
+   "push": "in",
+   "pushTo": 1.05,
+   "objectPosition": "50% 18%",
+   "drift": false,
+   "backdrop": false,
+   "person": {
+    "name": "Prashant Thakur",
+    "role": "Building Lifeline on NEAR",
+    "at": 0.6
+   },
+   "duration": 13.8
   },
   {
    "id": "scale",
@@ -45,7 +63,12 @@
    ],
    "waterOut": true,
    "min": 5,
-   "duration": 10.933
+   "face": {
+    "src": "founder/raw.mp4",
+    "from": 16.55,
+    "name": "Prashant"
+   },
+   "duration": 11.167
   },
   {
    "id": "hook",
@@ -70,7 +93,12 @@
    "label": {
     "text": "live site · vault on NEAR, funded from any chain via NEAR Intents · replay of a simulated rescue"
    },
-   "duration": 11.933
+   "face": {
+    "src": "founder/raw.mp4",
+    "from": 27.75,
+    "name": "Prashant"
+   },
+   "duration": 12.733
   },
   {
    "id": "speed",
@@ -103,7 +131,12 @@
     }
    ],
    "drift": false,
-   "duration": 8.933
+   "face": {
+    "src": "founder/raw.mp4",
+    "from": 40.55,
+    "name": "Prashant"
+   },
+   "duration": 10.167
   },
   {
    "id": "hlproof",
@@ -484,6 +517,19 @@
    "duration": 8.233
   },
   {
+   "id": "me5",
+   "type": "footage",
+   "src": "founder/raw.mp4",
+   "trimBefore": 50.5,
+   "grade": "product",
+   "push": "in",
+   "pushTo": 1.05,
+   "objectPosition": "50% 18%",
+   "drift": false,
+   "backdrop": false,
+   "duration": 11.933
+  },
+  {
    "id": "threat",
    "type": "kinetic",
    "lines": [
@@ -494,7 +540,7 @@
     "hacked."
    ],
    "waterOut": true,
-   "duration": 5.967
+   "duration": 2.6
   },
   {
    "id": "lab",
@@ -608,30 +654,6 @@
    "duration": 8.467
   },
   {
-   "id": "aiproof",
-   "type": "screen",
-   "src": "captures/T2.mp4",
-   "trimBefore": 17.6,
-   "full": true,
-   "ground": "paper",
-   "zooms": [
-    {
-     "at": 0.3,
-     "dur": 30,
-     "box": {
-      "x": 260,
-      "y": 150,
-      "w": 1160,
-      "h": 652
-     }
-    }
-   ],
-   "label": {
-    "text": "live site · lifeline.prashantthakur.dev/verify · NEAR AI Cloud, checked in your browser"
-   },
-   "duration": 8.733
-  },
-  {
    "id": "compare",
    "type": "board",
    "mode": "compare",
@@ -655,7 +677,12 @@
    ],
    "start": 1.4,
    "each": 2.6,
-   "duration": 15.033
+   "face": {
+    "src": "founder/raw.mp4",
+    "from": 62.0,
+    "name": "Prashant"
+   },
+   "duration": 14.067
   },
   {
    "id": "near",
@@ -683,55 +710,23 @@
    ],
    "start": 1.6,
    "each": 2.6,
-   "duration": 17.667
+   "duration": 17.533
   },
   {
    "id": "arch",
-   "type": "arch3d",
-   "title": "Under the hood",
-   "min": 9,
-   "layers": [
-    {
-     "id": "hl",
-     "label": "Hyperliquid",
-     "sub": "health every 5 s"
-    },
-    {
-     "id": "policy",
-     "label": "Policy engine",
-     "sub": "16 rules, no network"
-    },
-    {
-     "id": "vault",
-     "label": "Vault on NEAR",
-     "sub": "Rust · checks 1Click's signature"
-    },
-    {
-     "id": "intents",
-     "label": "NEAR Intents",
-     "sub": "1Click moves the USDC"
-    }
-   ],
-   "satellites": [
-    {
-     "id": "ai",
-     "label": "NEAR AI Cloud"
-    }
-   ],
+   "type": "flow3d",
+   "min": 17,
+   "drift": false,
    "cues": {
-    "hl": 0.3,
-    "policy": 1.7,
-    "vault": 4.03,
-    "intents": 5.97
+    "hl": 4.96,
+    "keeper": 6.45,
+    "vault": 11.04,
+    "intents": 12.81,
+    "landed": 15.49,
+    "attack": 17.29,
+    "ai": 19.09
    },
-   "traces": [
-    {
-     "from": "policy",
-     "to": "ai",
-     "at": 8.07
-    }
-   ],
-   "duration": 10.367
+   "duration": 21.233
   },
   {
    "id": "proof",
@@ -754,30 +749,7 @@
    ],
    "footnote": "18,000 BTC, ETH and SOL positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest",
    "min": 7,
-   "duration": 9.867
-  },
-  {
-   "id": "stress",
-   "type": "proof",
-   "ground": "night",
-   "title": "One-minute crash test",
-   "metric": "every adverse move within one minute",
-   "unit": "%",
-   "better": "lower",
-   "rows": [
-    {
-     "label": "No protection",
-     "value": 34.2
-    },
-    {
-     "label": "With Lifeline",
-     "value": 29.1,
-     "ours": true
-    }
-   ],
-   "footnote": "same positions · each 4h candle's move squeezed into one minute · research/backtest",
-   "min": 6,
-   "duration": 8.833
+   "duration": 9.767
   },
   {
    "id": "tests",
@@ -790,7 +762,47 @@
    "emphasis": [
     "1,535"
    ],
-   "duration": 9.167
+   "duration": 8.067
+  },
+  {
+   "id": "me7",
+   "type": "footage",
+   "src": "founder/raw.mp4",
+   "trimBefore": 80.9,
+   "grade": "product",
+   "push": "in",
+   "pushTo": 1.05,
+   "objectPosition": "50% 18%",
+   "drift": false,
+   "backdrop": false,
+   "duration": 14.567
+  },
+  {
+   "id": "xpage",
+   "type": "xposts",
+   "handle": "@LifelineNear",
+   "images": [
+    {
+     "src": "x/1-profile.png",
+     "aspect": 1.3453
+    },
+    {
+     "src": "x/2-attack-thread.png",
+     "aspect": 1.9429
+    },
+    {
+     "src": "x/3-first-thread.png",
+     "aspect": 1.9082
+    }
+   ],
+   "drift": false,
+   "face": {
+    "src": "founder/raw.mp4",
+    "from": 98.05,
+    "name": "Prashant"
+   },
+   "min": 7,
+   "duration": 7.433
   },
   {
    "id": "close",
@@ -809,13 +821,14 @@
    "id": "end",
    "type": "endcard",
    "name": "Lifeline",
-   "tagline": "Topped up before liquidation. Proven on NEAR mainnet.",
+   "tagline": "Topped up before liquidation. Live on NEAR mainnet.",
    "links": [
     "lifeline.prashantthakur.dev",
     "/attack",
-    "/verify"
+    "/verify",
+    "Follow @LifelineNear on X"
    ],
-   "duration": 4.0
+   "duration": 5.0
   }
  ]
 }

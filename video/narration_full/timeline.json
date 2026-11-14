@@ -1,337 +1,349 @@
 {
- "duration": 222.967,
+ "duration": 258.8,
  "scenes": [
   {
    "id": "cold",
    "start": 0.0,
-   "duration": 6.8,
+   "duration": 4.5,
+   "voice": false
+  },
+  {
+   "id": "me1",
+   "start": 4.5,
+   "duration": 13.8,
    "voice": true
   },
   {
    "id": "scale",
-   "start": 6.8,
-   "duration": 10.933,
+   "start": 18.3,
+   "duration": 11.167,
    "voice": true
   },
   {
    "id": "hook",
-   "start": 17.733,
-   "duration": 11.933,
+   "start": 29.467,
+   "duration": 12.733,
    "voice": true
   },
   {
    "id": "speed",
-   "start": 29.667,
-   "duration": 8.933,
+   "start": 42.2,
+   "duration": 10.167,
    "voice": true
   },
   {
    "id": "hlproof",
-   "start": 38.6,
+   "start": 52.367,
    "duration": 6.3,
    "voice": true
   },
   {
    "id": "fund",
-   "start": 44.9,
+   "start": 58.667,
    "duration": 8.767,
    "voice": true
   },
   {
    "id": "rules",
-   "start": 53.667,
+   "start": 67.433,
    "duration": 6.3,
    "voice": true
   },
   {
    "id": "owner",
-   "start": 59.967,
+   "start": 73.733,
    "duration": 6.133,
    "voice": true
   },
   {
    "id": "health",
-   "start": 66.1,
+   "start": 79.867,
    "duration": 6.267,
    "voice": true
   },
   {
    "id": "rescue",
-   "start": 72.367,
+   "start": 86.133,
    "duration": 8.233,
    "voice": true
   },
   {
    "id": "wake",
-   "start": 80.6,
+   "start": 94.367,
    "duration": 5.6,
    "voice": true
   },
   {
    "id": "history",
-   "start": 86.2,
+   "start": 99.967,
    "duration": 8.233,
    "voice": true
   },
   {
-   "id": "threat",
-   "start": 94.433,
-   "duration": 5.967,
+   "id": "me5",
+   "start": 108.2,
+   "duration": 11.933,
    "voice": true
   },
   {
+   "id": "threat",
+   "start": 120.133,
+   "duration": 2.6,
+   "voice": false
+  },
+  {
    "id": "lab",
-   "start": 100.4,
+   "start": 122.733,
    "duration": 7.533,
    "voice": true
   },
   {
    "id": "refuse",
-   "start": 107.933,
+   "start": 130.267,
    "duration": 8.1,
    "voice": true
   },
   {
    "id": "montage",
-   "start": 116.033,
+   "start": 138.367,
    "duration": 8.767,
    "voice": true
   },
   {
    "id": "verify",
-   "start": 124.8,
+   "start": 147.133,
    "duration": 8.467,
    "voice": true
   },
   {
-   "id": "aiproof",
-   "start": 133.267,
-   "duration": 8.733,
-   "voice": true
-  },
-  {
    "id": "compare",
-   "start": 142.0,
-   "duration": 15.033,
+   "start": 155.6,
+   "duration": 14.067,
    "voice": true
   },
   {
    "id": "near",
-   "start": 157.033,
-   "duration": 17.667,
+   "start": 169.667,
+   "duration": 17.533,
    "voice": true
   },
   {
    "id": "arch",
-   "start": 174.7,
-   "duration": 10.367,
+   "start": 187.2,
+   "duration": 21.233,
    "voice": true
   },
   {
    "id": "proof",
-   "start": 185.067,
-   "duration": 9.867,
-   "voice": true
-  },
-  {
-   "id": "stress",
-   "start": 194.933,
-   "duration": 8.833,
+   "start": 208.433,
+   "duration": 9.767,
    "voice": true
   },
   {
    "id": "tests",
-   "start": 203.767,
-   "duration": 9.167,
+   "start": 218.2,
+   "duration": 8.067,
+   "voice": true
+  },
+  {
+   "id": "me7",
+   "start": 226.267,
+   "duration": 14.567,
+   "voice": true
+  },
+  {
+   "id": "xpage",
+   "start": 240.833,
+   "duration": 7.433,
    "voice": true
   },
   {
    "id": "close",
-   "start": 212.933,
+   "start": 248.267,
    "duration": 5.533,
    "voice": true
   },
   {
    "id": "end",
-   "start": 218.467,
-   "duration": 4.5,
+   "start": 253.8,
+   "duration": 5.0,
    "voice": false
   }
  ],
  "lines": [
   {
-   "id": "n01",
-   "scene": "cold",
-   "start": 0.3,
-   "end": 6.3,
-   "caption": "Three in the morning. Your Hyperliquid position is minutes from liquidation, and you're asleep."
+   "id": "p1",
+   "scene": "me1",
+   "start": 4.8,
+   "end": 17.8,
+   "caption": "Hi, I'm Prashant. If you trade perps on Hyperliquid, you know this fear. The price moves at three in the morning, and you wake up liquidated, even though you had money sitting on another chain."
   },
   {
-   "id": "n03",
+   "id": "p2",
    "scene": "scale",
-   "start": 7.1,
-   "end": 17.1,
-   "caption": "It happens to traders every day. In one October cascade, over seven point four billion dollars of Hyperliquid positions were wiped out."
+   "start": 18.6,
+   "end": 28.85,
+   "caption": "One October cascade: over $7.4 billion of Hyperliquid positions were wiped out. And so that's why we built Lifeline, on NEAR."
   },
   {
-   "id": "n02",
+   "id": "p3",
    "scene": "hook",
-   "start": 18.033,
-   "end": 29.113,
-   "caption": "Lifeline, built on NEAR, stops that. It watches your account every five seconds, and tops up your margin from a reserve you fund from any chain through NEAR Intents."
+   "start": 29.767,
+   "end": 41.667,
+   "caption": "Lifeline watches your account every five seconds, and when it gets close to liquidation, it tops up your margin from a reserve you funded from any chain, through NEAR Intents."
   },
   {
-   "id": "n09",
+   "id": "p4",
    "scene": "speed",
-   "start": 29.967,
-   "end": 37.927,
-   "caption": "And it's proven on NEAR mainnet: real money moved from NEAR into a Hyperliquid perps balance in under a minute."
+   "start": 42.5,
+   "end": 51.7,
+   "caption": "And this isn't a mockup. We ran it on NEAR mainnet with real money, and it landed in a Hyperliquid account in under a minute."
   },
   {
    "id": "f09",
    "scene": "hlproof",
-   "start": 38.9,
-   "end": 44.3,
+   "start": 52.667,
+   "end": 58.067,
    "caption": "Hyperliquid's own explorer shows the payout, from 1Click to our account."
   },
   {
    "id": "n05",
    "scene": "fund",
-   "start": 45.2,
-   "end": 53.16,
+   "start": 58.967,
+   "end": 66.927,
    "caption": "NEAR Intents swaps your funds from any chain into USDC on NEAR, and you deposit it into the Lifeline vault."
   },
   {
    "id": "n06",
    "scene": "rules",
-   "start": 53.967,
-   "end": 59.327,
+   "start": 67.733,
+   "end": 73.093,
    "caption": "Then set your rules: when to warn you, when to rescue, and how much."
   },
   {
    "id": "f01",
    "scene": "owner",
-   "start": 60.267,
-   "end": 65.547,
+   "start": 74.033,
+   "end": 79.313,
    "caption": "Your policy lives in the vault on NEAR, so only you can change it, from your own wallet."
   },
   {
    "id": "n07",
    "scene": "health",
-   "start": 66.4,
-   "end": 71.68,
+   "start": 80.167,
+   "end": 85.447,
    "caption": "The keeper reads your health every five seconds. At one, you're liquidated."
   },
   {
    "id": "n08",
    "scene": "rescue",
-   "start": 72.667,
-   "end": 79.987,
+   "start": 86.433,
+   "end": 93.753,
    "caption": "Below your trigger, it gets a signed quote from 1Click, and the vault pays it straight into your Hyperliquid margin."
   },
   {
    "id": "n10",
    "scene": "wake",
-   "start": 80.9,
-   "end": 85.66,
+   "start": 94.667,
+   "end": 99.427,
    "caption": "You wake up to a message explaining it. Every step is on a public ledger."
   },
   {
    "id": "f02",
    "scene": "history",
-   "start": 86.5,
-   "end": 93.78,
+   "start": 100.267,
+   "end": 107.547,
    "caption": "This test account has thirty-four real rescues on NEAR testnet, and each one is a transaction you can open."
   },
   {
-   "id": "n11",
-   "scene": "threat",
-   "start": 94.733,
-   "end": 99.813,
-   "caption": "A bot that moves money is a target. So we assume it gets hacked."
+   "id": "p5",
+   "scene": "me5",
+   "start": 108.5,
+   "end": 119.55,
+   "caption": "The hard part isn't moving money. It's making sure a bot that can move your money can't steal it. So that's why we built Lifeline assuming the bot gets hacked."
   },
   {
    "id": "n12",
    "scene": "lab",
-   "start": 100.7,
-   "end": 107.42,
+   "start": 123.033,
+   "end": 129.753,
    "caption": "On the attack page, anyone can play a hacked keeper holding the real key. It tries to pay itself."
   },
   {
    "id": "n13",
    "scene": "refuse",
-   "start": 108.233,
-   "end": 115.393,
+   "start": 130.567,
+   "end": 137.727,
    "caption": "The vault refuses, on chain. The key can only call rescue, and the vault checks every quote itself."
   },
   {
    "id": "n14",
    "scene": "montage",
-   "start": 116.333,
-   "end": 124.253,
+   "start": 138.667,
+   "end": 146.587,
    "caption": "Edit a signed quote. Take more than the cap. Replay an old one. Seven tricks, seven refusals."
   },
   {
    "id": "n15",
    "scene": "verify",
-   "start": 125.1,
-   "end": 132.58,
+   "start": 147.433,
+   "end": 154.913,
    "caption": "Don't trust us: the verify page checks every claim in your browser, even each AI explanation's signature."
   },
   {
-   "id": "f04",
-   "scene": "aiproof",
-   "start": 133.567,
-   "end": 141.407,
-   "caption": "Each AI explanation is signed inside a verified enclave, and your browser checks it against a fresh hardware report from Intel."
-  },
-  {
-   "id": "f07",
+   "id": "p6",
    "scene": "compare",
-   "start": 142.3,
-   "end": 156.5,
-   "caption": "Centralised exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even our own keeper can take the money."
+   "start": 155.9,
+   "end": 169.05,
+   "caption": "Exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even your own keeper can take your money."
   },
   {
    "id": "f08",
    "scene": "near",
-   "start": 157.333,
-   "end": 174.053,
+   "start": 169.967,
+   "end": 186.687,
    "caption": "And it needs NEAR. Intents move the money from any chain in one step. A function-call key lets the keeper call rescue and nothing else. The vault checks 1Click's signature on chain. And NEAR AI explains every rescue from verified hardware."
   },
   {
-   "id": "n16",
+   "id": "f10",
    "scene": "arch",
-   "start": 175.0,
-   "end": 184.48,
-   "caption": "Under the hood: a sixteen-rule policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words."
+   "start": 187.5,
+   "end": 207.78,
+   "caption": "Under the hood: the keeper's sixteen-rule policy engine sees your health fall, and its only key can call rescue. The Rust vault on NEAR checks 1Click's signature on chain, then NEAR Intents moves the USDC into your margin. A hacked keeper gets refused, and NEAR AI explains every rescue."
   },
   {
    "id": "n17",
    "scene": "proof",
-   "start": 185.367,
-   "end": 194.247,
+   "start": 208.733,
+   "end": 217.613,
    "caption": "On eighteen thousand replayed positions, thirty-four percent were liquidated without protection. With Lifeline, twenty point six."
-  },
-  {
-   "id": "f05",
-   "scene": "stress",
-   "start": 195.233,
-   "end": 203.153,
-   "caption": "Even in a harsher test, where every crash lands within one minute, liquidations still fell, to twenty-nine point one percent."
   },
   {
    "id": "f06",
    "scene": "tests",
-   "start": 204.067,
-   "end": 212.387,
-   "caption": "Fifteen hundred and nineteen TypeScript tests and sixty-two contract tests run on every change."
+   "start": 218.5,
+   "end": 225.58,
+   "caption": "Fifteen hundred and thirty-five TypeScript tests and sixty-two contract tests run on every change."
+  },
+  {
+   "id": "p7",
+   "scene": "me7",
+   "start": 226.567,
+   "end": 240.217,
+   "caption": "Lifeline. Topped up before liquidation, live on NEAR mainnet. Go to lifeline.prashantthakur.dev/attack, try to rob the vault, and tell us which attack you'd try first."
+  },
+  {
+   "id": "p8",
+   "scene": "xpage",
+   "start": 241.133,
+   "end": 247.733,
+   "caption": "This is just the start. Follow us on X to be part of the journey. We are live on mainnet, so try us out."
   },
   {
    "id": "n18",
    "scene": "close",
-   "start": 213.233,
-   "end": 217.793,
+   "start": 248.567,
+   "end": 253.127,
    "caption": "Three in the morning. You're asleep. And your position is still open."
   }
  ]

@@ -25,7 +25,7 @@ old = {s["id"]: s for s in json.load(open(FILM))["scenes"]} if os.path.exists(FI
 
 def word_at(line_id, word, fallback):
     """Seconds from the start of the line's scene to `word` in the line (proportional within the take)."""
-    if not TL or line_id not in lines:
+    if not TL or line_id not in lines or line_id not in NARR:
         return fallback
     ln = lines[line_id]
     text = NARR[line_id]["caption"]
@@ -113,7 +113,7 @@ scenes = [
      "footnote": f"{POS} BTC, ETH and SOL positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest", "min": 7},
     {"id": "close", "type": "sea", "mode": "calm", "sky": "night", "from": 2.01, "to": 2.01, "clock": "3:12", "waterIn": True, "min": 4.5},
     {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Proven on NEAR mainnet.",
-     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify"], "duration": 4.0},
+     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify", "Follow @LifelineNear on X"], "duration": 4.0},
 ]
 if FULL:
     import datetime
@@ -164,6 +164,58 @@ if FULL:
         for sc in scenes:
             if sc["id"] == "fund":
                 sc.update({"src": "captures/C2.mp4", "trimBefore": 1.0, "label": {"text": "testnet dashboard · wallet connected · reserve read from the vault"}})
+
+def png_aspect(path):
+    import struct
+    w, h = struct.unpack(">II", open(path, "rb").read()[16:24])
+    return w / h
+
+
+# ---- the founder on camera (VARIANT=full): takes are cut from one recording, so picture and voice share its clock ----
+if FULL:
+    SEG = json.load(open(os.path.join(HERE, "founder_segments.json")))   # seconds in the founder recording
+    LEAD = 0.3   # vo_timeline's lead-in before a scene's first line
+    REC = "founder/raw.mp4"
+    def cam(sid, take, person=None):
+        sc = {"id": sid, "type": "footage", "src": REC, "trimBefore": round(SEG[take][0] - LEAD, 3), "grade": "product", "push": "in",
+              "pushTo": 1.05, "objectPosition": "50% 18%", "drift": False, "backdrop": False}
+        if person:
+            sc["person"] = person
+        return sc
+    def pip(take):
+        return {"src": REC, "from": round(SEG[take][0] - LEAD, 3), "name": "Prashant"}
+    byid = {sc["id"]: sc for sc in scenes}
+    for sid, take in (("scale", "p2"), ("hook", "p3"), ("speed", "p4"), ("compare", "p6")):
+        byid[sid]["face"] = pip(take)
+    byid["cold"]["duration"] = 4.5
+    byid["threat"]["duration"] = 2.6
+    byid["end"]["duration"] = 5.0
+    byid["arch"].clear()
+    byid["arch"].update({"id": "arch", "type": "flow3d", "min": 17, "drift": False,
+        "cues": {"hl": word_at("f10", "health", 1.5), "keeper": word_at("f10", "only key", 4.0), "vault": word_at("f10", "signature", 7.0),
+                 "intents": word_at("f10", "NEAR Intents", 9.0), "landed": word_at("f10", "margin", 11.5), "attack": word_at("f10", "hacked", 13.0),
+                 "ai": word_at("f10", "NEAR AI", 15.5)}})
+    cu = byid["arch"]["cues"]   # the capsule needs ~1.8 s to land before the hacked drone tries the lock
+    cu["attack"] = max(cu["attack"], round(cu["landed"] + 1.8, 2))
+    cu["ai"] = max(cu["ai"], round(cu["attack"] + 1.8, 2))
+    byid["end"]["tagline"] = "Topped up before liquidation. Live on NEAR mainnet."
+    out = []
+    for sc in scenes:
+        if sc["id"] == "threat":
+            out.append(cam("me5", "p5"))
+        out.append(sc)
+        if sc["id"] == "cold":
+            out.append(cam("me1", "p1", {"name": "Prashant Thakur", "role": "Building Lifeline on NEAR", "at": 0.6}))
+    # the close: the founder's invite, the X account, then the night-sea story, then the end card
+    tail = [x for x in out if x["id"] in ("close", "end")]
+    out = [x for x in out if x["id"] not in ("close", "end")]
+    XDIR = os.path.join(HERE, "film-full/public/x")
+    shots = sorted(f for f in os.listdir(XDIR) if f.endswith(".png")) if os.path.isdir(XDIR) else []
+    out.append(cam("me7", "p7"))
+    out.append({"id": "xpage", "type": "xposts", "handle": "@LifelineNear", "images": [{"src": f"x/{f}", "aspect": round(png_aspect(os.path.join(XDIR, f)), 4)} for f in shots],
+                "drift": False, "face": pip("p8"), "min": 7})
+    out += tail
+    scenes = [sc for sc in out if sc["id"] not in ("aiproof", "stress")]   # kept the full cut near four minutes
 
 for s in scenes:
     s.setdefault("duration", old.get(s["id"], {}).get("duration", 5.0))

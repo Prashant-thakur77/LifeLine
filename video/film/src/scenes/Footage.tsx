@@ -16,6 +16,8 @@ export type FootageProps = {
   person?: { name: string; role: string; at?: number }; // lower third for a real person on camera
   note?: { text: string; sub?: string };                 // e.g. the true-story note, top of frame
   audio?: boolean;                     // keep the clip's own sound (interviews, real dictation)
+  objectPosition?: string;             // where "cover" crops, e.g. "50% 25%" to keep a face in frame
+  pushTo?: number;                     // the push-in's end scale (default 1.09)
   dur: number;
 };
 
@@ -27,7 +29,7 @@ export const Footage: React.FC<FootageProps> = (p) => {
   const { fps, width: W, height: H } = useVideoConfig();
   const d = p.dur;
   const push = p.push ?? "in";
-  const s = push === "in" ? interp(f, [0, d], [1.0, 1.09]) : push === "out" ? interp(f, [0, d], [1.1, 1.0]) : 1.06;
+  const s = push === "in" ? interp(f, [0, d], [1.0, p.pushTo ?? 1.09]) : push === "out" ? interp(f, [0, d], [1.1, 1.0]) : 1.06;
   const tx = push === "left" ? interp(f, [0, d], [30, -30]) : push === "right" ? interp(f, [0, d], [-30, 30]) : 0;
   const grade = p.grade ?? "story";
   const filter = grade === "story" ? "sepia(.16) saturate(.8) contrast(1.06) brightness(.9)"
@@ -39,7 +41,7 @@ export const Footage: React.FC<FootageProps> = (p) => {
     <AbsoluteFill style={{ backgroundColor: "#000", overflow: "hidden" }}>
       <AbsoluteFill style={{ scale: `${s}`, translate: `${tx}px 0`, filter, opacity: fadeIn }}>
         <Video src={staticFile(p.src)} trimBefore={Math.round((p.trimBefore ?? 0) * fps)} playbackRate={p.playbackRate ?? 1}
-          muted={!p.audio} objectFit="cover" style={{ width: "100%", height: "100%" }} />
+          muted={!p.audio} objectFit="cover" style={{ width: "100%", height: "100%", objectPosition: p.objectPosition }} />
       </AbsoluteFill>
       {grade === "story" && <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(255,170,90,.10), rgba(40,20,0,.18))", mixBlendMode: "soft-light" }} />}
       <AbsoluteFill style={{ background: "radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55))" }} />

@@ -1,32 +1,27 @@
 [
  {
-  "scene": "cold",
-  "id": "n01",
-  "caption": "Three in the morning. Your Hyperliquid position is minutes from liquidation, and you're asleep.",
-  "exaggeration": 0.55,
-  "cfg": 0.3
+  "scene": "me1",
+  "id": "p1",
+  "caption": "Hi, I'm Prashant. If you trade perps on Hyperliquid, you know this fear. The price moves at three in the morning, and you wake up liquidated, even though you had money sitting on another chain.",
+  "founder": true
  },
  {
   "scene": "scale",
-  "id": "n03",
-  "caption": "It happens to traders every day. In one October cascade, over seven point four billion dollars of Hyperliquid positions were wiped out.",
-  "exaggeration": 0.5,
-  "cfg": 0.3
+  "id": "p2",
+  "caption": "One October cascade: over $7.4 billion of Hyperliquid positions were wiped out. And so that's why we built Lifeline, on NEAR.",
+  "founder": true
  },
  {
   "scene": "hook",
-  "id": "n02",
-  "caption": "Lifeline, built on NEAR, stops that. It watches your account every five seconds, and tops up your margin from a reserve you fund from any chain through NEAR Intents.",
-  "exaggeration": 0.5,
-  "cfg": 0.3
+  "id": "p3",
+  "caption": "Lifeline watches your account every five seconds, and when it gets close to liquidation, it tops up your margin from a reserve you funded from any chain, through NEAR Intents.",
+  "founder": true
  },
  {
   "scene": "speed",
-  "id": "n09",
-  "caption": "And it's proven on NEAR mainnet: real money moved from NEAR into a Hyperliquid perps balance in under a minute.",
-  "exaggeration": 0.5,
-  "cfg": 0.3,
-  "spoken": "And it's proven on Near mainnet: real money moved from Near into a Hyperliquid perps balance in under a minute."
+  "id": "p4",
+  "caption": "And this isn't a mockup. We ran it on NEAR mainnet with real money, and it landed in a Hyperliquid account in under a minute.",
+  "founder": true
  },
  {
   "scene": "hlproof",
@@ -87,11 +82,10 @@
   "spoken": "This test account has thirty-four real rescues on Near testnet, and each one is a transaction you can open."
  },
  {
-  "scene": "threat",
-  "id": "n11",
-  "caption": "A bot that moves money is a target. So we assume it gets hacked.",
-  "exaggeration": 0.5,
-  "cfg": 0.3
+  "scene": "me5",
+  "id": "p5",
+  "caption": "The hard part isn't moving money. It's making sure a bot that can move your money can't steal it. So that's why we built Lifeline assuming the bot gets hacked.",
+  "founder": true
  },
  {
   "scene": "lab",
@@ -130,10 +124,9 @@
  },
  {
   "scene": "compare",
-  "id": "f07",
-  "caption": "Centralised exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even our own keeper can take the money.",
-  "exaggeration": 0.5,
-  "cfg": 0.3
+  "id": "p6",
+  "caption": "Exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even your own keeper can take your money.",
+  "founder": true
  },
  {
   "scene": "near",
@@ -145,10 +138,11 @@
  },
  {
   "scene": "arch",
-  "id": "n16",
-  "caption": "Under the hood: a sixteen-rule policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words.",
+  "id": "f10",
+  "caption": "Under the hood: the keeper's sixteen-rule policy engine sees your health fall, and its only key can call rescue. The Rust vault on NEAR checks 1Click's signature on chain, then NEAR Intents moves the USDC into your margin. A hacked keeper gets refused, and NEAR AI explains every rescue.",
   "exaggeration": 0.5,
-  "cfg": 0.3
+  "cfg": 0.3,
+  "spoken": "Under the hood: the keeper's sixteen-rule policy engine sees your health fall, and its only key can call rescue. The Rust vault on NEAR checks one-click's signature on chain, then NEAR Intents moves the U S D C into your margin. A hacked keeper gets refused, and NEAR A I explains every rescue."
  },
  {
   "scene": "proof",
@@ -167,7 +161,7 @@
  {
   "scene": "tests",
   "id": "f06",
-  "caption": "Fifteen hundred and nineteen TypeScript tests and sixty-two contract tests run on every change.",
+  "caption": "Fifteen hundred and thirty-five TypeScript tests and sixty-two contract tests run on every change.",
   "exaggeration": 0.5,
   "cfg": 0.3
  },
@@ -177,5 +171,17 @@
   "caption": "Three in the morning. You're asleep. And your position is still open.",
   "exaggeration": 0.55,
   "cfg": 0.3
+ },
+ {
+  "scene": "me7",
+  "id": "p7",
+  "caption": "Lifeline. Topped up before liquidation, live on NEAR mainnet. Go to lifeline.prashantthakur.dev/attack, try to rob the vault, and tell us which attack you'd try first.",
+  "founder": true
+ },
+ {
+  "scene": "xpage",
+  "id": "p8",
+  "caption": "This is just the start. Follow us on X to be part of the journey. We are live on mainnet, so try us out.",
+  "founder": true
  }
 ]

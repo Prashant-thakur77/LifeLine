@@ -1,5 +1,5 @@
 {
- "duration": 222.47,
+ "duration": 253.8,
  "vo": "narration_full/vo_full.wav",
  "music": [
   {
@@ -9,7 +9,7 @@
    "gain_db": -6,
    "fade_in": 0.6,
    "fade_out": 2.5,
-   "end": 222.47
+   "end": 253.8
   }
  ],
  "sfx": [
