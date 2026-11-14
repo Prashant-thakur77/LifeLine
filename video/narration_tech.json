@@ -1,0 +1,135 @@
+[
+ {
+  "scene": "t_intro",
+  "id": "t01",
+  "caption": "This is a technical walkthrough of Lifeline: how a rescue works, why a hacked keeper can't steal, and how to check every claim yourself.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_health",
+  "id": "t02",
+  "caption": "Health is your cross-margin account value, divided by the maintenance margin Hyperliquid requires. As it approaches one, Hyperliquid liquidates.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_watch",
+  "id": "t03",
+  "caption": "The keeper reads it from Hyperliquid every five seconds. Below your trigger, one point five by default, a rescue starts.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_size",
+  "id": "t04",
+  "caption": "It sizes the top-up to bring health back to your target, adds 1Click's flat fee, and caps it at your limits and your reserve.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_quote",
+  "id": "t05",
+  "caption": "Then it asks 1Click for a quote, from USDC on NEAR into your Hyperliquid perps balance, and checks 1Click's signature before trusting a single field.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_policy",
+  "id": "t06",
+  "caption": "A pure policy engine checks sixteen rules, including the recipient, the refund account, both caps, the cooldown, the quote's age and slippage. Anything it can't read blocks the rescue.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_vault",
+  "id": "t07",
+  "caption": "Then the vault on NEAR checks again, on chain. It verifies 1Click's signature itself, and reads the deposit address, recipient, amount and refund account from the signed quote.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_key",
+  "id": "t08",
+  "caption": "The keeper's only key is a NEAR function-call key. It can call rescue on the vault, and nothing else: no withdrawals, no transfers, no policy changes.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_lab",
+  "id": "t09",
+  "caption": "So we let anyone attack it. The attack lab holds a keeper's real key and sends rescue tricks to the testnet vault. Every one is refused on chain, and your browser reads the refusal back from a public node.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_wall",
+  "id": "t10",
+  "caption": "Paying itself. Paying the attacker. An edited quote. Over the cap. A stale quote. Keeping the refund. A reused deposit address. Seven tricks, seven refusals.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_verify",
+  "id": "t11",
+  "caption": "The verify page checks the rest in your browser: the keeper's keys, and the vault's code against the chain.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_repro",
+  "id": "t12",
+  "caption": "The vault is a reproducible build. Rebuild the commit it names, and you get the exact code hash deployed on testnet.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_ai",
+  "id": "t13",
+  "caption": "Explanations come from a model on NEAR AI Cloud, in attested hardware. Each answer is signed inside the enclave. Your browser checks that signature, finds the key in a fresh hardware report, and verifies Intel's signature on it.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_money",
+  "id": "t14",
+  "caption": "The money path runs end to end on testnet: a signed quote, a real NEAR deposit, and the USDC in a Hyperliquid perps balance fourteen point six seconds later.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_arch",
+  "id": "t15",
+  "caption": "Under the hood: Hyperliquid for health, the policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_proof",
+  "id": "t16",
+  "caption": "On eighteen thousand positions replayed over two years of real Hyperliquid prices, liquidations fell from thirty-four point two percent to twenty point six.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_stress",
+  "id": "t17",
+  "caption": "In a harsher test, where every price move lands within one minute, they still fell, to twenty-nine point one.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_tests",
+  "id": "t18",
+  "caption": "Fifteen hundred and nineteen TypeScript tests, sixty-two contract tests, and CI on every change.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
+  "scene": "t_close",
+  "id": "t19",
+  "caption": "Lifeline. Topped up before liquidation, funded from any chain, on NEAR. Try to rob it yourself.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ }
+]

@@ -1,0 +1,234 @@
+{
+ "duration": 139.567,
+ "scenes": [
+  {
+   "id": "cold",
+   "start": 0.0,
+   "duration": 6.8,
+   "voice": true
+  },
+  {
+   "id": "scale",
+   "start": 6.8,
+   "duration": 10.933,
+   "voice": true
+  },
+  {
+   "id": "hook",
+   "start": 17.733,
+   "duration": 11.933,
+   "voice": true
+  },
+  {
+   "id": "fund",
+   "start": 29.667,
+   "duration": 8.933,
+   "voice": true
+  },
+  {
+   "id": "rules",
+   "start": 38.6,
+   "duration": 6.267,
+   "voice": true
+  },
+  {
+   "id": "health",
+   "start": 44.867,
+   "duration": 6.1,
+   "voice": true
+  },
+  {
+   "id": "rescue",
+   "start": 50.967,
+   "duration": 8.267,
+   "voice": true
+  },
+  {
+   "id": "speed",
+   "start": 59.233,
+   "duration": 5.633,
+   "voice": true
+  },
+  {
+   "id": "wake",
+   "start": 64.867,
+   "duration": 5.733,
+   "voice": true
+  },
+  {
+   "id": "threat",
+   "start": 70.6,
+   "duration": 6.0,
+   "voice": true
+  },
+  {
+   "id": "lab",
+   "start": 76.6,
+   "duration": 7.567,
+   "voice": true
+  },
+  {
+   "id": "refuse",
+   "start": 84.167,
+   "duration": 8.133,
+   "voice": true
+  },
+  {
+   "id": "montage",
+   "start": 92.3,
+   "duration": 8.8,
+   "voice": true
+  },
+  {
+   "id": "verify",
+   "start": 101.1,
+   "duration": 8.3,
+   "voice": true
+  },
+  {
+   "id": "arch",
+   "start": 109.4,
+   "duration": 10.4,
+   "voice": true
+  },
+  {
+   "id": "proof",
+   "start": 119.8,
+   "duration": 9.733,
+   "voice": true
+  },
+  {
+   "id": "close",
+   "start": 129.533,
+   "duration": 5.533,
+   "voice": true
+  },
+  {
+   "id": "end",
+   "start": 135.067,
+   "duration": 4.5,
+   "voice": false
+  }
+ ],
+ "lines": [
+  {
+   "id": "n01",
+   "scene": "cold",
+   "start": 0.3,
+   "end": 6.3,
+   "caption": "Three in the morning. Your Hyperliquid position is minutes from liquidation, and you're asleep."
+  },
+  {
+   "id": "n03",
+   "scene": "scale",
+   "start": 7.1,
+   "end": 17.1,
+   "caption": "It happens to traders every day. In one October cascade, over seven point four billion dollars of Hyperliquid positions were wiped out."
+  },
+  {
+   "id": "n02",
+   "scene": "hook",
+   "start": 18.033,
+   "end": 29.113,
+   "caption": "Lifeline, built on NEAR, stops that. It watches your account every five seconds, and tops up your margin from a reserve you fund from any chain through NEAR Intents."
+  },
+  {
+   "id": "n05",
+   "scene": "fund",
+   "start": 29.967,
+   "end": 37.927,
+   "caption": "NEAR Intents swaps your funds from any chain into USDC on NEAR, and you deposit it into the Lifeline vault."
+  },
+  {
+   "id": "n06",
+   "scene": "rules",
+   "start": 38.9,
+   "end": 44.26,
+   "caption": "Then set your rules: when to warn you, when to rescue, and how much."
+  },
+  {
+   "id": "n07",
+   "scene": "health",
+   "start": 45.167,
+   "end": 50.447,
+   "caption": "The keeper reads your health every five seconds. At one, you're liquidated."
+  },
+  {
+   "id": "n08",
+   "scene": "rescue",
+   "start": 51.267,
+   "end": 58.587,
+   "caption": "Below your trigger, it gets a signed quote from 1Click, and the vault pays it straight into your Hyperliquid margin."
+  },
+  {
+   "id": "n09",
+   "scene": "speed",
+   "start": 59.533,
+   "end": 64.293,
+   "caption": "On testnet, that money reached Hyperliquid in under fifteen seconds."
+  },
+  {
+   "id": "n10",
+   "scene": "wake",
+   "start": 65.167,
+   "end": 69.927,
+   "caption": "You wake up to a message explaining it. Every step is on a public ledger."
+  },
+  {
+   "id": "n11",
+   "scene": "threat",
+   "start": 70.9,
+   "end": 75.98,
+   "caption": "A bot that moves money is a target. So we assume it gets hacked."
+  },
+  {
+   "id": "n12",
+   "scene": "lab",
+   "start": 76.9,
+   "end": 83.62,
+   "caption": "On the attack page, anyone can play a hacked keeper holding the real key. It tries to pay itself."
+  },
+  {
+   "id": "n13",
+   "scene": "refuse",
+   "start": 84.467,
+   "end": 91.627,
+   "caption": "The vault refuses, on chain. The key can only call rescue, and the vault checks every quote itself."
+  },
+  {
+   "id": "n14",
+   "scene": "montage",
+   "start": 92.6,
+   "end": 100.52,
+   "caption": "Edit a signed quote. Take more than the cap. Replay an old one. Seven tricks, seven refusals."
+  },
+  {
+   "id": "n15",
+   "scene": "verify",
+   "start": 101.4,
+   "end": 108.88,
+   "caption": "Don't trust us: the verify page checks every claim in your browser, even each AI explanation's signature."
+  },
+  {
+   "id": "n16",
+   "scene": "arch",
+   "start": 109.7,
+   "end": 119.18,
+   "caption": "Under the hood: a sixteen-rule policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words."
+  },
+  {
+   "id": "n17",
+   "scene": "proof",
+   "start": 120.1,
+   "end": 128.98,
+   "caption": "On eighteen thousand replayed positions, thirty-four percent were liquidated without protection. With Lifeline, twenty point six."
+  },
+  {
+   "id": "n18",
+   "scene": "close",
+   "start": 129.833,
+   "end": 134.393,
+   "caption": "Three in the morning. You're asleep. And your position is still open."
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+0:00 What Lifeline is
+0:09 Health
+0:29 Sizing a rescue and the 1Click quote
+0:50 The policy engine
+1:04 The vault's on-chain checks
+1:18 The rescue-only key
+1:30 The attack lab, live
+1:58 Check it yourself, and the reproducible build
+2:15 NEAR AI, signed and attested
+2:30 Testnet money path
+2:43 Under the hood
+2:54 Backtest
+3:13 Tests

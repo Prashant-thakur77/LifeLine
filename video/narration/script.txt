@@ -1,0 +1,17 @@
+Three in the morning. Your Hyperliquid position is minutes from liquidation, and you're asleep.
+It happens to traders every day. In one October cascade, over seven point four billion dollars of Hyperliquid positions were wiped out.
+Lifeline, built on NEAR, stops that. It watches your account every five seconds, and tops up your margin from a reserve you fund from any chain through NEAR Intents.
+NEAR Intents swaps your funds from any chain into USDC on NEAR, and you deposit it into the Lifeline vault.
+Then set your rules: when to warn you, when to rescue, and how much.
+The keeper reads your health every five seconds. At one, you're liquidated.
+Below your trigger, it gets a signed quote from 1Click, and the vault pays it straight into your Hyperliquid margin.
+On testnet, that money reached Hyperliquid in under fifteen seconds.
+You wake up to a message explaining it. Every step is on a public ledger.
+A bot that moves money is a target. So we assume it gets hacked.
+On the attack page, anyone can play a hacked keeper holding the real key. It tries to pay itself.
+The vault refuses, on chain. The key can only call rescue, and the vault checks every quote itself.
+Edit a signed quote. Take more than the cap. Replay an old one. Seven tricks, seven refusals.
+Don't trust us: the verify page checks every claim in your browser, even each AI explanation's signature.
+Under the hood: a sixteen-rule policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words.
+On eighteen thousand replayed positions, thirty-four percent were liquidated without protection. With Lifeline, twenty point six.
+Three in the morning. You're asleep. And your position is still open.
