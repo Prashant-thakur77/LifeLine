@@ -23,5 +23,5 @@ What comes after the hackathon, in order. Each step either takes Lifeline to rea
 ## 4. Reach
 
 - An SDK for perps front-ends that already fund through NEAR Intents, so a trader can turn Lifeline on where they trade.
-- Rescues paid from wNEAR as well as USDC: the vault already accepts wNEAR deposits, and the caps need a per-token unit.
+- Rescues paid from wNEAR as well as USDC: the vault can already allow wNEAR deposits, and the caps need a per-token unit.
 - More venues after Hyperliquid, wherever 1Click can deliver margin.

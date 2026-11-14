@@ -19,7 +19,7 @@ The steps to go live: the vault and keeper on mainnet, then the first real rescu
 ## 1. Accounts (human)
 
 1. Create `$TEAM` in a NEAR wallet and fund it with at least 5 NEAR.
-2. Import its key into the NEAR CLI on this machine. The CLI asks for the seed phrase itself, so it never goes through chat: type `! near account import-account using-seed-phrase network-config mainnet` in the Claude prompt.
+2. Import its key into the NEAR CLI on this machine. The CLI asks for the seed phrase itself, so type it only into the CLI: `near account import-account using-seed-phrase network-config mainnet`.
 
 ## 2. Vault and keeper
 

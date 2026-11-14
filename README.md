@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-1%2C535%20TS%20%2B%2062%20contract-brightgreen)](#tests-and-checks)
 [![Vault](https://img.shields.io/badge/vault-NEAR%20testnet-00C08B)](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
-[![Money path](https://img.shields.io/badge/money%20path-proven%20on%20mainnet-00C08B)](research/mainnet/RESULTS.md)
+[![1Click route](https://img.shields.io/badge/1Click%20route%20to%20Hyperliquid-proven%20on%20mainnet-00C08B)](research/mainnet/RESULTS.md)
 [![Demo](https://img.shields.io/badge/live%20demo-lifeline.prashantthakur.dev-ff5a1f)](https://lifeline.prashantthakur.dev)
 [![Built at NEAR HACKATHON](https://img.shields.io/badge/built%20at-NEAR%20HACKATHON-black)](https://nearhackathon.com)
 
@@ -61,7 +61,7 @@ Steps 1 to 8 need only a browser. Step 9 needs the NEAR CLI. Steps 10 to 12 need
 The keeper, the policy engine, the vault contract, the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and the demos all run today. What is proven where:
 
 - **On NEAR mainnet, with real money:** the money path. The keeper's own 1Click client got a quote signed by 1Click's key, checked every field, and a real NEAR deposit became 2.531506 USDC in a Hyperliquid perps balance 56.9 s later ([research/mainnet/RESULTS.md](research/mainnet/RESULTS.md)).
-- **On NEAR testnet:** the vault and keeper end to end. The vault, deployed from a reproducible build, has paid 34 real rescue transactions for its test account (from the latency benchmark), and refused every attack in the public lab.
+- **On NEAR testnet:** the vault's rescue path, the keeper's rescue-only key and every refusal. The vault, deployed from a reproducible build, has paid 34 real rescue transactions for its test account (from the latency benchmark), and refused every attack in the public lab.
 - **Next:** the vault and keeper on mainnet, one runbook away: [docs/mainnet.md](docs/mainnet.md). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
 
 ## What's new here
@@ -152,7 +152,7 @@ flowchart LR
 ```
 
 1. The trader sets a policy in the vault: their Hyperliquid address, the health levels to warn at, rescue at and refill to, caps per rescue and per day, a cooldown, and the one keeper allowed to act for them.
-2. They fund a reserve. The dashboard gets a 1Click quote from whatever token they hold, on any supported chain, into USDC in their own NEAR account, then deposits it into the vault.
+2. They fund a reserve. The dashboard gets a 1Click quote from whatever token they hold, on any supported chain, into USDC in their own NEAR account, then deposits it into the vault. (The hosted demo is the simulation; a dashboard built for testnet points at the testnet vault.)
 3. The keeper reads their health from Hyperliquid every 5 seconds: cross account value divided by maintenance margin. Liquidation comes at 1.0.
 4. Below the warn line it alerts them on Telegram. Below the trigger it sizes a rescue to bring health back to the target, gets a live quote from 1Click to the trader's own Hyperliquid perps balance, and runs the policy engine.
 5. If the engine allows it, the keeper calls the vault's `rescue` with 1Click's signed quote. The vault checks the signature and every limit itself, then pays the quote's deposit address. 1Click swaps and delivers USDC to Hyperliquid.
@@ -349,7 +349,7 @@ These are the ones we know about.
 - A top-up can be lost. It keeps a position open, and if the price keeps falling the reserve goes with it. Each rescue also costs 1Click's flat fee of about 0.32 USDC, and the smallest rescue is 2 USDC, so small rescues lose a large share to the fee.
 - Only cross margin is protected. A top-up credits the perps balance and can't reach an isolated position's margin. An account with only isolated positions reads as unknown, never as safe.
 - Health is an approximation of Hyperliquid's own calculation. On 5 sampled accounts our formula matched its liquidation price exactly on 2. On the other 3 its price was further away, so health read low and a rescue would fire early, not late.
-- Rescues pay in USDC only. The vault accepts wNEAR deposits, but the caps are in USDC units and don't fit a 24-decimal token, so rescues pay from the USDC reserve only.
+- Rescues pay in USDC only. The vault can allow wNEAR deposits (the mainnet runbook does; the testnet vault allows only its test USDC), but the caps are in USDC units and don't fit a 24-decimal token, so rescues pay from the USDC reserve only.
 - The keeper is one Cloudflare Durable Object. Its alarm wakes it every 5 s, a cron re-arms the alarm if the loop ever stops, and the audit log lives in the object's own storage, so a restart or a deploy loses nothing. If Cloudflare or the object is down, nobody is watching. It picks up unfinished rescues when it restarts, but it can't start one while it's off. It runs on Cloudflare's free plan, whose daily limits it has to share with the public sim: an object that never sleeps uses about 85% of the duration allowance, so the sim sleeps between drops, and the keeper sets one alarm a minute and writes health once a minute to stay well inside the storage limits. `GET /` shows when it last ticked.
 - Attestation shows that the hardware and signing key are genuine, and each kept answer's signature ties its exact words to that key and to the model name signed with them. It doesn't prove which weights run: the hardware report doesn't sign the model name, and the software hash isn't pinned to a known build. It's rechecked every 6 hours. Explanations don't move money, so a wrong one could mislead a reader but can't lose funds.
 - Anyone can request a Telegram link code for any watched account, because linking has no proof of ownership. A stranger could get a copy of someone's alerts and the owner couldn't remove them, though the same information is public on the ledger. One account can have several chats, so it can't cut off the owner.
@@ -367,8 +367,8 @@ These are the ones we know about.
 | `apps/keeper` | The watch loop, rescues, audit log, REST API, AI explanations and attestation; runs in Node or on Cloudflare |
 | `apps/bot` | The Telegram bot: one-time linking, alerts, `/status`, `/pause` |
 | `apps/web` | The dashboard |
-| `research/backtest`, `research/latency`, `research/tidepool` | The backtest, the latency measurements and the Tidepool testnet run |
-| `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `latency` |
+| `research/backtest`, `research/latency`, `research/tidepool`, `research/mainnet` | The backtest, the latency measurements, the Tidepool testnet run and the mainnet run |
+| `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, `latency` |
 
 Running it yourself:
 
