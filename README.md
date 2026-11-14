@@ -11,7 +11,7 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 
 ## Status
 
-Everything below runs today: the keeper, the policy engine, the vault contract (on testnet), the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and both demos. The mainnet vault and the first real rescue with real money are the step still to come. Until then, the hosted keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
+Everything below runs today: the keeper, the policy engine, the vault contract (on testnet), the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and both demos. It is tested end to end on NEAR testnet and ready for mainnet, with the whole launch written up as one runbook in `docs/mainnet.md`. The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
 
 ## The problem
 
@@ -25,9 +25,9 @@ Onchain, the same idea already has users. In Ethereum lending, DeFi Saver says i
 
 Hyperliquid has the most open interest of any onchain perps venue ([DefiLlama](https://defillama.com/open-interest), 13 November 2026), and the October 2025 cascade wiped out over $7.4 billion of it ([The Block](https://www.theblock.co/amp/post/375347/hyperliquid-traders-double-down-after-historic-wipeout-keep-getting-liquidated)).
 
-The plan is a small fee per rescue, on top of 1Click's, charged by the vault. It isn't built yet. We'd reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume.
+The model is a small fee per rescue, taken by the vault on top of 1Click's. We reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume.
 
-Next: the mainnet vault, yield on the idle reserve, keeper signing inside a TEE, and more venues.
+Rolling out: the mainnet vault, then yield on the idle reserve, keeper signing inside a TEE, and more venues.
 
 ## How it works
 
@@ -172,7 +172,7 @@ These are the ones we know about.
 - The vault pays for each rescue's storage, about 0.005 NEAR, from its own balance. A user's 0.05 NEAR registration covers about ten. If the vault account ran out of NEAR, rescues would stop until it's topped up, so its balance needs watching.
 - The vault trusts 1Click's signing key, set when the vault is deployed. If 1Click changes its key, rescues stop until the vault is redeployed with the new one. If 1Click's key were stolen, a hacked keeper with it could sign its own quotes.
 - You trust the code with your reserve. The vault is a hackathon contract with no audit. A rescue also relies on 1Click and NEAR Intents to deliver, and on Hyperliquid to credit the account.
-- The team can replace the vault's code. The vault account keeps its full-access key, so whoever holds that key could deploy a different contract. Deleting the key would make the code permanent; we haven't, because a bug fix would then need a new vault and every user would have to move.
+- The team can replace the vault's code. The vault account keeps its full-access key, so whoever holds that key could deploy a different contract. Deleting the key makes the code permanent. We keep it through launch, so a fix can ship without every user moving to a new vault, and delete it once the mainnet vault has settled.
 - A rescue takes time, and a crash can be faster. Lifeline looks every 5 s, then has to get a quote, send it and wait for delivery. A price that falls from the trigger to liquidation within that time wins, and the flash-crash test shows how often that could happen.
 - A top-up can be lost. It keeps a position open, and if the price keeps falling the reserve goes with it. Each rescue also costs 1Click's flat fee of about 0.32 USDC, and the smallest rescue is 2 USDC, so small rescues lose a large share to the fee.
 - Only cross margin is protected. A top-up credits the perps balance and can't reach an isolated position's margin. An account with only isolated positions reads as unknown, never as safe.

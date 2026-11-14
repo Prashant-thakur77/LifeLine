@@ -233,7 +233,7 @@ export function Footer() {
                       <a href="https://testnet.nearblocks.io/address/vault.lifeline-team.testnet" target="_blank" rel="noreferrer noopener" className="underline decoration-sun underline-offset-4 hover:text-sun">
                         vault.lifeline-team.testnet
                       </a>{" "}
-                      on testnet; mainnet at launch
+                      on testnet, mainnet-ready
                     </>
                   )}
                 </dd>

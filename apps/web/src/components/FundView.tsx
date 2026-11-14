@@ -543,8 +543,8 @@ function MoveIntoReserve({ account }: { account: string }) {
         ) : null}
 
         {!vault ? (
-          <Notice tone="warn" title="The vault isn't deployed yet">
-            USDC you fund now waits safely in your NEAR account. Once the vault is live, this is where you move it into your reserve.
+          <Notice tone="info" title="The mainnet vault opens soon">
+            USDC you fund now waits safely in your own NEAR account, ready to move into your reserve the moment the mainnet vault opens. The testnet vault is live today.
           </Notice>
         ) : policy.loading ? (
           <Skeleton className="h-16" />
