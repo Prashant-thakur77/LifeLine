@@ -1,5 +1,16 @@
 # Lifeline
 
+[![CI](https://github.com/Prashant-thakur77/LifeLine/actions/workflows/ci.yml/badge.svg)](https://github.com/Prashant-thakur77/LifeLine/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Prashant-thakur77/LifeLine)](https://github.com/Prashant-thakur77/LifeLine/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-1%2C535%20TS%20%2B%2062%20contract-brightgreen)](#tests-and-checks)
+[![Vault](https://img.shields.io/badge/vault-NEAR%20testnet-00C08B)](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
+[![Money path](https://img.shields.io/badge/money%20path-proven%20on%20mainnet-00C08B)](research/mainnet/RESULTS.md)
+[![Demo](https://img.shields.io/badge/live%20demo-lifeline.prashantthakur.dev-ff5a1f)](https://lifeline.prashantthakur.dev)
+[![Built at NEAR HACKATHON](https://img.shields.io/badge/built%20at-NEAR%20HACKATHON-black)](https://nearhackathon.com)
+
+[![Lifeline: topped up before liquidation](video/thumbnail.png)](https://lifeline.prashantthakur.dev)
+
 Auto top-up for onchain perps, funded from any chain.
 
 Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their account health falls below a line they chose, it sends USDC from a reserve they hold in a NEAR contract, through NEAR Intents, into their Hyperliquid perps balance, before liquidation gets close. The reserve can be funded from Ethereum, Solana, Base, Bitcoin and the other chains 1Click supports.
@@ -11,6 +22,10 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 - Telegram bot: [@LifeLineNearBot](https://t.me/LifeLineNearBot), run by the same keeper
 - On X: [@LifelineNear](https://x.com/LifelineNear)
 - Vault contract on testnet: [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
+
+**What runs where:** the vault and keeper run on NEAR testnet. The money path (1Click from NEAR into a Hyperliquid perps balance) ran on mainnet with real funds. The hosted demo keeper is a simulation with real prices and real quotes. Details under [Status](#status).
+
+**Contents:** [Verify it in 5 minutes](#verify-it-yourself-in-5-minutes) · [What's new](#whats-new-here) · [Demo films](#demo-films) · [The problem](#the-problem) · [Business](#why-this-is-a-business) · [How it works](#how-it-works) · [Why NEAR](#why-it-needs-near) · [Backtest](#backtest-results) · [Proven on mainnet](#proven-on-mainnet) · [Safety model](#safety-model) · [Tests](#tests-and-checks) · [Limitations](#limitations) · [Roadmap](ROADMAP.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 | In numbers | Value | Source |
 | --- | --- | --- |
@@ -49,13 +64,31 @@ The keeper, the policy engine, the vault contract, the dashboard, the Telegram b
 - **On NEAR testnet:** the vault and keeper end to end. The vault, deployed from a reproducible build, has paid 34 real rescue transactions for its test account (from the latency benchmark), and refused every attack in the public lab.
 - **Next:** the vault and keeper on mainnet, one runbook away: [docs/mainnet.md](docs/mainnet.md). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
 
+## What's new here
+
+Exchange auto top-up works because the exchange holds both the position and the backup money. Lifeline does the same job when the two sit on different chains, and it is built so that the bot moving the money can't steal it:
+
+| Mechanism | Where | What it stops |
+| --- | --- | --- |
+| The vault verifies 1Click's ed25519 signature on the quote, on chain | [`contracts/vault/src/quote.rs:56`](contracts/vault/src/quote.rs#L56) | A keeper inventing or editing a quote |
+| 19 checks on the signed quote before any money moves: it pays the user's own Hyperliquid address, refunds the user's own NEAR account, is at most 2 minutes old, slips at most 1%, charges at most 1 USDC flat, and has no field that could redirect the money | [`contracts/vault/src/quote.rs`](contracts/vault/src/quote.rs), `check` | A keeper pointing a real quote at itself or an attacker |
+| Each 1Click deposit address can be paid once | [`contracts/vault/src/lib.rs:313`](contracts/vault/src/lib.rs#L313) | Replaying an old rescue |
+| The keeper's only key is a NEAR function-call key for `rescue` | [keeper.lifeline-team.testnet](https://testnet.nearblocks.io/address/keeper.lifeline-team.testnet), Access Keys | A stolen keeper key withdrawing, transferring or changing a policy |
+| Caps per rescue and per 24 h, and a cooldown, enforced by the vault as well as the keeper | [`contracts/vault/src/lib.rs`](contracts/vault/src/lib.rs), `rescue` | A hacked keeper draining a reserve at once |
+| A public attack lab where anyone can play the hacked keeper | https://lifeline.prashantthakur.dev/attack | Having to take our word for any of the above |
+| Each AI explanation is signed inside a TEE, and the browser checks the signature against a fresh hardware report | https://lifeline.prashantthakur.dev/verify | An explanation edited after the model wrote it |
+
+## Built during NEAR HACKATHON
+
+All of this was written during the hackathon. The repository was created on 6 November 2026 and holds no earlier code. Each part was built as a task on its own branch and merged as one commit, so some early commits are large; the biggest, 84,000 lines, is mostly saved Hyperliquid candles for the backtest. Commit authors show who wrote what: Soham Juneja ran the testnet and mainnet money-path proofs, and Prashant Thakur built the rest. The [releases](https://github.com/Prashant-thakur77/LifeLine/releases) mark each milestone, from the first keeper (v0.1.0) to this submission (v1.0.0).
+
 ## Demo films
 
 Three films, each built entirely from code in [video/](video/): the narration, the scenes, the music and the captions are regenerated by its scripts, and every number on screen is read from this repo or the chain, never typed by hand.
 
 | Film | Length | What it shows |
 | --- | --- | --- |
-| Full demo | 3:42 | The problem, the product, the mainnet run, real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
+| Full demo | 3:43 | Prashant on camera with the problem, then the product, the mainnet run, real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
 | Short demo | 2:19 | The same story, cut for a standard X upload |
 | Technical walkthrough | 3:44 | Health and rescue sizing, the policy engine, the vault's on-chain checks in its real Rust code, the rescue-only key, live attacks, the reproducible build, NEAR AI's signed answers, the mainnet run, the backtest and the tests |
 
@@ -75,7 +108,17 @@ Onchain, the same idea already has users. In Ethereum lending, DeFi Saver says i
 
 Hyperliquid has the most open interest of any onchain perps venue ([DefiLlama](https://defillama.com/open-interest), 13 November 2026), and the October 2025 cascade wiped out over $7.4 billion of it ([The Block](https://www.theblock.co/amp/post/375347/hyperliquid-traders-double-down-after-historic-wipeout-keep-getting-liquidated)).
 
-The planned model is a small fee per rescue, taken by the vault on top of 1Click's. We plan to reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume.
+What a trader gets and pays, from our own measurements:
+
+| | Value | Source |
+| --- | --- | --- |
+| Positions liquidated within 7 days, without and with Lifeline | 34.2% and 20.6% | [Backtest results](#backtest-results) |
+| A saved position, against no protection | $68.74 better on average | [research/backtest/RESULTS.md](research/backtest/RESULTS.md) |
+| 1Click's cost per rescue | a flat 0.3153 USDC plus about 0.011% | [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
+| NEAR cost per rescue, paid by the vault | about 0.005 NEAR for storage, plus gas | [Limitations](#limitations) |
+| Running the keeper | Cloudflare's free plan | [Limitations](#limitations) |
+
+The revenue mechanism is already in the signed quote. 1Click quotes can carry an app fee that 1Click pays to a named account (`appFees`, accepted up to 500 bps on this route in dry quotes). The vault accepts a quote that loses at most 0.30% beyond the flat fee ([`quote.rs:24`](contracts/vault/src/quote.rs#L24), [`quote.rs:154`](contracts/vault/src/quote.rs#L154)), and an honest quote loses about 0.011%, so a Lifeline fee of up to 0.25% per rescue fits inside the vault's checks without a contract change, and the trader sees it in the quote. We plan to reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume. The next steps are in [ROADMAP.md](ROADMAP.md).
 
 ## How it works
 
