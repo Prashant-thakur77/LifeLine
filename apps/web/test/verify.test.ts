@@ -267,3 +267,9 @@ describe("plain words for keys and amounts", () => {
     expect(nearAmount(null)).toBe("no limit");
   });
 });
+
+describe("the refused attack's lookup", () => {
+  it("reads it from an archival node, since regular nodes drop transactions after a few days", () => {
+    for (const d of DEPLOYMENTS) expect(d.archivalRpcUrl).toMatch(/^https:\/\/archival-rpc\./);
+  });
+});

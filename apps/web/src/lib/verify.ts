@@ -16,6 +16,8 @@ export const ONE_CLICK_QUOTE_SIGNER = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eAD
 export type Deployment = {
   network: Network;
   rpcUrl: string;
+  /** Keeps every transaction: regular nodes drop old ones after a few days, like the refusal below. */
+  archivalRpcUrl: string;
   vault: string;
   keeper: string;
   /** NEAR's code hash (base58 SHA-256) of the vault wasm built from this repo. */
@@ -40,6 +42,7 @@ export const DEPLOYMENTS: Deployment[] = [
   {
     network: "testnet",
     rpcUrl: DEFAULT_RPC_URL.testnet,
+    archivalRpcUrl: "https://archival-rpc.testnet.fastnear.com",
     vault: "vault.lifeline-team.testnet",
     keeper: "keeper.lifeline-team.testnet",
     vaultCodeHash: VAULT_CODE_HASH,
