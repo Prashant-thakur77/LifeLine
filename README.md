@@ -315,6 +315,33 @@ pnpm --filter web cf:dev          # the built dashboard on Cloudflare's runtime
 
 `docs/mainnet.md` is the runbook for deploying the vault and keeper to mainnet.
 
+## Built with
+
+**On NEAR**
+- NEAR Protocol: the vault contract in Rust with `near-sdk` 5.30, built reproducibly with `cargo-near`, tested on the `near-workspaces` sandbox
+- NEAR Intents, through the 1Click API and `@defuse-protocol/one-click-sdk-typescript`: any-chain funding and every rescue
+- NEAR AI Cloud (`deepseek-ai/DeepSeek-V4.1-Flash-1017`): the plain-language explanations, with TEE attestation and per-answer signatures
+- `near-api-js` 7.4: the keeper's chain calls
+- HOT's `near-connect`: wallet connection in the dashboard
+
+**Trading data**
+- Hyperliquid's info API: positions, margin and prices
+
+**Keeper, bot and hosting**
+- Cloudflare Workers and Durable Objects, with SQLite storage
+- grammY: the Telegram bot
+- `@noble/curves`, `@noble/hashes`, `@scure/base`: signature checks
+- `@phala/dcap-qvl`: Intel TDX quote verification, on the keeper and in the browser
+- `jose`: NVIDIA attestation tokens
+
+**Dashboard**
+- Next.js 16, React 19, Tailwind CSS 4
+- Archivo and IBM Plex Mono typefaces
+
+**Testing**
+- Vitest, `cargo test`, GitHub Actions
+- Tidepool: the testnet stand-in for 1Click used in the end-to-end money-path run
+
 ## AI tools used
 
 The code was written with Claude Code (Anthropic), under human direction: the team planned each task, and reviewed and tested what it wrote. At runtime, Lifeline uses NEAR AI Cloud (`deepseek-ai/DeepSeek-V4.1-Flash-1017`) for the plain-language explanation of each rescue decision. Those explanations have no authority over money, as the safety model above explains.
