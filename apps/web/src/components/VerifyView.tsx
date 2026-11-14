@@ -491,7 +491,7 @@ export function VerifyView() {
             <h2 id={`chain-${d.network}`} className="text-[clamp(28px,3.4vw,44px)] font-extrabold uppercase leading-none text-ink [font-variation-settings:'wdth'_70]">
               The vault and keeper, on NEAR {d.network}
             </h2>
-            <span className="text-[13px] text-muted">Mainnet appears here the day it launches.</span>
+            <span className="text-[13px] text-muted">The mainnet deployment joins this page at launch.</span>
           </div>
           <DeploymentChecks d={d} run={run} onReport={onReport} />
         </section>

@@ -29,8 +29,8 @@ export function StartView() {
       </PageHeader>
 
       {!config.vaultId ? (
-        <Notice tone="warn" title="The vault isn't deployed yet" className="mb-6">
-          You can fill this in and see exactly what would be signed, but there&apos;s nothing to sign it into until the contract is live. Meanwhile, the{" "}
+        <Notice tone="info" title="The mainnet vault opens soon" className="mb-6">
+          Fill this in and see exactly what you&apos;ll sign when the mainnet vault opens. Meanwhile, the{" "}
           <a href={pageHref("/position", "demo.near")}>live demo</a> shows the whole thing working.
         </Notice>
       ) : null}
@@ -132,7 +132,7 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
 
   const blockers: string[] = [];
   if (!accountId) blockers.push("Connect a wallet first (step 1).");
-  if (!vault) blockers.push("The vault isn't deployed yet.");
+  if (!vault) blockers.push("The mainnet vault opens soon.");
   else if (accountId && existing.loading) blockers.push("Reading your current policy from the vault…");
   else if (existing.error) blockers.push(`Couldn't read the vault: ${existing.error.message}`);
   if (!config.keeperAccountId) blockers.push("No keeper account is configured for this dashboard.");
