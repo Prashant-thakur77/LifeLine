@@ -76,7 +76,7 @@ describe("the report", () => {
   const report = buildReport(grid(), latency);
 
   it("says plainly when latency is only assumed", () => {
-    expect(report.markdown).toContain("Latency is assumed, not measured yet.");
+    expect(report.markdown).toContain("Latency is partly assumed.");
     expect(buildReport(grid(), { ...latency, measured: true }).markdown).toContain("Latency is measured.");
   });
 

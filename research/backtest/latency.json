@@ -2,5 +2,5 @@
   "p50Ms": 35000,
   "p95Ms": 120000,
   "measured": false,
-  "source": "Partly measured. The keeper's decision and the vault's NEAR transaction are measured in research/latency/RESULTS.md, but 1Click's delivery to Hyperliquid isn't, until a rescue moves real money. So p50 is 1Click's own 30 s estimate plus one 5 s keeper poll, and p95 is a deliberately pessimistic 120 s."
+  "source": "The keeper's decision and the vault's NEAR transaction are measured on the live APIs and testnet in research/latency/RESULTS.md, and a testnet delivery to Hyperliquid through Tidepool took 14.6 s (research/tidepool/RESULTS.md). Mainnet 1Click delivery is taken from 1Click's own 30 s estimate, so p50 is that estimate plus one 5 s keeper poll, and p95 is a deliberately pessimistic 120 s."
 }
