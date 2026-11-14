@@ -27,3 +27,6 @@ narration_tech/*.wav
 # film-tech/ is a hard-linked copy of film/ (cp -al film film-tech) with its own film.json
 film-tech/*
 !film-tech/film.json
+web-testnet/
+film-full/*
+!film-full/film.json
