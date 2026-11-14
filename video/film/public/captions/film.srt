@@ -51,230 +51,230 @@ It watches your account every five seconds,
 and tops up your margin from
 
 14
-00:00:25,800 --> 00:00:27,490
+00:00:25,800 --> 00:00:27,510
 a reserve you fund from any
 
 15
-00:00:27,340 --> 00:00:28,930
+00:00:27,360 --> 00:00:29,010
 chain through NEAR Intents.
 
 16
-00:00:30,320 --> 00:00:32,550
-NEAR Intents swaps your funds from
+00:00:30,320 --> 00:00:32,190
+And it's proven on NEAR mainnet:
 
 17
-00:00:32,400 --> 00:00:34,950
-any chain into USDC on NEAR,
+00:00:32,520 --> 00:00:34,830
+real money moved from NEAR into
 
 18
-00:00:34,800 --> 00:00:36,750
-and you deposit it into the
+00:00:34,680 --> 00:00:37,070
+a Hyperliquid perps balance in under
 
 19
-00:00:36,600 --> 00:00:37,450
-Lifeline vault.
+00:00:36,920 --> 00:00:37,550
+a minute.
 
 20
-00:00:39,160 --> 00:00:40,270
-Then set your rules:
+00:00:39,240 --> 00:00:41,490
+NEAR Intents swaps your funds from
 
 21
-00:00:40,740 --> 00:00:41,690
-when to warn you,
+00:00:41,340 --> 00:00:43,890
+any chain into USDC on NEAR,
 
 22
-00:00:41,740 --> 00:00:42,630
-when to rescue,
+00:00:43,740 --> 00:00:45,690
+and you deposit it into the
 
 23
-00:00:43,000 --> 00:00:43,890
-and how much.
+00:00:45,540 --> 00:00:46,390
+Lifeline vault.
 
 24
-00:00:45,340 --> 00:00:47,130
-The keeper reads your health every
+00:00:47,840 --> 00:00:49,130
+Then set your rules:
 
 25
-00:00:46,980 --> 00:00:47,890
-five seconds.
+00:00:49,520 --> 00:00:50,570
+when to warn you,
 
 26
-00:00:48,460 --> 00:00:49,130
-At one,
+00:00:50,600 --> 00:00:51,530
+when to rescue,
 
 27
-00:00:49,260 --> 00:00:50,210
-you're liquidated.
+00:00:51,880 --> 00:00:52,710
+and how much.
 
 28
-00:00:51,460 --> 00:00:52,470
-Below your trigger,
+00:00:53,640 --> 00:00:55,890
+The keeper reads your health every
 
 29
-00:00:52,660 --> 00:00:54,810
-it gets a signed quote from 1Click,
+00:00:55,740 --> 00:00:56,670
+five seconds.
 
 30
-00:00:54,660 --> 00:00:56,610
-and the vault pays it straight
+00:00:57,240 --> 00:00:57,890
+At one,
 
 31
-00:00:56,460 --> 00:00:58,170
-into your Hyperliquid margin.
+00:00:58,020 --> 00:00:58,990
+you're liquidated.
 
 32
-00:00:59,640 --> 00:01:00,610
-On testnet,
+00:01:00,420 --> 00:01:01,350
+Below your trigger,
 
 33
-00:01:00,860 --> 00:01:03,030
-that money reached Hyperliquid in under
+00:01:01,640 --> 00:01:03,710
+it gets a signed quote from 1Click,
 
 34
-00:01:02,880 --> 00:01:04,090
-fifteen seconds.
+00:01:03,560 --> 00:01:05,510
+and the vault pays it straight
 
 35
-00:01:05,340 --> 00:01:06,750
-You wake up to a message
+00:01:05,360 --> 00:01:07,070
+into your Hyperliquid margin.
 
 36
-00:01:06,600 --> 00:01:07,690
-explaining it.
+00:01:08,580 --> 00:01:09,950
+You wake up to a message
 
 37
-00:01:07,960 --> 00:01:09,830
-Every step is on a public ledger.
+00:01:09,800 --> 00:01:10,910
+explaining it.
 
 38
-00:01:11,000 --> 00:01:12,770
-A bot that moves money is
+00:01:11,180 --> 00:01:13,010
+Every step is on a public ledger.
 
 39
-00:01:12,620 --> 00:01:13,290
-a target.
+00:01:14,280 --> 00:01:15,970
+A bot that moves money is
 
 40
-00:01:13,580 --> 00:01:15,670
-So we assume it gets hacked.
+00:01:15,820 --> 00:01:16,470
+a target.
 
 41
-00:01:17,000 --> 00:01:18,250
-On the attack page,
+00:01:16,760 --> 00:01:18,850
+So we assume it gets hacked.
 
 42
-00:01:18,620 --> 00:01:20,290
-anyone can play a hacked keeper
+00:01:19,900 --> 00:01:21,450
+On the attack page,
 
 43
-00:01:20,140 --> 00:01:21,390
-holding the real key.
+00:01:21,840 --> 00:01:23,510
+anyone can play a hacked keeper
 
 44
-00:01:21,780 --> 00:01:23,110
-It tries to pay itself.
+00:01:23,360 --> 00:01:24,570
+holding the real key.
 
 45
-00:01:24,100 --> 00:01:25,650
-The vault refuses,
+00:01:25,060 --> 00:01:26,370
+It tries to pay itself.
 
 46
-00:01:26,000 --> 00:01:26,590
-on chain.
+00:01:28,000 --> 00:01:28,810
+The vault refuses,
 
 47
-00:01:27,540 --> 00:01:28,970
-The key can only call rescue,
+00:01:29,200 --> 00:01:29,770
+on chain.
 
 48
-00:01:29,240 --> 00:01:31,270
-and the vault checks every quote itself.
+00:01:30,720 --> 00:01:32,190
+The key can only call rescue,
 
 49
-00:01:32,940 --> 00:01:34,090
-Edit a signed quote.
+00:01:32,440 --> 00:01:34,490
+and the vault checks every quote itself.
 
 50
-00:01:34,520 --> 00:01:35,910
-Take more than the cap.
+00:01:36,060 --> 00:01:37,310
+Edit a signed quote.
 
 51
-00:01:36,300 --> 00:01:37,570
-Replay an old one.
+00:01:37,760 --> 00:01:39,110
+Take more than the cap.
 
 52
-00:01:38,140 --> 00:01:38,830
-Seven tricks,
+00:01:39,540 --> 00:01:40,790
+Replay an old one.
 
 53
-00:01:39,260 --> 00:01:40,310
-seven refusals.
+00:01:41,320 --> 00:01:42,030
+Seven tricks,
 
 54
-00:01:41,500 --> 00:01:42,670
-Don't trust us:
+00:01:42,480 --> 00:01:43,530
+seven refusals.
 
 55
-00:01:42,920 --> 00:01:45,090
-the verify page checks every claim
+00:01:44,420 --> 00:01:45,910
+Don't trust us:
 
 56
-00:01:44,940 --> 00:01:45,770
-in your browser,
+00:01:46,180 --> 00:01:48,310
+the verify page checks every claim
 
 57
-00:01:46,200 --> 00:01:48,510
-even each AI explanation's signature.
+00:01:48,160 --> 00:01:49,410
+in your own browser.
 
 58
-00:01:49,400 --> 00:01:50,730
+00:01:50,700 --> 00:01:51,410
 Under the hood:
 
 59
-00:01:50,960 --> 00:01:52,850
+00:01:51,640 --> 00:01:53,510
 a sixteen-rule policy engine,
 
 60
-00:01:53,260 --> 00:01:54,710
+00:01:53,920 --> 00:01:55,410
 a Rust vault on NEAR,
 
 61
-00:01:54,900 --> 00:01:56,570
+00:01:55,540 --> 00:01:57,270
 NEAR Intents for the money,
 
 62
-00:01:57,000 --> 00:01:58,610
+00:01:57,600 --> 00:01:59,290
 and NEAR AI for the words.
 
 63
-00:02:00,240 --> 00:02:02,630
+00:02:00,940 --> 00:02:03,350
 On eighteen thousand replayed positions,
 
 64
-00:02:03,180 --> 00:02:04,950
+00:02:03,860 --> 00:02:05,610
 thirty-four percent were liquidated
 
 65
-00:02:04,800 --> 00:02:05,890
+00:02:05,460 --> 00:02:06,570
 without protection.
 
 66
-00:02:06,260 --> 00:02:07,290
+00:02:06,940 --> 00:02:07,990
 With Lifeline,
 
 67
-00:02:07,460 --> 00:02:09,755
+00:02:07,840 --> 00:02:10,345
 twenty point six.
 
 68
-00:02:09,605 --> 00:02:10,970
+00:02:10,195 --> 00:02:11,670
 Three in the morning.
 
 69
-00:02:11,340 --> 00:02:12,170
+00:02:12,000 --> 00:02:12,830
 You're asleep.
 
 70
-00:02:12,560 --> 00:02:14,230
+00:02:13,260 --> 00:02:14,910
 And your position is still open.
 

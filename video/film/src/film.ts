@@ -44,6 +44,7 @@ export type Scene = Base &
     | { type: "trickwall"; items: { title: string; answer: string }[]; start?: number; each?: number }
     | ({ type: "board" } & Omit<import("./scenes/Board").BoardProps, "dur">)
     | ({ type: "chainlist" } & Omit<import("./scenes/ChainList").ChainListProps, "dur">)
+    | ({ type: "mainnet" } & Omit<import("./scenes/MainnetRun").MainnetRunProps, "dur">)
   );
 
 export type Film = {

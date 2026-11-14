@@ -28,6 +28,7 @@ import { Sea } from "./scenes/Sea";
 import { TrickWall } from "./scenes/TrickWall";
 import { Board } from "./scenes/Board";
 import { ChainList } from "./scenes/ChainList";
+import { MainnetRun } from "./scenes/MainnetRun";
 import { Pill } from "./components/Pill";
 import { ProvLabel } from "./components/ProvLabel";
 
@@ -83,6 +84,7 @@ const SceneBody: React.FC<{ s: Scene; dur: number }> = ({ s, dur }) => {
     case "trickwall": return <TrickWall {...s} dur={dur} />;
     case "board": return <Board {...s} dur={dur} />;
     case "chainlist": return <ChainList {...s} dur={dur} />;
+    case "mainnet": return <MainnetRun {...s} dur={dur} />;
   }
 };
 
