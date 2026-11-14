@@ -1,5 +1,16 @@
 # Lifeline
 
+[![CI](https://github.com/Prashant-thakur77/LifeLine/actions/workflows/ci.yml/badge.svg)](https://github.com/Prashant-thakur77/LifeLine/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Prashant-thakur77/LifeLine)](https://github.com/Prashant-thakur77/LifeLine/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-1%2C535%20TS%20%2B%2062%20contract-brightgreen)](#tests-and-checks)
+[![Vault](https://img.shields.io/badge/vault-NEAR%20testnet-00C08B)](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
+[![1Click route](https://img.shields.io/badge/1Click%20route%20to%20Hyperliquid-proven%20on%20mainnet-00C08B)](research/mainnet/RESULTS.md)
+[![Demo](https://img.shields.io/badge/live%20demo-lifeline.prashantthakur.dev-ff5a1f)](https://lifeline.prashantthakur.dev)
+[![Built at NEAR HACKATHON](https://img.shields.io/badge/built%20at-NEAR%20HACKATHON-black)](https://nearhackathon.com)
+
+[![Lifeline: topped up before liquidation](video/thumbnail.png)](https://lifeline.prashantthakur.dev)
+
 Auto top-up for onchain perps, funded from any chain.
 
 Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their account health falls below a line they chose, it sends USDC from a reserve they hold in a NEAR contract, through NEAR Intents, into their Hyperliquid perps balance, before liquidation gets close. The reserve can be funded from Ethereum, Solana, Base, Bitcoin and the other chains 1Click supports.
@@ -9,19 +20,26 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 - Verify page: https://lifeline.prashantthakur.dev/verify (the on-chain and attestation claims, checked in your browser)
 - Keeper API, running the simulation around the clock: https://lifeline-sim.prashantthakur.dev
 - Telegram bot: [@LifeLineNearBot](https://t.me/LifeLineNearBot), run by the same keeper
+- On X: [@LifelineNear](https://x.com/LifelineNear)
 - Vault contract on testnet: [vault.lifeline-team.testnet](https://testnet.nearblocks.io/address/vault.lifeline-team.testnet)
+
+**What runs where:** the vault and keeper run on NEAR testnet. The money path (1Click from NEAR into a Hyperliquid perps balance) ran on mainnet with real funds. The hosted demo keeper is a simulation with real prices and real quotes. Details under [Status](#status).
+
+**Contents:** [Verify it in 5 minutes](#verify-it-yourself-in-5-minutes) · [What's new](#whats-new-here) · [Demo films](#demo-films) · [The problem](#the-problem) · [Business](#why-this-is-a-business) · [How it works](#how-it-works) · [Why NEAR](#why-it-needs-near) · [Backtest](#backtest-results) · [Proven on mainnet](#proven-on-mainnet) · [Safety model](#safety-model) · [Tests](#tests-and-checks) · [Limitations](#limitations) · [Roadmap](ROADMAP.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 | In numbers | Value | Source |
 | --- | --- | --- |
 | Positions liquidated in the backtest, without and with Lifeline | 34.2% and 20.6% of 18,000 | [research/backtest/RESULTS.md](research/backtest/RESULTS.md), `pnpm backtest` |
 | Keeper decision time against the live Hyperliquid and 1Click APIs, p50 | 1.9 s | [research/latency/RESULTS.md](research/latency/RESULTS.md), `pnpm latency` |
 | NEAR testnet deposit to USDC in a Hyperliquid testnet perps balance | 14.6 s | [research/tidepool/RESULTS.md](research/tidepool/RESULTS.md) |
-| Automated tests, all passing | 1,519 TypeScript, 51 vault unit, 11 vault sandbox | `pnpm test`, run on 14 November 2026 |
+| NEAR mainnet deposit to USDC in a Hyperliquid mainnet perps balance, via 1Click (one sample) | 56.9 s | [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
+| Automated tests, all passing | 1,535 TypeScript, 51 vault unit, 11 vault sandbox | `pnpm test`, run on 14 November 2026 |
 | Hacked-keeper attacks in the public lab, refused by the vault on chain | 7 of 7, each a testnet transaction | [Attack lab](#the-attack-lab-on-testnet) |
+| Real rescue transactions the testnet vault has paid for its test account, `alice.lifeline-team.testnet`, from the latency benchmark (1 or 2 test USDC each, through `rescue`) | 34 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` |
 
 ## Verify it yourself in 5 minutes
 
-Steps 1 to 7 need only a browser. Steps 8 to 10 need Node 22 and pnpm: clone the repo, then `pnpm install`. None needs a wallet, keys or funds.
+Steps 1 to 8 need only a browser. Step 9 needs the NEAR CLI. Steps 10 to 12 need Node 22 and pnpm: clone the repo, then `pnpm install`. None needs a wallet, keys or funds.
 
 | # | Do | See |
 | --- | --- | --- |
@@ -32,13 +50,49 @@ Steps 1 to 7 need only a browser. Steps 8 to 10 need Node 22 and pnpm: clone the
 | 5 | Open the two rescues that key sent on 8 November 2026 | [A7P6pJz3…](https://testnet.nearblocks.io/txns/A7P6pJz3VxEGt6hPxgMHkk9meSFLbxmsFD6TvEhL9mDE): an honest 2 USDC rescue paid to its quote's fresh deposit address. [A9QZC5bV…](https://testnet.nearblocks.io/txns/A9QZC5bVA1iQUo2CEhksRNFvj77951GrmmJq835joKCn): the same key pointing a signed quote's money at itself, refused with `BAD_QUOTE` |
 | 6 | Compare the vault's code hash with the reproducible build | `vault.lifeline-team.testnet` runs code hash `FUWd4fuXeaL5eu5k6YfkmufXfm7T8uq7gDD6PvuuzAnq`, the bytes `cargo near build reproducible-wasm` gives from commit `37e98488` ([how to rebuild](contracts/vault/README.md)). The verify page makes this comparison too |
 | 7 | Read [research/tidepool/RESULTS.md](research/tidepool/RESULTS.md) | The money path on testnet: a signed quote checked, a NEAR testnet deposit ([5TcTu5rQ…](https://testnet.nearblocks.io/txns/5TcTu5rQ4yejKkkZwpwnf16zhcTpaUmMzD9AvtrcPD2T)), and USDC in a Hyperliquid testnet perps balance 14.6 s later, with every link |
-| 8 | `pnpm demo:sim` | The real keeper code rescues a pretend position opened at the live ETH price, with a real signed 1Click quote, the policy engine's verdict and the audit record. It took 16 s on 14 November 2026 and ends with `PASS: exactly one rescue.` |
-| 9 | `pnpm demo:attack` | Nine attacks refused by the policy engine or the quote signature check, an honest rescue allowed as a control, and the on-chain refusal from step 5 re-checked on a public NEAR node. Ends with `PASS` |
-| 10 | `pnpm test` | 61 TypeScript test files with 1,519 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
+| 8 | Open the mainnet deposit [6avvisKA…](https://nearblocks.io/txns/6avvisKAmLYnWR2vkGzSfvteFnGHGc3NEAMt9gWLN1Hv) and Hyperliquid's payout [0xde0a883c…](https://app.hyperliquid.xyz/explorer/tx/0xde0a883ce25d0f3ddf840448c6f174010100a0227d502e0f81d3338fa150e928) | The money path on mainnet, with real money: 0.86 wNEAR paid to a signed 1Click quote's fresh deposit address, and 2.531506 USDC sent into a Hyperliquid mainnet perps balance 56.9 s later, with no Hyperliquid fee. Every link is in [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
+| 9 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` (NEAR CLI, no keys) | `34`: the real rescue transactions the testnet vault has paid this account from the latency benchmark, each one a `rescue` call by the keeper's restricted key that moved 1 or 2 test USDC to a fresh deposit address. `get_rescues` lists them with their quotes and deposit addresses |
+| 10 | `pnpm demo:sim` | The real keeper code rescues a pretend position opened at the live ETH price, with a real signed 1Click quote, the policy engine's verdict and the audit record. It took 16 s on 14 November 2026 and ends with `PASS: exactly one rescue.` |
+| 11 | `pnpm demo:attack` | Nine attacks refused by the policy engine or the quote signature check, an honest rescue allowed as a control, and the on-chain refusal from step 5 re-checked on a public NEAR node. Ends with `PASS` |
+| 12 | `pnpm test` | 62 TypeScript test files with 1,535 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
 
 ## Status
 
-The keeper, the policy engine, the vault contract, the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and the demos all run today. The vault and keeper are deployed and tested end to end on NEAR testnet, and the project is ready for mainnet: the launch is one runbook, [docs/mainnet.md](docs/mainnet.md). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
+The keeper, the policy engine, the vault contract, the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and the demos all run today. What is proven where:
+
+- **On NEAR mainnet, with real money:** the money path. The keeper's own 1Click client got a quote signed by 1Click's key, checked every field, and a real NEAR deposit became 2.531506 USDC in a Hyperliquid perps balance 56.9 s later ([research/mainnet/RESULTS.md](research/mainnet/RESULTS.md)).
+- **On NEAR testnet:** the vault's rescue path, the keeper's rescue-only key and every refusal. The vault, deployed from a reproducible build, has paid 34 real rescue transactions for its test account (from the latency benchmark), and refused every attack in the public lab.
+- **Next:** the vault and keeper on mainnet, one runbook away: [docs/mainnet.md](docs/mainnet.md). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
+
+## What's new here
+
+Exchange auto top-up works because the exchange holds both the position and the backup money. Lifeline does the same job when the two sit on different chains, and it is built so that the bot moving the money can't steal it:
+
+| Mechanism | Where | What it stops |
+| --- | --- | --- |
+| The vault verifies 1Click's ed25519 signature on the quote, on chain | [`contracts/vault/src/quote.rs:56`](contracts/vault/src/quote.rs#L56) | A keeper inventing or editing a quote |
+| 19 checks on the signed quote before any money moves: it pays the user's own Hyperliquid address, refunds the user's own NEAR account, is at most 2 minutes old, slips at most 1%, charges at most 1 USDC flat, and has no field that could redirect the money | [`contracts/vault/src/quote.rs`](contracts/vault/src/quote.rs), `check` | A keeper pointing a real quote at itself or an attacker |
+| Each 1Click deposit address can be paid once | [`contracts/vault/src/lib.rs:313`](contracts/vault/src/lib.rs#L313) | Replaying an old rescue |
+| The keeper's only key is a NEAR function-call key for `rescue` | [keeper.lifeline-team.testnet](https://testnet.nearblocks.io/address/keeper.lifeline-team.testnet), Access Keys | A stolen keeper key withdrawing, transferring or changing a policy |
+| Caps per rescue and per 24 h, and a cooldown, enforced by the vault as well as the keeper | [`contracts/vault/src/lib.rs`](contracts/vault/src/lib.rs), `rescue` | A hacked keeper draining a reserve at once |
+| A public attack lab where anyone can play the hacked keeper | https://lifeline.prashantthakur.dev/attack | Having to take our word for any of the above |
+| Each AI explanation is signed inside a TEE, and the browser checks the signature against a fresh hardware report | https://lifeline.prashantthakur.dev/verify | An explanation edited after the model wrote it |
+
+## Built during NEAR HACKATHON
+
+All of this was written during the hackathon. The repository was created on 6 November 2026 and holds no earlier code. Each part was built as a task on its own branch and merged as one commit, so some early commits are large; the biggest, 84,000 lines, is mostly saved Hyperliquid candles for the backtest. Commit authors show who wrote what: Soham Juneja ran the testnet and mainnet money-path proofs, and Prashant Thakur built the rest. The [releases](https://github.com/Prashant-thakur77/LifeLine/releases) mark each milestone, from the first keeper (v0.1.0) to this submission (v1.0.0).
+
+## Demo films
+
+Three films, each built entirely from code in [video/](video/): the narration, the scenes, the music and the captions are regenerated by its scripts, and every number on screen is read from this repo or the chain, never typed by hand.
+
+| Film | Length | What it shows |
+| --- | --- | --- |
+| Full demo | 3:43 | Prashant on camera with the problem, then the product, the mainnet run, real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
+| Short demo | 2:19 | The same story, cut for a standard X upload |
+| Technical walkthrough | 3:44 | Health and rescue sizing, the policy engine, the vault's on-chain checks in its real Rust code, the rescue-only key, live attacks, the reproducible build, NEAR AI's signed answers, the mainnet run, the backtest and the tests |
+
+`cd video && python3 make_film.py` (add `VARIANT=full` for the full demo) and `python3 make_film_tech.py` write each film's data; [video/DELIVERABLES.md](video/DELIVERABLES.md) has the rest.
 
 ## The problem
 
@@ -54,7 +108,17 @@ Onchain, the same idea already has users. In Ethereum lending, DeFi Saver says i
 
 Hyperliquid has the most open interest of any onchain perps venue ([DefiLlama](https://defillama.com/open-interest), 13 November 2026), and the October 2025 cascade wiped out over $7.4 billion of it ([The Block](https://www.theblock.co/amp/post/375347/hyperliquid-traders-double-down-after-historic-wipeout-keep-getting-liquidated)).
 
-The model is a small fee per rescue, taken by the vault on top of 1Click's. We reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume.
+What a trader gets and pays, from our own measurements:
+
+| | Value | Source |
+| --- | --- | --- |
+| Positions liquidated within 7 days, without and with Lifeline | 34.2% and 20.6% | [Backtest results](#backtest-results) |
+| A saved position, against no protection | $68.74 better on average | [research/backtest/RESULTS.md](research/backtest/RESULTS.md) |
+| 1Click's cost per rescue | a flat 0.3153 USDC plus about 0.011% | [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
+| NEAR cost per rescue, paid by the vault | about 0.005 NEAR for storage, plus gas | [Limitations](#limitations) |
+| Running the keeper | Cloudflare's free plan | [Limitations](#limitations) |
+
+The revenue mechanism is already in the signed quote. 1Click quotes can carry an app fee that 1Click pays to a named account (`appFees`, accepted up to 500 bps on this route in dry quotes). The vault accepts a quote that loses at most 0.30% beyond the flat fee ([`quote.rs:24`](contracts/vault/src/quote.rs#L24), [`quote.rs:154`](contracts/vault/src/quote.rs#L154)), and an honest quote loses about 0.011%, so a Lifeline fee of up to 0.25% per rescue fits inside the vault's checks without a contract change, and the trader sees it in the quote. We plan to reach traders through an SDK for perps front-ends that already fund through NEAR Intents, such as NEAR's own Hyperliquid perps ([Crypto Briefing](https://cryptobriefing.com/near-protocol-private-perps-hyperliquid/)), and directly through the Telegram bot. For NEAR, every rescue is NEAR Intents volume. The next steps are in [ROADMAP.md](ROADMAP.md).
 
 ## How it works
 
@@ -88,7 +152,7 @@ flowchart LR
 ```
 
 1. The trader sets a policy in the vault: their Hyperliquid address, the health levels to warn at, rescue at and refill to, caps per rescue and per day, a cooldown, and the one keeper allowed to act for them.
-2. They fund a reserve. The dashboard gets a 1Click quote from whatever token they hold, on any supported chain, into USDC in their own NEAR account, then deposits it into the vault.
+2. They fund a reserve. The dashboard gets a 1Click quote from whatever token they hold, on any supported chain, into USDC in their own NEAR account, then deposits it into the vault. (The hosted demo is the simulation; a dashboard built for testnet points at the testnet vault.)
 3. The keeper reads their health from Hyperliquid every 5 seconds: cross account value divided by maintenance margin. Liquidation comes at 1.0.
 4. Below the warn line it alerts them on Telegram. Below the trigger it sizes a rescue to bring health back to the target, gets a live quote from 1Click to the trader's own Hyperliquid perps balance, and runs the policy engine.
 5. If the engine allows it, the keeper calls the vault's `rescue` with 1Click's signed quote. The vault checks the signature and every limit itself, then pays the quote's deposit address. 1Click swaps and delivers USDC to Hyperliquid.
@@ -129,7 +193,7 @@ None of these needs a wallet, keys or funds. The commands need Node 22 and pnpm:
 | `pnpm --filter hyperliquid live 0xAnyAddress` | Health, margin and liquidation prices for any Hyperliquid account |
 | `pnpm backtest` | `research/backtest/RESULTS.md` and its charts regenerated from the saved candles, in about 15 seconds |
 | `pnpm latency` | The keeper's decision time measured against the live APIs, written to `research/latency/RESULTS.md` |
-| `pnpm test` | Every test: 1,519 TypeScript tests, then the vault's 51 unit and 11 sandbox tests |
+| `pnpm test` | Every test: 1,535 TypeScript tests, then the vault's 51 unit and 11 sandbox tests |
 
 The vault's Rust tests need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them `pnpm test` runs everything else and says so. The first run fetches a local NEAR node for the sandbox tests, and the Rust build needs about 3 GB of free disk.
 
@@ -186,6 +250,10 @@ Nine of the ten transactions took 3.7 to 6.4 s; one took 45 s waiting on the pub
 ## Proven on testnet via Tidepool
 
 1Click has no testnet, so Lifeline's money path can't run end to end on NEAR testnet through 1Click itself. [Tidepool](https://www.usetidepool.tech) is a community-built sandbox with 1Click's API on NEAR testnet and quotes signed the same way; it isn't official NEAR Intents infrastructure. On 13 November 2026 the keeper's own 1Click client, pointed at Tidepool, got a signed quote, checked the signature and every field, and paid it with a real NEAR testnet deposit ([transaction](https://testnet.nearblocks.io/txns/5TcTu5rQ4yejKkkZwpwnf16zhcTpaUmMzD9AvtrcPD2T)), and the USDC landed in a Hyperliquid testnet perps balance 14.6 seconds later: 1.9922 of the 3 sent, after Hyperliquid's 1 USDC fee for a first transfer to a new address. Every link, including Hyperliquid's ledger entry, is in [research/tidepool/RESULTS.md](research/tidepool/RESULTS.md). To check it yourself, `pnpm demo:tidepool --dry 0xAnyAddress` gets and checks a live quote with no keys or funds, and `pnpm demo:tidepool` repeats the whole run with a funded testnet account in `.env`.
+
+## Proven on mainnet
+
+On 14 November 2026 the same client and checks ran once on mainnet with real money ([research/mainnet/RESULTS.md](research/mainnet/RESULTS.md)). A quote signed with 1Click's own key was checked, then paid with 0.86 wNEAR from a NEAR account ([transaction](https://nearblocks.io/txns/6avvisKAmLYnWR2vkGzSfvteFnGHGc3NEAMt9gWLN1Hv)). 2.531506 USDC was spendable in a Hyperliquid perps balance 56.9 seconds later, and 1Click reported `SUCCESS` at 116.5 seconds. The swap cost $0.32 of $2.86, almost all of it 1Click's flat 0.3153 USDC fee. Gas was 0.0007 NEAR, and Hyperliquid charged nothing, even though the account was new. That one sample is slower than the 35 s the backtest assumes for a whole rescue, and it covers only the delivery leg, so the backtest's pessimistic 120 s case is the one that brackets it; that case gives the same 20.6% liquidated on 4h candles and 29.4% in the flash-crash run ([Backtest results](#backtest-results)). This run didn't go through the vault: the deposit came from an ordinary account rather than from `rescue`, and it's a single sample; the vault's own mainnet rescue is in the next section. `pnpm demo:mainnet --dry` repeats the quote and every check without spending.
 
 ## First rescue on mainnet
 
@@ -248,20 +316,20 @@ On testnet the vault trusts a team key to sign quotes in 1Click's place, because
 
 ## Tests and checks
 
-`pnpm test` on 14 November 2026: 61 TypeScript test files with 1,519 tests passed, then 51 vault unit tests and 11 vault sandbox tests passed.
+`pnpm test` on 14 November 2026: 62 TypeScript test files with 1,535 tests passed, then 51 vault unit tests and 11 vault sandbox tests passed.
 
 | Package | Test files | Tests | What they cover |
 | --- | --- | --- | --- |
 | `apps/keeper` | 19 | 588 | Watch loop, rescue flow, sizing, crash recovery, audit log and its SQL triggers, REST API, attack lab, AI explanations, answer signatures and attestation |
 | `research/backtest` | 6 | 370 | Simulator, seeded positions, candle data, report and charts |
-| `apps/web` | 15 | 208 | Dashboard logic: the verify page's checks, AI answer proofs, chain reads, replay, policy form, 1Click funding |
-| `scripts` | 6 | 75 | `demo:sim`, `demo:attack`, `demo:tidepool`, latency report, sandbox download |
+| `apps/web` | 15 | 209 | Dashboard logic: the verify page's checks, AI answer proofs, chain reads, replay, policy form, 1Click funding |
+| `scripts` | 7 | 90 | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, latency report, sandbox download |
 | `packages/policy` | 1 | 72 | Every rule of the policy engine, alone and together |
 | `packages/intents` | 5 | 68 | 1Click quotes, the signed text, signature checks against recorded real quotes and every tampered field, status, tokens |
 | `apps/bot` | 2 | 58 | Telegram linking, alerts, `/status`, `/pause` |
 | `packages/hyperliquid` | 4 | 55 | Health from recorded real `clearinghouseState` answers, candles, prices |
 | `packages/shared` | 3 | 25 | Constants, API shapes, fixtures |
-| **TypeScript total** | **61** | **1,519** | |
+| **TypeScript total** | **62** | **1,535** | |
 | `contracts/vault`, unit | | 51 | Every rule of `rescue`, `set_policy`, deposits and withdrawals on a mocked chain, including a real quote 1Click signed on 6 November 2026, verified with 1Click's real key |
 | `contracts/vault`, sandbox | | 11 | The wasm on a local NEAR node with a real NEP-141 token: deposits, a paid rescue, three kinds of redirected rescue, a refunded failed transfer, a withdrawal, and outside calls to the private callbacks |
 
@@ -285,7 +353,7 @@ These are the ones we know about.
 - A top-up can be lost. It keeps a position open, and if the price keeps falling the reserve goes with it. Each rescue also costs 1Click's flat fee of about 0.32 USDC, and the smallest rescue is 2 USDC, so small rescues lose a large share to the fee.
 - Only cross margin is protected. A top-up credits the perps balance and can't reach an isolated position's margin. An account with only isolated positions reads as unknown, never as safe.
 - Health is an approximation of Hyperliquid's own calculation. On 5 sampled accounts our formula matched its liquidation price exactly on 2. On the other 3 its price was further away, so health read low and a rescue would fire early, not late.
-- Rescues pay in USDC only. The vault accepts wNEAR deposits, but the caps are in USDC units and don't fit a 24-decimal token, so rescues pay from the USDC reserve only.
+- Rescues pay in USDC only. The vault can allow wNEAR deposits (the mainnet runbook does; the testnet vault allows only its test USDC), but the caps are in USDC units and don't fit a 24-decimal token, so rescues pay from the USDC reserve only.
 - The keeper is one Cloudflare Durable Object. Its alarm wakes it every 5 s, a cron re-arms the alarm if the loop ever stops, and the audit log lives in the object's own storage, so a restart or a deploy loses nothing. If Cloudflare or the object is down, nobody is watching. It picks up unfinished rescues when it restarts, but it can't start one while it's off. It runs on Cloudflare's free plan, whose daily limits it has to share with the public sim: an object that never sleeps uses about 85% of the duration allowance, so the sim sleeps between drops, and the keeper sets one alarm a minute and writes health once a minute to stay well inside the storage limits. `GET /` shows when it last ticked.
 - Attestation shows that the hardware and signing key are genuine, and each kept answer's signature ties its exact words to that key and to the model name signed with them. It doesn't prove which weights run: the hardware report doesn't sign the model name, and the software hash isn't pinned to a known build. It's rechecked every 6 hours. Explanations don't move money, so a wrong one could mislead a reader but can't lose funds.
 - Anyone can request a Telegram link code for any watched account, because linking has no proof of ownership. A stranger could get a copy of someone's alerts and the owner couldn't remove them, though the same information is public on the ledger. One account can have several chats, so it can't cut off the owner.
@@ -303,8 +371,8 @@ These are the ones we know about.
 | `apps/keeper` | The watch loop, rescues, audit log, REST API, AI explanations and attestation; runs in Node or on Cloudflare |
 | `apps/bot` | The Telegram bot: one-time linking, alerts, `/status`, `/pause` |
 | `apps/web` | The dashboard |
-| `research/backtest`, `research/latency`, `research/tidepool` | The backtest, the latency measurements and the Tidepool testnet run |
-| `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `latency` |
+| `research/backtest`, `research/latency`, `research/tidepool`, `research/mainnet` | The backtest, the latency measurements, the Tidepool testnet run and the mainnet run |
+| `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, `latency` |
 
 Running it yourself:
 

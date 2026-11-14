@@ -17,7 +17,8 @@ export type Overlay =
 type Base = { id: string; duration: number; transition?: Transition; overlays?: Overlay[]; backdrop?: boolean; drift?: boolean;
   riserInto?: boolean; sfx?: { at: number; sfx: string; db?: number; align?: string }[]; min?: number;
   ground?: "night" | "paper"; halfline?: { prevBg?: string; days?: number }; waterIn?: boolean; waterOut?: boolean;
-  pills?: { model: string; job: string; at: number; dur: number }[]; label?: { text: string; at?: number; dur?: number } };
+  pills?: { model: string; job: string; at: number; dur: number }[]; label?: { text: string; at?: number; dur?: number };
+  face?: import("./components/FacePip").FacePipProps };
 
 export type Scene = Base &
   (
@@ -44,6 +45,9 @@ export type Scene = Base &
     | { type: "trickwall"; items: { title: string; answer: string }[]; start?: number; each?: number }
     | ({ type: "board" } & Omit<import("./scenes/Board").BoardProps, "dur">)
     | ({ type: "chainlist" } & Omit<import("./scenes/ChainList").ChainListProps, "dur">)
+    | ({ type: "mainnet" } & Omit<import("./scenes/MainnetRun").MainnetRunProps, "dur">)
+    | ({ type: "flow3d" } & Omit<import("./scenes/Flow3D").Flow3DProps, "dur">)
+    | ({ type: "xposts" } & Omit<import("./scenes/XPosts").XPostsProps, "dur">)
   );
 
 export type Film = {

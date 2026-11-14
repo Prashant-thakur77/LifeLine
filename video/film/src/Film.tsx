@@ -28,8 +28,12 @@ import { Sea } from "./scenes/Sea";
 import { TrickWall } from "./scenes/TrickWall";
 import { Board } from "./scenes/Board";
 import { ChainList } from "./scenes/ChainList";
+import { MainnetRun } from "./scenes/MainnetRun";
+import { Flow3D } from "./scenes/Flow3D";
+import { XPosts } from "./scenes/XPosts";
 import { Pill } from "./components/Pill";
 import { ProvLabel } from "./components/ProvLabel";
+import { FacePip } from "./components/FacePip";
 
 // Scene i always STARTS at the sum of the previous durations, so VO chunks timed to scene starts stay in sync:
 // each sequence is lengthened by its outgoing transition, which overlaps the next scene's first frames.
@@ -83,6 +87,9 @@ const SceneBody: React.FC<{ s: Scene; dur: number }> = ({ s, dur }) => {
     case "trickwall": return <TrickWall {...s} dur={dur} />;
     case "board": return <Board {...s} dur={dur} />;
     case "chainlist": return <ChainList {...s} dur={dur} />;
+    case "mainnet": return <MainnetRun {...s} dur={dur} />;
+    case "flow3d": return <Flow3D {...s} dur={dur} />;
+    case "xposts": return <XPosts {...s} dur={dur} />;
   }
 };
 
@@ -102,6 +109,7 @@ export const Film: React.FC = () => {
           {s.overlays && <Overlays items={s.overlays} />}
           {(s.pills ?? []).map((p, k) => <Pill key={k} {...p} />)}
           {s.label && <ProvLabel {...s.label} dur={dur} />}
+          {s.face && <FacePip {...s.face} dur={dur} />}
           {s.waterIn && <WaterLine dir="in" dur={dur} />}
           {s.waterOut && <WaterLine dir="out" dur={dur} />}
         </AbsoluteFill>

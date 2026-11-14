@@ -1,5 +1,5 @@
 {
- "duration": 216.533,
+ "duration": 223.733,
  "scenes": [
   {
    "id": "t_intro",
@@ -82,42 +82,48 @@
   {
    "id": "t_money",
    "start": 150.767,
-   "duration": 12.333,
+   "duration": 13.167,
+   "voice": true
+  },
+  {
+   "id": "t_hlproof",
+   "start": 163.933,
+   "duration": 6.333,
    "voice": true
   },
   {
    "id": "t_arch",
-   "start": 163.1,
-   "duration": 11.2,
+   "start": 170.267,
+   "duration": 11.133,
    "voice": true
   },
   {
    "id": "t_proof",
-   "start": 174.3,
-   "duration": 11.1,
+   "start": 181.4,
+   "duration": 11.233,
    "voice": true
   },
   {
    "id": "t_stress",
-   "start": 185.4,
-   "duration": 8.567,
+   "start": 192.633,
+   "duration": 8.5,
    "voice": true
   },
   {
    "id": "t_tests",
-   "start": 193.967,
-   "duration": 9.267,
+   "start": 201.133,
+   "duration": 9.2,
    "voice": true
   },
   {
    "id": "t_close",
-   "start": 203.233,
-   "duration": 8.8,
+   "start": 210.333,
+   "duration": 8.9,
    "voice": true
   },
   {
    "id": "end",
-   "start": 212.033,
+   "start": 219.233,
    "duration": 4.5,
    "voice": false
   }
@@ -218,42 +224,49 @@
    "id": "t14",
    "scene": "t_money",
    "start": 151.067,
-   "end": 162.587,
-   "caption": "The money path runs end to end on testnet: a signed quote, a real NEAR deposit, and the USDC in a Hyperliquid perps balance fourteen point six seconds later."
+   "end": 163.427,
+   "caption": "The money path is proven on NEAR mainnet: a quote signed by 1Click's own key, a real NEAR deposit, and the USDC in a Hyperliquid perps balance in under a minute."
+  },
+  {
+   "id": "t20",
+   "scene": "t_hlproof",
+   "start": 164.233,
+   "end": 169.633,
+   "caption": "Hyperliquid's own explorer shows the payout, from 1Click to our account."
   },
   {
    "id": "t15",
    "scene": "t_arch",
-   "start": 163.4,
-   "end": 173.68,
+   "start": 170.567,
+   "end": 180.847,
    "caption": "Under the hood: Hyperliquid for health, the policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words."
   },
   {
    "id": "t16",
    "scene": "t_proof",
-   "start": 174.6,
-   "end": 184.84,
+   "start": 181.7,
+   "end": 191.94,
    "caption": "On eighteen thousand positions replayed over two years of real Hyperliquid prices, liquidations fell from thirty-four point two percent to twenty point six."
   },
   {
    "id": "t17",
    "scene": "t_stress",
-   "start": 185.7,
-   "end": 193.3,
+   "start": 192.933,
+   "end": 200.533,
    "caption": "In a harsher test, where every price move lands within one minute, they still fell, to twenty-nine point one."
   },
   {
    "id": "t18",
    "scene": "t_tests",
-   "start": 194.267,
-   "end": 202.627,
+   "start": 201.433,
+   "end": 209.793,
    "caption": "Fifteen hundred and nineteen TypeScript tests, sixty-two contract tests, and CI on every change."
   },
   {
    "id": "t19",
    "scene": "t_close",
-   "start": 203.533,
-   "end": 211.493,
+   "start": 210.633,
+   "end": 218.593,
    "caption": "Lifeline. Topped up before liquidation, funded from any chain, on NEAR. Try to rob it yourself."
   }
  ]

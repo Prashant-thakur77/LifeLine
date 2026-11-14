@@ -40,6 +40,30 @@ ev = json.load(open(os.path.join(HERE, "film/public/captures/T1.events.json")))[
 CLICKS = [e["t"] for e in ev if e["type"] == "click"]
 assert len(CLICKS) == 7 and len(TITLES) == 7
 
+
+def mainnet_scene(sid):
+    """The real mainnet run, every value read from research/mainnet/RESULTS.md."""
+    mr = open(os.path.join(REPO, "research/mainnet/RESULTS.md")).read()
+    landed = float(re.search(r"Deposit to balance on Hyperliquid: ([\d.]+) s", mr).group(1))
+    amount = re.search(r"Hyperliquid after:\s+([\d.]+ USDC)", mr).group(1)
+    pend = float(re.search(r"`PENDING_DEPOSIT` at ([\d.]+) s", mr).group(1))
+    proc = float(re.search(r"`PROCESSING` at ([\d.]+) s", mr).group(1))
+    quote = re.search(r"Quote:\s+([0-9a-f-]{36})", mr).group(1)
+    tx = re.search(r"NEAR tx:\s+(\w+)", mr).group(1)
+    near_in = re.search(r"([\d.]+) wNEAR in, at least", mr).group(1)
+    cost = re.search(r"\$([\d.]+) of wNEAR in, \$([\d.]+) of USDC out", mr)
+    return {"id": sid, "type": "mainnet", "when": "14 NOV 2026 · 13:13 UTC", "landed": landed, "amount": amount, "quote": quote,
+            "cost": f"cost ${float(cost.group(1)) - float(cost.group(2)):.2f} of ${float(cost.group(1)):.2f}, almost all 1Click's flat fee · Hyperliquid fee 0",
+            "steps": [{"t": 0.0, "label": "Deposit on NEAR", "detail": f"{tx[:8]}…{tx[-4:]} · {near_in} wNEAR"},
+                      {"t": pend, "label": "1Click sees it", "detail": "PENDING_DEPOSIT"},
+                      {"t": proc, "label": "Swapping through NEAR Intents", "detail": "PROCESSING"},
+                      {"t": landed, "label": "Margin on Hyperliquid", "detail": f"{amount} in the perps balance"}],
+            "drift": False}
+
+HL_PROOF = {"src": "captures/M1.mp4", "trimBefore": 3.0, "full": True, "ground": "night",
+            "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 30, "y": 70, "w": 1560, "h": 878}}],
+            "label": {"text": "Hyperliquid's own explorer · the payout from 1Click's account to ours"}}
+
 LIVE = "live site · lifeline.prashantthakur.dev"
 wall_d = dur.get("t_wall", 9)
 step = round(wall_d / 7, 3)
@@ -66,7 +90,8 @@ scenes = [
      "zooms": [{"at": 0.2, "dur": 30, "box": {"x": 660, "y": 60, "w": 1060, "h": 596}}], "label": {"text": "cargo near build reproducible-wasm · commit 37e98488"}},
     {"id": "t_ai", "type": "screen", "src": "captures/T2.mp4", "trimBefore": 17.6, "full": True, "ground": "paper",
      "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 260, "y": 150, "w": 1160, "h": 652}}], "label": {"text": f"{LIVE}/verify · NEAR AI Cloud, checked in your browser"}},
-    {"id": "t_money", "type": "kinetic", "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026", "lines": [f"{DELIVERY} seconds", "signed quote → deposit → margin"], "emphasis": [DELIVERY]},
+    mainnet_scene("t_money"),
+    {"id": "t_hlproof", "type": "screen", **HL_PROOF},
     {"id": "t_arch", "type": "arch3d", "title": "Under the hood", "min": 9,
      "layers": [{"id": "hl", "label": "Hyperliquid", "sub": "health every 5 s"}, {"id": "policy", "label": "Policy engine", "sub": f"{len(CODES)}+ refusal codes, no network"},
                 {"id": "vault", "label": "Vault on NEAR", "sub": "Rust · checks 1Click's signature"}, {"id": "intents", "label": "NEAR Intents", "sub": "1Click moves the USDC"}],
@@ -79,8 +104,8 @@ scenes = [
      "footnote": "same positions · each 4h candle's move squeezed into one minute · research/backtest", "min": 6},
     {"id": "t_tests", "type": "kinetic", "kicker": "pnpm test · CI on every pull request", "lines": [f"{TS.group(1)} TypeScript tests", f"{int(TS.group(2)) + int(TS.group(3))} contract tests"], "emphasis": [TS.group(1)]},
     {"id": "t_close", "type": "sea", "mode": "calm", "sky": "night", "from": 2.01, "to": 2.01, "clock": "3:12", "waterIn": True, "min": 6},
-    {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
-     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify"], "duration": 4.5},
+    {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Proven on NEAR mainnet.",
+     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify", "Follow @LifelineNear on X"], "duration": 4.5},
 ]
 for s in scenes:
     s.setdefault("duration", old.get(s["id"], {}).get("duration", 6.0))

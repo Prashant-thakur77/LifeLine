@@ -16,6 +16,7 @@
     "demo:sim": "pnpm --filter @lifeline/scripts demo:sim",
     "demo:attack": "pnpm --filter @lifeline/scripts demo:attack",
     "demo:tidepool": "pnpm --filter @lifeline/scripts demo:tidepool",
+    "demo:mainnet": "pnpm --filter @lifeline/scripts demo:mainnet",
     "latency": "pnpm --filter @lifeline/scripts latency"
   },
   "devDependencies": {

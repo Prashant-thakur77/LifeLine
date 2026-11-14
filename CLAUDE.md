@@ -163,6 +163,11 @@ Checked on 2026-11-08 on Cloudflare, with the sim deployed at `lifeline-sim.pras
 - `wrangler deploy` once failed with "The request to Cloudflare's API timed out" and left the old version live. Check `wrangler deployments list` after a deploy.
 - A deploy reaches a running Durable Object only when it hibernates or after 300 s, Cloudflare's default deferred code update. The keeper never hibernates, so a fix takes up to 5 minutes to reach it. On the switch the object restarts, and the keeper picks up any unfinished rescue from its log.
 
+Checked on 2026-11-14:
+
+- The money path on mainnet: 0.86 wNEAR through a 1Click quote signed by 1Click's key became 2.531506 USDC in a Hyperliquid mainnet perps balance 56.9 s after the NEAR deposit, with no Hyperliquid fee (`pnpm demo:mainnet`, research/mainnet/RESULTS.md).
+- The testnet vault has paid 34 real rescues for `alice.lifeline-team.testnet` (`get_rescue_count`). NearBlocks shows a bot check to automated browsers, so the films read the rescues from the vault's own `get_rescues` instead.
+
 Checked on 2026-11-09 with a NEAR AI Cloud key:
 
 - Each answer of `deepseek-ai/DeepSeek-V4.1-Flash-1017`, asked with `x-no-aliasing: true`, has a `provider_tee` ECDSA signature at `GET /v1/signature/{id}?model=&signing_algo=ecdsa`, available at once. Its `text` is `model:sha256(request bytes):sha256(response bytes)`, hashed after decompression (the response came Brotli-encoded). The signature recovers with Ethereum personal-sign to `signing_address`, which was the one model node in that day's attestation report.
@@ -185,6 +190,7 @@ pnpm demo:sim                    # the whole rescue story from the live ETH pric
 pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved on-chain refusal re-checked
 pnpm --filter intents live-quote [usdc] [hl address]   # one real dry 1Click quote, NEAR USDC to Hyperliquid USDC
 pnpm demo:tidepool [--dry] [0x address]   # testnet, through Tidepool's 1Click-compatible sandbox: quote, check, and without --dry pay 3 test USDC into Hyperliquid testnet
+pnpm demo:mainnet --dry | --send   # mainnet 1Click, wNEAR to HL_MAINNET_ADDRESS's perps balance; --send spends real NEAR (at most 1.5): ask the human first
 cargo test --manifest-path contracts/vault/Cargo.toml  # the vault alone: unit tests, then the sandbox tests
 cd contracts/vault && cargo near build reproducible-wasm   # the deployable wasm: clean checkout, pinned Docker image, commit in its metadata
 cd contracts/vault && cargo near build non-reproducible-wasm   # a quick local build; its bytes depend on this machine

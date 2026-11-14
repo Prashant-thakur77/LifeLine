@@ -79,14 +79,14 @@ function Readouts() {
               <div
                 key={tile.label}
                 className={cx(
-                  "py-6 pr-4 sm:py-8",
+                  "min-w-0 py-6 pr-4 [container-type:inline-size] sm:py-8",
                   i > 0 && "sm:border-l-2 sm:border-ink sm:pl-5",
                   i % 2 === 1 && "border-l-2 border-ink pl-4 sm:pl-5",
                   i === 4 && "col-span-2 border-t-2 border-ink sm:col-span-1 sm:border-t-0",
                 )}
               >
                 <dt className="font-readout text-[11px] uppercase tracking-[0.08em] text-ink">{tile.label}</dt>
-                <dd className="mt-3 font-readout text-[clamp(26px,2.8vw,44px)] font-light leading-none tracking-[-0.04em] text-ink tabular-nums [font-variation-settings:'wdth'_80]">
+                <dd className="mt-3 whitespace-nowrap font-readout text-[clamp(20px,min(2.8vw,16cqi),44px)] font-light leading-none tracking-[-0.04em] text-ink tabular-nums [font-variation-settings:'wdth'_80]">
                   {tile.value}
                 </dd>
               </div>
