@@ -215,7 +215,7 @@ if (process.argv[1]?.endsWith("hl-account.ts")) {
       const spot = Number((await read(user)).spotUsdc);
       if (!arg || !/^\d+(\.\d{1,6})?$/.test(arg) || Number(arg) <= 0 || Number(arg) > spot || Number(arg) > 2.531506) throw new Error(`amount must be at most the spot USDC (${spot}) and at most 2.531506`);
       await post(userSignedAction("HyperliquidTransaction:UsdClassTransfer", USD_CLASS_TRANSFER, { type: "usdClassTransfer", amount: arg, toPerp: true, nonce: Date.now() }, secret), user);
-    } else if (command === "leverage" || command === "long") {
+    } else if (command === "leverage" || command === "long" || command === "close") {
       const [meta, ctx] = (await info({ type: "metaAndAssetCtxs" })) as [{ universe: { name: string; szDecimals: number; maxLeverage: number }[] }, { markPx: string; midPx: string }[]];
       const asset = meta.universe.findIndex((u) => u.name === "XMR");
       const xmr = meta.universe[asset]!;
@@ -223,6 +223,12 @@ if (process.argv[1]?.endsWith("hl-account.ts")) {
       let action: Record<string, unknown>;
       if (command === "leverage") {
         action = { type: "updateLeverage", asset, isCross: true, leverage: 5 };
+      } else if (command === "close") {
+        if (arg !== "0.022") throw new Error("this run only closes the agreed 0.022 XMR");
+        // Reduce-only, so it can only shrink the long, never open a short; at most 1% below the mid.
+        const px = perpPrice(Number(ctx[asset]!.midPx) * 0.99, xmr.szDecimals);
+        action = { type: "order", orders: [{ a: asset, b: false, p: px, s: arg, r: true, t: { limit: { tif: "Ioc" } } }], grouping: "na" };
+        console.log(`  XMR (asset ${asset}) mid ${ctx[asset]!.midPx}, mark ${ctx[asset]!.markPx}: sell ${arg} reduce-only IOC, limit ${px}`);
       } else {
         if (arg !== "0.022") throw new Error("this run only places the agreed 0.022 XMR");
         // Immediate-or-cancel, at most 1% above the mid: a market buy that can't fill far from the price.

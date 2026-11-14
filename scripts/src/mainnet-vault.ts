@@ -23,7 +23,7 @@ export const INIT_ARGS = {
   quote_signer: "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
 };
 const NEAR = 10n ** 24n;
-export const FUNDING = { parent: (255n * NEAR) / 100n, vault: (247n * NEAR) / 100n, vaultTopUp: (8n * NEAR) / 100n, keeper: (3n * NEAR) / 100n };
+export const FUNDING = { parent: (255n * NEAR) / 100n, vault: (247n * NEAR) / 100n, vaultTopUp: (8n * NEAR) / 100n, keeper: (3n * NEAR) / 100n, keeperTopUp: (12n * NEAR) / 100n };
 
 /** A NEAR code hash: base58 of the wasm's SHA-256. */
 export const codeHash = (wasm: Uint8Array) => base58.encode(sha256(wasm));
@@ -238,6 +238,16 @@ const STEPS: Record<string, () => Promise<void>> = {
     if (BigInt(balance) === 0n) throw new Error("no USDC to deposit");
     console.log(`  depositing ${Number(balance) / 1e6} USDC`);
     await send(implicit, "MAINNET_NEAR_PRIVATE_KEY", USDC, [actions.functionCall("ft_transfer_call", { receiver_id: VAULT, amount: balance, msg: "" }, teraToGas(100), 1n)]);
+  },
+
+  /**
+   * S10b: tops the keeper up. A rescue prepays 100 Tgas, and the sender must hold that at a
+   * pessimistic gas price (about 0.1 NEAR) for the node to accept it, though most comes back.
+   * The first S10, with 0.03 NEAR, was refused before it was sent: nothing moved.
+   */
+  async s10b() {
+    if (!(await exists(KEEPER))) throw new Error(`${KEEPER} doesn't exist`);
+    await send(env().MAINNET_NEAR_ACCOUNT!, "MAINNET_NEAR_PRIVATE_KEY", KEEPER, [actions.transfer(FUNDING.keeperTopUp)]);
   },
 
   /** Read-only: what the chain says now. */
