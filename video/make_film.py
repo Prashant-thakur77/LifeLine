@@ -165,6 +165,12 @@ if FULL:
             if sc["id"] == "fund":
                 sc.update({"src": "captures/C2.mp4", "trimBefore": 1.0, "label": {"text": "testnet dashboard · wallet connected · reserve read from the vault"}})
 
+def png_aspect(path):
+    import struct
+    w, h = struct.unpack(">II", open(path, "rb").read()[16:24])
+    return w / h
+
+
 # ---- the founder on camera (VARIANT=full): takes are cut from one recording, so picture and voice share its clock ----
 if FULL:
     SEG = json.load(open(os.path.join(HERE, "founder_segments.json")))   # seconds in the founder recording
@@ -206,7 +212,7 @@ if FULL:
     XDIR = os.path.join(HERE, "film-full/public/x")
     shots = sorted(f for f in os.listdir(XDIR) if f.endswith(".png")) if os.path.isdir(XDIR) else []
     out.append(cam("me7", "p7"))
-    out.append({"id": "xpage", "type": "xposts", "handle": "@LifelineNear", "images": [{"src": f"x/{f}"} for f in shots],
+    out.append({"id": "xpage", "type": "xposts", "handle": "@LifelineNear", "images": [{"src": f"x/{f}", "aspect": round(png_aspect(os.path.join(XDIR, f)), 4)} for f in shots],
                 "drift": False, "face": pip("p8"), "min": 7})
     out += tail
     scenes = [sc for sc in out if sc["id"] not in ("aiproof", "stress")]   # kept the full cut near four minutes

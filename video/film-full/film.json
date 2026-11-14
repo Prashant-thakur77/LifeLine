@@ -781,7 +781,20 @@
    "id": "xpage",
    "type": "xposts",
    "handle": "@LifelineNear",
-   "images": [],
+   "images": [
+    {
+     "src": "x/1-profile.png",
+     "aspect": 1.3453
+    },
+    {
+     "src": "x/2-attack-thread.png",
+     "aspect": 1.9429
+    },
+    {
+     "src": "x/3-first-thread.png",
+     "aspect": 1.9082
+    }
+   ],
    "drift": false,
    "face": {
     "src": "founder/raw.mp4",
