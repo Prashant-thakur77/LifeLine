@@ -9,6 +9,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { base58 } from "@scure/base";
+import { createOneClick, verifyQuote, type Quote } from "@lifeline/intents";
 import { Account, actions, JsonRpcProvider, KeyPair, teraToGas, type KeyPairString } from "near-api-js";
 
 export const RPC = "https://free.rpc.fastnear.com";
@@ -26,6 +27,46 @@ export const FUNDING = { parent: (255n * NEAR) / 100n, vault: (247n * NEAR) / 10
 
 /** A NEAR code hash: base58 of the wasm's SHA-256. */
 export const codeHash = (wasm: Uint8Array) => base58.encode(sha256(wasm));
+
+export const ONE_CLICK = "https://1click.chaindefuser.com";
+const USDC = INIT_ARGS.tokens[0]!;
+const WNEAR = "wrap.near";
+const USDC_ASSET = `nep141:${USDC}`;
+const WNEAR_ASSET = "nep141:wrap.near";
+/** USDC's and wNEAR's storage_balance_bounds on mainnet. */
+const STORAGE = 1_250_000_000_000_000_000_000n;
+/** The vault's REGISTRATION_DEPOSIT, for a user's first set_policy. */
+const REGISTRATION = NEAR / 20n;
+/** The reserve swap: 0.95 NEAR, about 3 USDC. */
+export const SWAP_IN = (95n * NEAR) / 100n;
+/** Never accept under 2.8 USDC for it, whatever the dry quote said. */
+const SWAP_FLOOR = 2_800_000n;
+
+/** The agreed policy: warn 3.0, trigger 2.5, target 3.0, at most 3 USDC per rescue and per day, a 1 h cooldown. */
+export const policyFor = (hlAddress: string) => ({
+  hl_address: hlAddress,
+  keeper: KEEPER,
+  warn: 3.0,
+  trigger: 2.5,
+  target: 3.0,
+  max_per_rescue: "3000000",
+  max_per_day: "3000000",
+  cooldown_sec: 3600,
+});
+
+/**
+ * What's wrong with the reserve swap's live quote, all at once. createOneClick already
+ * checked 1Click's signature and that the request came back unchanged.
+ */
+export function swapProblems(quote: Quote, expected: { implicit: string; amount: string; dryMinAmountOut: string }): string[] {
+  const floor = (BigInt(expected.dryMinAmountOut) * 98n) / 100n;
+  const minAmountOut = (floor > SWAP_FLOOR ? floor : SWAP_FLOOR).toString();
+  const problems: string[] = verifyQuote(quote, { recipient: expected.implicit, destinationAsset: USDC_ASSET, minAmountOut });
+  if (quote.refundTo !== expected.implicit) problems.push(`it refunds ${quote.refundTo}`);
+  if (quote.amountIn !== expected.amount) problems.push(`it takes ${quote.amountIn}`);
+  if (quote.depositAddress === null || !/^[0-9a-f]{64}$/.test(quote.depositAddress)) problems.push("no fresh deposit address");
+  return problems;
+}
 
 const ENV_FILE = new URL("../../.env", import.meta.url);
 const KEY_NAMES = { parent: "MAINNET_PARENT_PRIVATE_KEY", vault: "MAINNET_VAULT_PRIVATE_KEY", keeper: "MAINNET_KEEPER_PRIVATE_KEY" } as const;
@@ -51,6 +92,7 @@ const rpc = async (method: string, params: unknown) => {
   const response = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
   return (await response.json()) as { result?: Record<string, unknown>; error?: { cause?: { name?: string } } };
 };
+const view = (contractId: string, method: string, args: Record<string, unknown>) => provider.callFunction({ contractId, method, args }) as Promise<unknown>;
 const exists = async (accountId: string) => (await rpc("query", { request_type: "view_account", finality: "final", account_id: accountId })).result !== undefined;
 
 async function send(signerId: string, keyName: string, receiverId: string, list: ReturnType<typeof actions.transfer>[]) {
@@ -127,6 +169,77 @@ const STEPS: Record<string, () => Promise<void>> = {
     ]);
   },
 
+  /** S5: registers the vault and our account with USDC, so both can hold it. Skips any already registered. */
+  async s5() {
+    const implicit = env().MAINNET_NEAR_ACCOUNT!;
+    const list = [];
+    for (const accountId of [VAULT, implicit]) {
+      if ((await view(USDC, "storage_balance_of", { account_id: accountId })) !== null) {
+        console.log(`  ${accountId}: already registered`);
+        continue;
+      }
+      list.push(actions.functionCall("storage_deposit", { account_id: accountId, registration_only: true }, teraToGas(30), STORAGE));
+    }
+    if (list.length > 0) await send(implicit, "MAINNET_NEAR_PRIVATE_KEY", USDC, list);
+  },
+
+  /** S6: 0.95 NEAR to USDC on NEAR through 1Click, quote checked before paying, then waits for SUCCESS. */
+  async s6() {
+    const implicit = env().MAINNET_NEAR_ACCOUNT!;
+    const client = createOneClick({ apiUrl: ONE_CLICK, nearSenderAccount: implicit, originAsset: WNEAR_ASSET, destinationAsset: USDC_ASSET, withdrawFeeOptional: true });
+    const amount = SWAP_IN.toString();
+    const dry = await client.getQuote({ amount, recipient: implicit, refundTo: implicit, dry: true });
+    console.log(`  dry quote ${dry.quoteId}: ${amount} yocto wNEAR → at least ${Number(dry.minAmountOut) / 1e6} USDC`);
+    const quote = await client.getQuote({ amount, recipient: implicit, refundTo: implicit, dry: false });
+    const problems = swapProblems(quote, { implicit, amount, dryMinAmountOut: dry.minAmountOut });
+    console.log(`  live quote ${quote.quoteId}: at least ${Number(quote.minAmountOut) / 1e6} USDC, deposit to ${quote.depositAddress}`);
+    if (problems.length > 0) throw new Error(`refusing the quote: ${problems.join("; ")}`);
+    console.log("  checks: 1Click's signature, recipient, USDC asset, amount in, minimum out, refund account, fresh deposit address: all as asked");
+
+    const depositAddress = quote.depositAddress!;
+    const registered = async (accountId: string) => (await view(WNEAR, "storage_balance_of", { account_id: accountId })) !== null;
+    const wnear = BigInt(((await view(WNEAR, "ft_balance_of", { account_id: implicit })) as string | null) ?? "0");
+    const list = [
+      ...((await registered(implicit)) ? [] : [actions.functionCall("storage_deposit", { account_id: implicit, registration_only: true }, teraToGas(30), STORAGE)]),
+      ...(SWAP_IN > wnear ? [actions.functionCall("near_deposit", {}, teraToGas(30), SWAP_IN - wnear)] : []),
+      ...((await registered(depositAddress)) ? [] : [actions.functionCall("storage_deposit", { account_id: depositAddress, registration_only: true }, teraToGas(30), STORAGE)]),
+      actions.functionCall("ft_transfer", { receiver_id: depositAddress, amount }, teraToGas(30), 1n),
+    ];
+    const depositAt = Date.now();
+    const txHash = await send(implicit, "MAINNET_NEAR_PRIVATE_KEY", WNEAR, list);
+    await client.submitDeposit({ txHash, depositAddress }).catch(() => {});
+    for (let last = ""; ; ) {
+      const status = await client.getStatus(depositAddress).catch(() => "unreadable");
+      if (status !== last) console.log(`  +${((Date.now() - depositAt) / 1000).toFixed(1)} s  1Click: ${status}`);
+      last = status;
+      if (status === "SUCCESS" || status === "REFUNDED" || status === "FAILED") {
+        if (status !== "SUCCESS") throw new Error(`the swap ended ${status}: ${ONE_CLICK}/v0/status?depositAddress=${depositAddress}`);
+        break;
+      }
+      if (Date.now() - depositAt > 10 * 60_000) throw new Error("no final status after 10 minutes");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    console.log(`  our USDC now: ${Number(await view(USDC, "ft_balance_of", { account_id: implicit })) / 1e6}`);
+    console.log(`  status: ${ONE_CLICK}/v0/status?depositAddress=${depositAddress}`);
+  },
+
+  /** S7: our account's policy, naming the keeper and our Hyperliquid address. The first call attaches 0.05 NEAR. */
+  async s7() {
+    const implicit = env().MAINNET_NEAR_ACCOUNT!;
+    const hl = env().HL_MAINNET_ADDRESS!;
+    if (!/^0x[0-9a-fA-F]{40}$/.test(hl)) throw new Error("HL_MAINNET_ADDRESS isn't set");
+    await send(implicit, "MAINNET_NEAR_PRIVATE_KEY", VAULT, [actions.functionCall("set_policy", { policy: policyFor(hl) }, teraToGas(30), REGISTRATION)]);
+  },
+
+  /** S8: deposits all our USDC into the vault, credited to our reserve. */
+  async s8() {
+    const implicit = env().MAINNET_NEAR_ACCOUNT!;
+    const balance = (await view(USDC, "ft_balance_of", { account_id: implicit })) as string;
+    if (BigInt(balance) === 0n) throw new Error("no USDC to deposit");
+    console.log(`  depositing ${Number(balance) / 1e6} USDC`);
+    await send(implicit, "MAINNET_NEAR_PRIVATE_KEY", USDC, [actions.functionCall("ft_transfer_call", { receiver_id: VAULT, amount: balance, msg: "" }, teraToGas(100), 1n)]);
+  },
+
   /** Read-only: what the chain says now. */
   async check() {
     for (const accountId of [env().MAINNET_NEAR_ACCOUNT!, PARENT, VAULT, KEEPER]) {
@@ -143,6 +256,10 @@ const STEPS: Record<string, () => Promise<void>> = {
     if (await exists(VAULT)) {
       const config = await provider.callFunction({ contractId: VAULT, method: "get_config", args: {} }).catch((error: unknown) => `not initialised: ${String(error).slice(0, 120)}`);
       console.log(`  ${VAULT} get_config: ${JSON.stringify(config)}`);
+      const implicit = env().MAINNET_NEAR_ACCOUNT!;
+      console.log(`  get_policy(us): ${JSON.stringify(await view(VAULT, "get_policy", { user: implicit }).catch((e: unknown) => String(e).slice(0, 100)))}`);
+      console.log(`  get_reserve(us): ${JSON.stringify(await view(VAULT, "get_reserve", { user: implicit }).catch((e: unknown) => String(e).slice(0, 100)))}`);
+      console.log(`  get_users: ${JSON.stringify(await view(VAULT, "get_users", {}).catch((e: unknown) => String(e).slice(0, 100)))}`);
     }
   },
 };
