@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { DEMO_USER } from "../lib/config";
+import { DEMO_USER, networkLabel } from "../lib/config";
 import { config } from "../lib/env";
 import { shortMiddle } from "../lib/format";
 import { pageHref } from "../lib/links";
@@ -221,7 +221,7 @@ export function Footer() {
             <dl className="flex flex-col gap-3 font-readout text-[12px]">
               <div>
                 <dt className="text-paper/80">Network</dt>
-                <dd>{config.network}</dd>
+                <dd>{networkLabel(config)}</dd>
               </div>
               <div>
                 <dt className="text-paper/80">Vault</dt>

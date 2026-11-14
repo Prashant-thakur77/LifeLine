@@ -53,6 +53,14 @@ export function readConfig(env: Env): WebConfig {
   };
 }
 
+export const SIM_NETWORK_LABEL = "Simulation · live mainnet prices";
+
+/** What the footer calls the network: mainnet only once a mainnet vault is set, since until then the dashboard shows the sim. */
+export function networkLabel(config: Pick<WebConfig, "network" | "vaultId">): string {
+  if (config.network === "testnet" || config.vaultId?.endsWith(".testnet")) return "testnet";
+  return config.vaultId === null ? SIM_NETWORK_LABEL : "mainnet";
+}
+
 /** Which keeper holds this account's data: the demo account always lives on the sim. */
 export function keeperUrlFor(config: Pick<WebConfig, "keeperApiUrl" | "simKeeperApiUrl">, user: string): string {
   return user === DEMO_USER ? config.simKeeperApiUrl : config.keeperApiUrl;

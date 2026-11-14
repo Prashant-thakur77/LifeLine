@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEMO_USER, SIM_KEEPER_URL, keeperUrlFor, readConfig } from "../src/lib/config";
+import { DEMO_USER, SIM_KEEPER_URL, keeperUrlFor, networkLabel, readConfig } from "../src/lib/config";
 import { KeeperError, keeper, keeperError } from "../src/lib/keeper";
 import { RpcError, decodeResult, encodeArgs, outcomeFailure, outcomeHash, outcomeSettled, outcomeValue, parseViewResponse, viewFunction } from "../src/lib/near-rpc";
 import { depositBounced, describeTxError, isUserCancel, txResult, withdrawRefunded } from "../src/lib/tx";
@@ -18,6 +18,25 @@ import {
 const USDC = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("networkLabel", () => {
+  it("calls the default hosted dashboard the simulation, never mainnet, while no mainnet vault is set", () => {
+    expect(networkLabel(readConfig({}))).toBe("Simulation · live mainnet prices");
+  });
+
+  it("says testnet on testnet, with or without a vault", () => {
+    expect(networkLabel({ network: "testnet", vaultId: null })).toBe("testnet");
+    expect(networkLabel({ network: "testnet", vaultId: "vault.lifeline-team.testnet" })).toBe("testnet");
+  });
+
+  it("says testnet for a testnet vault even if the network was left at mainnet", () => {
+    expect(networkLabel({ network: "mainnet", vaultId: "vault.lifeline-team.testnet" })).toBe("testnet");
+  });
+
+  it("says mainnet only once a mainnet vault is set", () => {
+    expect(networkLabel({ network: "mainnet", vaultId: "vault.lifeline-team.near" })).toBe("mainnet");
+  });
+});
 
 describe("readConfig", () => {
   it("defaults to the hosted sim keeper on mainnet, with no vault or keeper account", () => {

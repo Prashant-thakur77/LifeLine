@@ -184,6 +184,7 @@ pnpm backtest                    # regenerates research/backtest/RESULTS.md and 
 pnpm demo:sim                    # the whole rescue story from the live ETH price: no wallet, keys or funds
 pnpm demo:attack                 # a hacked keeper's attacks, all refused, and the saved on-chain refusal re-checked
 pnpm --filter intents live-quote [usdc] [hl address]   # one real dry 1Click quote, NEAR USDC to Hyperliquid USDC
+pnpm demo:tidepool [--dry] [0x address]   # testnet, through Tidepool's 1Click-compatible sandbox: quote, check, and without --dry pay 3 test USDC into Hyperliquid testnet
 cargo test --manifest-path contracts/vault/Cargo.toml  # the vault alone: unit tests, then the sandbox tests
 cd contracts/vault && cargo near build reproducible-wasm   # the deployable wasm: clean checkout, pinned Docker image, commit in its metadata
 cd contracts/vault && cargo near build non-reproducible-wasm   # a quick local build; its bytes depend on this machine

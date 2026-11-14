@@ -23,6 +23,9 @@ const toneFor = (zone: Zone): WaterTone =>
 const toneForHealth = (health: number, levels: { warn: number; trigger: number }): WaterTone =>
   health <= 1 ? "liquidation" : health < levels.trigger ? "rescue" : health < levels.warn ? "warn" : "safe";
 
+/** The headline as one sentence, for screen readers: the drawn lifebuoy O splits the word on screen. */
+const HERO_TITLE = "Topped up before liquidation.";
+
 const BEAT_LABEL: Record<Beat["kind"], string> = {
   warn: "Below warn",
   trigger: "Below trigger",
@@ -99,26 +102,26 @@ export function HeroWater() {
           <p className="font-readout text-[12px] text-body">Hyperliquid margin protection · funded from any chain</p>
           <h1
             id="hero-title"
+            aria-label={HERO_TITLE}
             data-list={tone === "rescue" || tone === "liquidation" ? "on" : "off"}
             className="listing mt-4 text-[clamp(52px,7.2vw,108px)] font-extrabold uppercase leading-[0.84] tracking-[-0.015em] text-ink [font-variation-settings:'wdth'_70]"
           >
+            {/* The spaces between lines and the hidden o keep the raw text one sentence, for crawlers. */}
             <span className="kin-line">
               <span style={{ animationDelay: "40ms" }}>Topped up</span>
-            </span>
+            </span>{" "}
             <span className="kin-line">
               <span style={{ animationDelay: "130ms" }}>before</span>
-            </span>
+            </span>{" "}
             <span className="kin-line">
               <span className="riso text-[#ee4b12]" style={{ animationDelay: "220ms" }}>
                 {/* The O is the lifebuoy itself. */}
-                <span aria-hidden>
-                  liquidati
-                  <span className="buoy-o">
-                    <Mark className="size-full" />
-                  </span>
-                  n.
+                liquidati
+                <span className="buoy-o">
+                  <Mark className="size-full" />
+                  <span className="sr-only">o</span>
                 </span>
-                <span className="sr-only">liquidation.</span>
+                n.
               </span>
             </span>
           </h1>

@@ -202,6 +202,18 @@ export function rpcFor(network: AttackProof["network"]): string {
   return network === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com";
 }
 
+/** A public archival node on the proof's network: regular nodes forget a transaction after a few days. */
+export function archivalRpcFor(network: AttackProof["network"]): string {
+  return network === "mainnet" ? "https://archival-rpc.mainnet.fastnear.com" : "https://archival-rpc.testnet.fastnear.com";
+}
+
+/** The nodes to ask, in order: PROOF_RPC_URL and PROOF_ARCHIVAL_RPC_URL replace the defaults when set. */
+export function proofRpcs(network: AttackProof["network"], env: Record<string, string | undefined> = process.env): string[] {
+  return [env.PROOF_RPC_URL?.trim() || rpcFor(network), env.PROOF_ARCHIVAL_RPC_URL?.trim() || archivalRpcFor(network)];
+}
+
+export const NOT_FOUND = "couldn't find this transaction on the node";
+
 export function explorerFor(proof: Pick<AttackProof, "network" | "txHash">): string {
   return `https://${proof.network === "mainnet" ? "" : "testnet."}nearblocks.io/txns/${proof.txHash}`;
 }
@@ -212,6 +224,7 @@ export async function checkProof(
   rpcUrl: string,
   fetchFn: typeof fetch = fetch,
   sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  { attempts = 3, timeoutMs = 20_000 }: { attempts?: number; timeoutMs?: number } = {},
 ): Promise<{ refused: boolean; detail: string }> {
   const ask = () =>
     fetchFn(rpcUrl, {
@@ -223,7 +236,7 @@ export async function checkProof(
         method: "tx",
         params: { tx_hash: proof.txHash, sender_account_id: proof.signer, wait_until: "FINAL" },
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   // Public nodes drop the odd connection: ask up to three times, 1 s then 2 s apart.
   let response: Response | undefined;
@@ -231,7 +244,7 @@ export async function checkProof(
     try {
       response = await ask();
     } catch (error) {
-      if (attempt >= 3) throw error;
+      if (attempt >= attempts) throw error;
       await sleep(attempt * 1000);
     }
   }
@@ -239,11 +252,33 @@ export async function checkProof(
     result?: { status?: { Failure?: unknown }; transaction?: { receiver_id?: string; signer_id?: string } };
   };
   const { result } = body;
-  if (result === undefined) return { refused: false, detail: "couldn't find this transaction on the node" };
+  if (result === undefined) return { refused: false, detail: NOT_FOUND };
 
   const failure = result.status?.Failure;
   const right = result.transaction?.receiver_id === proof.vault && result.transaction?.signer_id === proof.signer;
   if (!right) return { refused: false, detail: "this transaction isn't from the keeper to the vault" };
   if (failure === undefined) return { refused: false, detail: "this transaction succeeded" };
   return { refused: true, detail: JSON.stringify(failure) };
+}
+
+/**
+ * checkProof on each node in turn: the regular node once, quickly, then the archival node
+ * with the usual retries if the regular one doesn't have the transaction or doesn't answer.
+ */
+export async function checkProofOnNodes(
+  proof: AttackProof,
+  rpcUrls: string[],
+  fetchFn: typeof fetch = fetch,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<{ refused: boolean; detail: string }> {
+  for (const [i, rpcUrl] of rpcUrls.entries()) {
+    if (i === rpcUrls.length - 1) return checkProof(proof, rpcUrl, fetchFn, sleep);
+    try {
+      const result = await checkProof(proof, rpcUrl, fetchFn, sleep, { attempts: 1, timeoutMs: 10_000 });
+      if (result.detail !== NOT_FOUND) return result;
+    } catch {
+      // Unreachable or timed out: the next node may have it.
+    }
+  }
+  return { refused: false, detail: NOT_FOUND };
 }

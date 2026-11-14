@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { byteRanges, platformDir, s3Etag, sandboxPath, sandboxUrl } from "../near-sandbox.mjs";
 
@@ -33,6 +34,6 @@ describe("fetching the NEAR sandbox", () => {
     expect(sandboxUrl("Linux-x86_64")).toBe(
       "https://s3-us-west-1.amazonaws.com/build.nearprotocol.com/nearcore/Linux-x86_64/2.14.0/near-sandbox.tar.gz",
     );
-    expect(sandboxPath("Linux-x86_64", "/home/judge")).toBe("/home/judge/.near-sandbox/2.14.0/Linux-x86_64/near-sandbox");
+    expect(sandboxPath("Linux-x86_64", "/home/judge")).toBe(join("/home/judge", ".near-sandbox", "2.14.0", "Linux-x86_64", "near-sandbox"));
   });
 });

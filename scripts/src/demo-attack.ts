@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { connectNear, createNearVault, createOneClick, readLiveConfig, type Quote } from "@lifeline/keeper";
 import { ASSETS, POLICY_DEFAULTS } from "@lifeline/shared";
-import { ATTACKER_HL, checkProof, explorerFor, formatAttempt, parseProof, rpcFor, runEngineAttacks, sendContractAttack } from "./attack";
+import { ATTACKER_HL, checkProofOnNodes, explorerFor, formatAttempt, parseProof, proofRpcs, runEngineAttacks, sendContractAttack } from "./attack";
 import { signTestnetQuote } from "./testnet-quote";
 
 const PROOF_FILE = new URL("../attack-proof.json", import.meta.url);
@@ -86,7 +86,7 @@ async function main() {
   if (proof === null) {
     console.log("NOT RUN YET. It needs a deployed vault, and on mainnet a human's go-ahead, because it sends a real transaction.");
   } else {
-    const result = await checkProof(proof, rpcFor(proof.network));
+    const result = await checkProofOnNodes(proof, proofRpcs(proof.network));
     layer2Failed = !result.refused;
     console.log(result.refused ? `REFUSED      by the vault contract on ${proof.network}, re-checked on chain just now` : `NOT CONFIRMED  ${result.detail}`);
     console.log(`             transaction: ${explorerFor(proof)}`);

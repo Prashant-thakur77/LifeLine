@@ -25,7 +25,9 @@ const TICKS_PER_ALARM = ALARM_MS / TICK_MS;
 const STALE_ALARM_MS = 2 * ALARM_MS; // an alarm this far overdue isn't going to fire by itself
 const SIM_REST_MS = 15 * 60_000; // between demo drops: about four rescues an hour
 const WEBHOOK_PATH = "/telegram/webhook";
-/** Shown at / in sim mode: "mainnet" there means where the prices and quotes come from. */
+/** Shown at / as the network in sim mode: the prices are mainnet's, but nothing runs on mainnet. */
+const SIM_NETWORK_LABEL = "Simulation · live mainnet prices";
+/** Shown at / in sim mode, beside SIM_NETWORK_LABEL. */
 const SIM_NOTE =
   "ETH prices and 1Click quotes are real mainnet ones (quotes are dry, so nothing can be deposited); the position, the vault and settlement are pretend. It runs with no keys and no funds.";
 const ATTESTATION_KEY = "attestation";
@@ -316,7 +318,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
         {
           service: "lifeline-keeper",
           mode: running.config.mode,
-          network: running.config.network,
+          network: running.config.mode === "sim" ? SIM_NETWORK_LABEL : running.config.network,
           ...(running.config.mode === "sim" ? { simulation: SIM_NOTE } : {}),
           version: deps.env.KEEPER_VERSION?.trim() || null,
           watching: running.watching(),
