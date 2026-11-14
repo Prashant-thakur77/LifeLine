@@ -33,7 +33,7 @@ They need `rustup target add wasm32-unknown-unknown`. `pnpm test` at the repo ro
 | [`usdc.lifeline-team.testnet`](https://testnet.nearblocks.io/address/usdc.lifeline-team.testnet) | A stand-in USDC, the mock token from the tests |
 | [`alice.lifeline-team.testnet`](https://testnet.nearblocks.io/address/alice.lifeline-team.testnet) | A test user with a policy and a reserve |
 
-1Click has no testnet, so the testnet vault trusts a team key (`ed25519:82DdwitgHq5bvhASvXLPn2Anwc2YtJthFYXv616pej8U`) to sign quotes in 1Click's place. The mainnet vault trusts 1Click's own key, and `get_config` shows which key a vault trusts.
+1Click has no testnet, so the testnet vault trusts a team key (`ed25519:82DdwitgHq5bvhASvXLPn2Anwc2YtJthFYXv616pej8U`) to sign quotes in 1Click's place. A mainnet deployment trusts 1Click's own key ([docs/mainnet.md](../../docs/mainnet.md)), and `get_config` shows which key a vault trusts.
 
 What happened there on 8 November 2026, all signed by the keeper's restricted key:
 
