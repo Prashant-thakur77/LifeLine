@@ -1,0 +1,253 @@
+/**
+ * Hyperliquid user-signed actions for the mainnet rescue's account, by API. Real money:
+ * run a step only after a human has agreed to that step. The key comes from .env
+ * (HL_MAINNET_PRIVATE_KEY) and is never printed.
+ *
+ *   … hl-account.ts read                    the account's mode and balances (no signing)
+ *   … hl-account.ts disable-unified         userSetAbstraction → "disabled" (standard mode)
+ *   … hl-account.ts spot-to-perp <amount>   usdClassTransfer of that much USDC, spot to perps
+ */
+import { readFileSync } from "node:fs";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+
+type Field = { name: string; type: string };
+type Types = Record<string, Field[]>;
+
+const enc = new TextEncoder();
+const word = (n: bigint) => hexToBytes(n.toString(16).padStart(64, "0"));
+const concat = (...parts: Uint8Array[]) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+};
+
+/** EIP-712's encodeType: the primary type, then every struct it uses, sorted by name. */
+function encodeType(primary: string, types: Types): string {
+  const deps = new Set<string>();
+  const walk = (name: string) => {
+    for (const f of types[name] ?? []) {
+      const base = f.type.replace(/\[\]$/, "");
+      if (types[base] && !deps.has(base) && base !== primary) {
+        deps.add(base);
+        walk(base);
+      }
+    }
+  };
+  walk(primary);
+  return [primary, ...[...deps].sort()].map((name) => `${name}(${types[name]!.map((f) => `${f.type} ${f.name}`).join(",")})`).join("");
+}
+
+function encodeValue(type: string, value: unknown, types: Types): Uint8Array {
+  if (types[type]) return hashStruct(type, value as Record<string, unknown>, types);
+  if (type === "string") return keccak_256(enc.encode(value as string));
+  if (type === "bytes") return keccak_256(hexToBytes((value as string).replace(/^0x/, "")));
+  if (type === "address") return word(BigInt(value as string));
+  if (type === "bool") return word(value ? 1n : 0n);
+  if (type === "bytes32") return value as Uint8Array;
+  if (/^uint\d+$/.test(type)) return word(BigInt(value as number | string));
+  throw new Error(`unsupported EIP-712 type ${type}`);
+}
+
+export function hashStruct(primary: string, data: Record<string, unknown>, types: Types): Uint8Array {
+  const typeHash = keccak_256(enc.encode(encodeType(primary, types)));
+  return keccak_256(concat(typeHash, ...types[primary]!.map((f) => encodeValue(f.type, data[f.name], types))));
+}
+
+const DOMAIN_TYPE: Field[] = [
+  { name: "name", type: "string" },
+  { name: "version", type: "string" },
+  { name: "chainId", type: "uint256" },
+  { name: "verifyingContract", type: "address" },
+];
+
+/** The 32 bytes an EIP-712 signature signs: keccak256(0x1901 ‖ domainSeparator ‖ hashStruct(message)). */
+export function typedDataDigest(domain: Record<string, unknown>, primary: string, types: Types, message: Record<string, unknown>): Uint8Array {
+  const all = { ...types, EIP712Domain: DOMAIN_TYPE };
+  return keccak_256(concat(new Uint8Array([0x19, 0x01]), hashStruct("EIP712Domain", domain, all), hashStruct(primary, message, all)));
+}
+
+export function addressOf(secret: Uint8Array): string {
+  return `0x${bytesToHex(keccak_256(secp256k1.getPublicKey(secret, false).slice(1)).slice(-20))}`;
+}
+
+/** An Ethereum-style signature: r, s and v = 27 + recovery bit, as Hyperliquid's API takes it. */
+export function signDigest(digest: Uint8Array, secret: Uint8Array): { r: string; s: string; v: number } {
+  const sig = secp256k1.sign(digest, secret, { prehash: false, format: "recovered" });
+  return { r: `0x${bytesToHex(sig.slice(1, 33))}`, s: `0x${bytesToHex(sig.slice(33, 65))}`, v: 27 + sig[0]! };
+}
+
+export function recoverAddress(digest: Uint8Array, sig: { r: string; s: string; v: number }): string {
+  const raw = concat(new Uint8Array([sig.v - 27]), hexToBytes(sig.r.slice(2)), hexToBytes(sig.s.slice(2)));
+  const pub = secp256k1.recoverPublicKey(raw, digest, { prehash: false });
+  return `0x${bytesToHex(keccak_256(secp256k1.Point.fromBytes(pub).toBytes(false).slice(1)).slice(-20))}`;
+}
+
+/** Hyperliquid's user-signed action envelope, as its Python SDK builds it (sign_user_signed_action). */
+export const SIGNATURE_CHAIN_ID = "0x66eee";
+export const HL_DOMAIN = { name: "HyperliquidSignTransaction", version: "1", chainId: Number.parseInt(SIGNATURE_CHAIN_ID, 16), verifyingContract: "0x0000000000000000000000000000000000000000" };
+export const USER_SET_ABSTRACTION: Field[] = [
+  { name: "hyperliquidChain", type: "string" },
+  { name: "user", type: "address" },
+  { name: "abstraction", type: "string" },
+  { name: "nonce", type: "uint64" },
+];
+export const USD_CLASS_TRANSFER: Field[] = [
+  { name: "hyperliquidChain", type: "string" },
+  { name: "amount", type: "string" },
+  { name: "toPerp", type: "bool" },
+  { name: "nonce", type: "uint64" },
+];
+
+export function userSignedAction(primary: string, fields: Field[], action: Record<string, unknown>, secret: Uint8Array) {
+  const full: Record<string, unknown> = { ...action, signatureChainId: SIGNATURE_CHAIN_ID, hyperliquidChain: "Mainnet" };
+  const digest = typedDataDigest(HL_DOMAIN, primary, { [primary]: fields }, full);
+  return { action: full, signature: signDigest(digest, secret), digest };
+}
+
+/** MessagePack, as Python's msgpack.packb encodes Hyperliquid's actions: smallest int form, keys in insertion order. */
+export function msgpack(value: unknown): Uint8Array {
+  const out: number[] = [];
+  const be = (n: bigint, bytes: number) => {
+    for (let i = bytes - 1; i >= 0; i--) out.push(Number((n >> BigInt(8 * i)) & 0xffn));
+  };
+  const put = (v: unknown): void => {
+    if (v === null || v === undefined) out.push(0xc0);
+    else if (v === true) out.push(0xc3);
+    else if (v === false) out.push(0xc2);
+    else if (typeof v === "number" || typeof v === "bigint") {
+      const n = BigInt(v);
+      if (n < 0n) throw new Error("negative ints aren't used in these actions");
+      if (n < 0x80n) out.push(Number(n));
+      else if (n <= 0xffn) (out.push(0xcc), be(n, 1));
+      else if (n <= 0xffffn) (out.push(0xcd), be(n, 2));
+      else if (n <= 0xffffffffn) (out.push(0xce), be(n, 4));
+      else (out.push(0xcf), be(n, 8));
+    } else if (typeof v === "string") {
+      const b = enc.encode(v);
+      if (b.length < 32) out.push(0xa0 | b.length);
+      else if (b.length <= 0xff) out.push(0xd9, b.length);
+      else (out.push(0xda), be(BigInt(b.length), 2));
+      out.push(...b);
+    } else if (Array.isArray(v)) {
+      if (v.length >= 16) throw new Error("long arrays aren't used in these actions");
+      out.push(0x90 | v.length);
+      v.forEach(put);
+    } else if (typeof v === "object") {
+      const entries = Object.entries(v as Record<string, unknown>);
+      if (entries.length >= 16) throw new Error("big maps aren't used in these actions");
+      out.push(0x80 | entries.length);
+      for (const [k, x] of entries) (put(k), put(x));
+    } else throw new Error(`can't encode ${typeof v}`);
+  };
+  put(value);
+  return new Uint8Array(out);
+}
+
+/** Hyperliquid's L1 action signature (sign_l1_action in its SDK): a phantom agent over the action's hash. No vault, no expiry. */
+export function signL1Action(action: Record<string, unknown>, nonce: number, secret: Uint8Array, mainnet = true) {
+  const connectionId = keccak_256(concat(msgpack(action), word(BigInt(nonce)).slice(24), new Uint8Array([0])));
+  const digest = typedDataDigest(
+    { name: "Exchange", version: "1", chainId: 1337, verifyingContract: "0x0000000000000000000000000000000000000000" },
+    "Agent",
+    { Agent: [{ name: "source", type: "string" }, { name: "connectionId", type: "bytes32" }] },
+    { source: mainnet ? "a" : "b", connectionId },
+  );
+  return { signature: signDigest(digest, secret), digest };
+}
+
+/** A perp price as Hyperliquid accepts it: at most 5 significant figures and 6 − szDecimals decimals. */
+export function perpPrice(px: number, szDecimals: number): string {
+  const sig = Number(px.toPrecision(5));
+  return String(Number(sig.toFixed(6 - szDecimals)));
+}
+
+const API = "https://api.hyperliquid.xyz";
+const info = async (body: unknown) => (await fetch(`${API}/info`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json();
+
+async function read(user: string) {
+  const c = (await info({ type: "clearinghouseState", user })) as { marginSummary: { accountValue: string }; withdrawable: string; crossMaintenanceMarginUsed: string; assetPositions: unknown[] };
+  const s = (await info({ type: "spotClearinghouseState", user })) as { balances: { coin: string; total: string; hold: string }[] };
+  const usdc = s.balances.find((b) => b.coin === "USDC");
+  return {
+    userAbstraction: await info({ type: "userAbstraction", user }),
+    perpsAccountValue: c.marginSummary.accountValue,
+    withdrawable: c.withdrawable,
+    crossMaintenanceMarginUsed: c.crossMaintenanceMarginUsed,
+    positions: c.assetPositions.length,
+    spotUsdc: usdc?.total ?? "0",
+    spotUsdcHold: usdc?.hold ?? "0",
+  };
+}
+
+function secretFromEnv(): { secret: Uint8Array; user: string } {
+  const text = readFileSync(new URL("../../.env", import.meta.url), "utf8");
+  const raw = text.match(/^HL_MAINNET_PRIVATE_KEY=(.*)$/m)?.[1]?.trim().replace(/^0x/, "");
+  const user = text.match(/^HL_MAINNET_ADDRESS=(.*)$/m)?.[1]?.trim().toLowerCase();
+  if (!raw || !/^[0-9a-fA-F]{64}$/.test(raw) || !user) throw new Error("HL_MAINNET_PRIVATE_KEY and HL_MAINNET_ADDRESS must be in .env");
+  const secret = hexToBytes(raw);
+  if (addressOf(secret) !== user) throw new Error("HL_MAINNET_PRIVATE_KEY doesn't derive to HL_MAINNET_ADDRESS");
+  return { secret, user };
+}
+
+async function post(signed: ReturnType<typeof userSignedAction>, user: string) {
+  // Never send a signature that doesn't recover to the account itself.
+  if (recoverAddress(signed.digest, signed.signature) !== user) throw new Error("the signature doesn't recover to the account: not sending");
+  const body = { action: signed.action, nonce: signed.action.nonce, signature: signed.signature };
+  const response = await fetch(`${API}/exchange`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  console.log(`  ${String(signed.action.type)}: HTTP ${response.status} ${await response.text()}`);
+}
+
+if (process.argv[1]?.endsWith("hl-account.ts")) {
+  const [command, arg] = process.argv.slice(2);
+  (async () => {
+    const { secret, user } = secretFromEnv();
+    if (command === "read") {
+      console.log(JSON.stringify(await read(user), null, 2));
+    } else if (command === "disable-unified") {
+      await post(userSignedAction("HyperliquidTransaction:UserSetAbstraction", USER_SET_ABSTRACTION, { type: "userSetAbstraction", user, abstraction: "disabled", nonce: Date.now() }, secret), user);
+    } else if (command === "spot-to-perp") {
+      const spot = Number((await read(user)).spotUsdc);
+      if (!arg || !/^\d+(\.\d{1,6})?$/.test(arg) || Number(arg) <= 0 || Number(arg) > spot || Number(arg) > 2.531506) throw new Error(`amount must be at most the spot USDC (${spot}) and at most 2.531506`);
+      await post(userSignedAction("HyperliquidTransaction:UsdClassTransfer", USD_CLASS_TRANSFER, { type: "usdClassTransfer", amount: arg, toPerp: true, nonce: Date.now() }, secret), user);
+    } else if (command === "leverage" || command === "long" || command === "close") {
+      const [meta, ctx] = (await info({ type: "metaAndAssetCtxs" })) as [{ universe: { name: string; szDecimals: number; maxLeverage: number }[] }, { markPx: string; midPx: string }[]];
+      const asset = meta.universe.findIndex((u) => u.name === "XMR");
+      const xmr = meta.universe[asset]!;
+      const nonce = Date.now();
+      let action: Record<string, unknown>;
+      if (command === "leverage") {
+        action = { type: "updateLeverage", asset, isCross: true, leverage: 5 };
+      } else if (command === "close") {
+        if (arg !== "0.022") throw new Error("this run only closes the agreed 0.022 XMR");
+        // Reduce-only, so it can only shrink the long, never open a short; at most 1% below the mid.
+        const px = perpPrice(Number(ctx[asset]!.midPx) * 0.99, xmr.szDecimals);
+        action = { type: "order", orders: [{ a: asset, b: false, p: px, s: arg, r: true, t: { limit: { tif: "Ioc" } } }], grouping: "na" };
+        console.log(`  XMR (asset ${asset}) mid ${ctx[asset]!.midPx}, mark ${ctx[asset]!.markPx}: sell ${arg} reduce-only IOC, limit ${px}`);
+      } else {
+        if (arg !== "0.022") throw new Error("this run only places the agreed 0.022 XMR");
+        // Immediate-or-cancel, at most 1% above the mid: a market buy that can't fill far from the price.
+        const px = perpPrice(Number(ctx[asset]!.midPx) * 1.01, xmr.szDecimals);
+        action = { type: "order", orders: [{ a: asset, b: true, p: px, s: arg, r: false, t: { limit: { tif: "Ioc" } } }], grouping: "na" };
+        console.log(`  XMR (asset ${asset}) mid ${ctx[asset]!.midPx}, mark ${ctx[asset]!.markPx}: buy ${arg} IOC, limit ${px}`);
+      }
+      const { signature, digest } = signL1Action(action, nonce, secret);
+      if (recoverAddress(digest, signature) !== user) throw new Error("the signature doesn't recover to the account: not sending");
+      const response = await fetch(`${API}/exchange`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, nonce, signature, vaultAddress: null }) });
+      console.log(`  ${String(action.type)}: HTTP ${response.status} ${await response.text()}`);
+    } else {
+      throw new Error("usage: hl-account.ts read | disable-unified | spot-to-perp <amount> | leverage | long 0.022");
+    }
+  })().then(
+    () => process.exit(0),
+    (error: unknown) => {
+      console.error(`  stopped: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    },
+  );
+}
