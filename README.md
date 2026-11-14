@@ -63,9 +63,9 @@ Steps 1 to 9 need only a browser. Step 10 needs the NEAR CLI. Steps 11 to 13 nee
 
 The keeper, the policy engine, the vault contract, the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and the demos all run today. What is proven where:
 
-- **On NEAR mainnet, with real money:** the money path. The keeper's own 1Click client got a quote signed by 1Click's key, checked every field, and a real NEAR deposit became 2.531506 USDC in a Hyperliquid perps balance 56.9 s later ([research/mainnet/RESULTS.md](research/mainnet/RESULTS.md)).
-- **On NEAR testnet:** the vault's rescue path, the keeper's rescue-only key and every refusal. The vault, deployed from a reproducible build, has paid 34 real rescue transactions for its test account (from the latency benchmark), and refused every attack in the public lab.
 - **On NEAR mainnet, the vault and one rescue:** [`vault.lifeline-hq.near`](https://nearblocks.io/address/vault.lifeline-hq.near) runs the same reproducible build as the testnet vault (code hash `FUWd4fuXeaL5eu5k6YfkmufXfm7T8uq7gDD6PvuuzAnq`) with 1Click's own key as its quote signer, and [`keeper.lifeline-hq.near`](https://nearblocks.io/address/keeper.lifeline-hq.near) holds only a `rescue` key. On 14 November 2026 it did one real rescue ([Dz7iBdE4…](https://nearblocks.io/txns/Dz7iBdE4Rouk9ECTUxutCUbvjCAVwMFw7XArmrgxzTcZ), [research/mainnet/RESCUE.md](research/mainnet/RESCUE.md)): 2 USDC from the reserve, and 1.684355 USDC in the Hyperliquid perps balance 48.6 s later. The trigger was set above the position's health on purpose, the position was 0.022 XMR (about $11), and the keeper ran locally for that one rescue.
+- **On NEAR mainnet, before the vault:** the money path. The keeper's own 1Click client got a quote signed by 1Click's key, checked every field, and a real NEAR deposit became 2.531506 USDC in a Hyperliquid perps balance 56.9 s later ([research/mainnet/RESULTS.md](research/mainnet/RESULTS.md)).
+- **On NEAR testnet:** the vault's rescue path, the keeper's rescue-only key and every refusal. The vault, deployed from a reproducible build, has paid 34 real rescue transactions for its test account (from the latency benchmark), and refused every attack in the public lab.
 - **Next:** the keeper watching the mainnet vault around the clock, and the dashboard pointed at it ([docs/mainnet.md](docs/mainnet.md)). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
 
 ## What's new here
@@ -84,7 +84,7 @@ Exchange auto top-up works because the exchange holds both the position and the 
 
 ## Built during NEAR HACKATHON
 
-All of this was written during the hackathon. The repository was created on 6 November 2026 and holds no earlier code. Each part was built as a task on its own branch and merged as one commit, so some early commits are large; the biggest, 84,000 lines, is mostly saved Hyperliquid candles for the backtest. Commit authors show who wrote what: Soham Juneja ran the testnet and mainnet money-path proofs, and Prashant Thakur built the rest. The [releases](https://github.com/Prashant-thakur77/LifeLine/releases) mark each milestone, from the first keeper (v0.1.0) to this submission (v1.0.0).
+All of this was written during the hackathon. The repository was created on 6 November 2026 and holds no earlier code. Each part was built as a task on its own branch and merged as one commit, so some early commits are large; the biggest, 84,000 lines, is mostly saved Hyperliquid candles for the backtest. Commit authors show who wrote what: Soham Juneja ran the testnet and mainnet money-path proofs, deployed the mainnet vault and ran its first rescue, and Prashant Thakur built the rest. The [releases](https://github.com/Prashant-thakur77/LifeLine/releases) mark each milestone, from the first keeper (v0.1.0) to this submission (v1.0.0).
 
 ## Demo films
 
