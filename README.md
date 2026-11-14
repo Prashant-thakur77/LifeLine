@@ -3,7 +3,7 @@
 [![CI](https://github.com/Prashant-thakur77/LifeLine/actions/workflows/ci.yml/badge.svg)](https://github.com/Prashant-thakur77/LifeLine/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Prashant-thakur77/LifeLine)](https://github.com/Prashant-thakur77/LifeLine/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1%2C535%20TS%20%2B%2062%20contract-brightgreen)](#tests-and-checks)
+[![Tests](https://img.shields.io/badge/tests-1%2C550%20TS%20%2B%2062%20contract-brightgreen)](#tests-and-checks)
 [![Vault](https://img.shields.io/badge/vault-NEAR%20mainnet%20and%20testnet-00C08B)](https://nearblocks.io/address/vault.lifeline-hq.near)
 [![First mainnet rescue](https://img.shields.io/badge/first%20mainnet%20rescue-48.6%20s%20to%20Hyperliquid-00C08B)](research/mainnet/RESCUE.md)
 [![Demo](https://img.shields.io/badge/live%20demo-lifeline.prashantthakur.dev-ff5a1f)](https://lifeline.prashantthakur.dev)
@@ -37,7 +37,7 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 | NEAR testnet deposit to USDC in a Hyperliquid testnet perps balance | 14.6 s | [research/tidepool/RESULTS.md](research/tidepool/RESULTS.md) |
 | NEAR mainnet deposit to USDC in a Hyperliquid mainnet perps balance, via 1Click (one sample) | 56.9 s | [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
 | Real rescues by the mainnet vault, `vault.lifeline-hq.near` (one: its trigger was set above the position's health on purpose, and the position was about $11) | 1: 2 USDC sent, 1.684355 USDC in the Hyperliquid perps balance 48.6 s after the rescue transaction | [research/mainnet/RESCUE.md](research/mainnet/RESCUE.md), transaction [Dz7iBdE4…](https://nearblocks.io/txns/Dz7iBdE4Rouk9ECTUxutCUbvjCAVwMFw7XArmrgxzTcZ) |
-| Automated tests, all passing | 1,535 TypeScript, 51 vault unit, 11 vault sandbox | `pnpm test`, run on 14 November 2026 |
+| Automated tests, all passing | 1,550 TypeScript, 51 vault unit, 11 vault sandbox | `pnpm test`, run on 14 November 2026 |
 | Hacked-keeper attacks in the public lab, refused by the vault on chain | 7 of 7, each a testnet transaction | [Attack lab](#the-attack-lab-on-testnet) |
 | Real rescue transactions the testnet vault has paid for its test account, `alice.lifeline-team.testnet`, from the latency benchmark (1 or 2 test USDC each, through `rescue`) | 34 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` |
 
@@ -59,7 +59,7 @@ Steps 1 to 9 need only a browser. Step 10 needs the NEAR CLI. Steps 11 to 13 nee
 | 10 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` (NEAR CLI, no keys) | `34`: the real rescue transactions the testnet vault has paid this account from the latency benchmark, each one a `rescue` call by the keeper's restricted key that moved 1 or 2 test USDC to a fresh deposit address. `get_rescues` lists them with their quotes and deposit addresses |
 | 11 | `pnpm demo:sim` | The real keeper code rescues a pretend position opened at the live ETH price, with a real signed 1Click quote, the policy engine's verdict and the audit record. It took 16 s on 14 November 2026 and ends with `PASS: exactly one rescue.` |
 | 12 | `pnpm demo:attack` | Nine attacks refused by the policy engine or the quote signature check, an honest rescue allowed as a control, and the on-chain refusal from step 5 re-checked on a public NEAR node. Ends with `PASS` |
-| 13 | `pnpm test` | 62 TypeScript test files with 1,535 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
+| 13 | `pnpm test` | 64 TypeScript test files with 1,550 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
 
 ## Status
 
@@ -199,9 +199,9 @@ None of these needs a wallet, keys or funds. The commands need Node 22 and pnpm:
 | `pnpm --filter hyperliquid live 0xAnyAddress` | Health, margin and liquidation prices for any Hyperliquid account |
 | `pnpm backtest` | `research/backtest/RESULTS.md` and its charts regenerated from the saved candles, in about 15 seconds |
 | `pnpm latency` | The keeper's decision time measured against the live APIs, written to `research/latency/RESULTS.md` |
-| `pnpm test` | Every test: 1,535 TypeScript tests, then the vault's 51 unit and 11 sandbox tests |
+| `pnpm test` | Every test: 1,550 TypeScript tests, then the vault's 51 unit and 11 sandbox tests |
 
-The vault's Rust tests need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them `pnpm test` runs everything else and says so. The first run fetches a local NEAR node for the sandbox tests, and the Rust build needs about 3 GB of free disk.
+The vault's Rust tests need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them `pnpm test` runs everything else and says so. They need rustc 1.95 or newer, because near-sdk 5.30.1 does: with an older Rust, `pnpm test` stops with an error after the TypeScript tests pass, so run `rustup update stable` first. The first run fetches a local NEAR node for the sandbox tests, and the Rust build needs about 3 GB of free disk.
 
 ## Backtest results
 
@@ -322,20 +322,20 @@ On testnet the vault trusts a team key to sign quotes in 1Click's place, because
 
 ## Tests and checks
 
-`pnpm test` on 14 November 2026: 62 TypeScript test files with 1,535 tests passed, then 51 vault unit tests and 11 vault sandbox tests passed.
+`pnpm test` on 14 November 2026: 64 TypeScript test files with 1,550 tests passed, then 51 vault unit tests and 11 vault sandbox tests passed.
 
 | Package | Test files | Tests | What they cover |
 | --- | --- | --- | --- |
 | `apps/keeper` | 19 | 588 | Watch loop, rescue flow, sizing, crash recovery, audit log and its SQL triggers, REST API, attack lab, AI explanations, answer signatures and attestation |
 | `research/backtest` | 6 | 370 | Simulator, seeded positions, candle data, report and charts |
-| `apps/web` | 15 | 209 | Dashboard logic: the verify page's checks, AI answer proofs, chain reads, replay, policy form, 1Click funding |
-| `scripts` | 7 | 90 | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, latency report, sandbox download |
+| `apps/web` | 15 | 210 | Dashboard logic: the verify page's checks, AI answer proofs, chain reads, replay, policy form, 1Click funding |
+| `scripts` | 9 | 104 | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, the mainnet vault deployment, Hyperliquid request signing, latency report, sandbox download |
 | `packages/policy` | 1 | 72 | Every rule of the policy engine, alone and together |
 | `packages/intents` | 5 | 68 | 1Click quotes, the signed text, signature checks against recorded real quotes and every tampered field, status, tokens |
 | `apps/bot` | 2 | 58 | Telegram linking, alerts, `/status`, `/pause` |
 | `packages/hyperliquid` | 4 | 55 | Health from recorded real `clearinghouseState` answers, candles, prices |
 | `packages/shared` | 3 | 25 | Constants, API shapes, fixtures |
-| **TypeScript total** | **62** | **1,535** | |
+| **TypeScript total** | **64** | **1,550** | |
 | `contracts/vault`, unit | | 51 | Every rule of `rescue`, `set_policy`, deposits and withdrawals on a mocked chain, including a real quote 1Click signed on 6 November 2026, verified with 1Click's real key |
 | `contracts/vault`, sandbox | | 11 | The wasm on a local NEAR node with a real NEP-141 token: deposits, a paid rescue, three kinds of redirected rescue, a refunded failed transfer, a withdrawal, and outside calls to the private callbacks |
 
