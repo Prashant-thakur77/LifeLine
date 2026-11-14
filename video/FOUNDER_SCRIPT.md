@@ -22,12 +22,14 @@ You record 7 short clips. The narrator (the generated voice) keeps the walkthrou
 | F4 | Right after the mainnet clock lands on 56.9 seconds | Yes | "And this isn't a mockup. We ran it on NEAR mainnet with real money, and it landed in our Hyperliquid account in under a minute." |
 | F5 | Before the attack lab | Yes | "The hard part isn't moving money. It's making sure a bot that can move your money can't steal it. So we built Lifeline assuming the bot gets hacked." |
 | F6 | Before the comparison board | Yes | "Exchanges sell auto top-up, but only inside their own walls, and only for isolated margin. Lifeline works across chains, from your own wallet, and not even our own keeper can take your money." |
-| F7 | The close, before the end card | Yes | "Lifeline. Topped up before liquidation, proven on NEAR mainnet. Go to lifeline dot prashantthakur dot dev slash attack, try to rob the vault, and tell us which attack you'd try first." |
-| F8 | Last words, over the end card | Yes | "This is just the start. Follow us on X to be part of the journey, and try Lifeline today." |
+| F7 | The close, before the end card | Yes | "Lifeline. Topped up before liquidation, live on NEAR mainnet. Go to lifeline dot prashantthakur dot dev slash attack, try to rob the vault, and tell us which attack you'd try first." |
+| F8 | Last words, over the end card | Yes | "This is just the start. Follow us on X to be part of the journey. We're live on mainnet, so try us out." |
 
-The end card will show the X handle (added once you share it), the site, and "Money path proven on NEAR mainnet · Try it live".
+The end card will show the X handle (added once you share it), the site, and "Live on NEAR mainnet · Try it now".
 
 About 75 seconds of you in total. Everything else stays with the narrator, so the film stays about 3:40.
+
+These lines say Lifeline is live on mainnet. The film goes out only after the vault and keeper are deployed on mainnet and a first rescue has run there.
 
 ## The whole film, so you know where you fit
 
