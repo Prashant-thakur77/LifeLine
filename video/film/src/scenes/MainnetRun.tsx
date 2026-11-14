@@ -12,13 +12,14 @@ export type MainnetRunProps = {
   amount: string;
   cost: string;
   quote: string;
+  banner?: string;     // replaces the top stamp
   route?: string;      // the headline over the clock
   amountNote?: string; // what follows the amount once it lands
   source?: string;     // the footer line
   dur: number;
 };
 
-export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amount, cost, quote, route, amountNote, source, dur }) => {
+export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amount, cost, quote, banner, route, amountNote, source, dur }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const runFrames = Math.max(fps * 2, dur - fps * 2.2);
@@ -29,7 +30,7 @@ export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amo
   return (
     <AbsoluteFill style={{ background: `linear-gradient(180deg, ${P.night}, #101c4a)`, padding: `${T.safeY}px ${T.safeX}px`, color: P.paper }}>
       <div style={{ display: "inline-block", alignSelf: "flex-start", fontFamily: T.monoFont, fontWeight: 600, fontSize: 28, letterSpacing: 5, color: P.ink, background: P.okBright,
-        padding: "6px 16px", border: `3px solid ${P.paper}`, opacity: ramp(f, 0, 10) }}>REAL MONEY · NEAR MAINNET · {when}</div>
+        padding: "6px 16px", border: `3px solid ${P.paper}`, opacity: ramp(f, 0, 10) }}>{banner ?? `REAL MONEY · NEAR MAINNET · ${when}`}</div>
       <div style={{ display: "flex", marginTop: 40, gap: 70 }}>
         <div style={{ width: 640 }}>
           <div style={{ fontFamily: T.monoFont, fontSize: 30, letterSpacing: 4, opacity: 0.8 }}>{route ?? "DEPOSIT ON NEAR → MARGIN ON HYPERLIQUID"}</div>

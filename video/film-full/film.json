@@ -104,23 +104,30 @@
    "id": "speed",
    "type": "mainnet",
    "when": "14 NOV 2026 · 20:16 UTC",
+   "banner": "FIRST RESCUE ON NEAR MAINNET · 14 NOV 2026 · 20:16 UTC",
    "landed": 48.6,
    "amount": "1.68 USDC",
-   "route": "VAULT RESCUE ON NEAR → MARGIN ON HYPERLIQUID",
-   "amountNote": "landed · health 2.27 → 3.83",
+   "min": 10,
+   "route": "VAULT ON NEAR → NEAR INTENTS → HYPERLIQUID",
+   "amountNote": "landed in Hyperliquid · health → 3.83",
    "quote": "7d553dc5-ea55-4715-b287-c79715357f1d",
    "cost": "1Click took 0.32 of the 2 USDC · Hyperliquid fee 0 · vault.lifeline-hq.near",
-   "source": "rescue Dz7iBdE4…zTcZ · quote signed by 1Click, checked by the vault on chain",
+   "source": "tx Dz7iBdE4… · research/mainnet/RESCUE.md · test position ~$11, trigger set above health on purpose",
    "steps": [
     {
      "t": 0.0,
-     "label": "Vault pays the rescue",
-     "detail": "Dz7iBdE4…zTcZ · health 2.27 · 2 USDC"
+     "label": "Keeper saw health 2.27 < trigger 2.5",
+     "detail": "keeper.lifeline-hq.near · its only key can call rescue"
+    },
+    {
+     "t": 0.0,
+     "label": "Vault on NEAR paid 2 USDC",
+     "detail": "through NEAR Intents · quote signed by 1Click · Dz7iBdE4…"
     },
     {
      "t": 48.6,
-     "label": "Margin on Hyperliquid",
-     "detail": "1.684355 USDC · health 3.83"
+     "label": "1.68 USDC landed in 48.6 s",
+     "detail": "1.684355 USDC in Hyperliquid · health → 3.83"
     }
    ],
    "drift": false,
