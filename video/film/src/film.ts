@@ -47,6 +47,7 @@ export type Scene = Base &
     | ({ type: "chainlist" } & Omit<import("./scenes/ChainList").ChainListProps, "dur">)
     | ({ type: "mainnet" } & Omit<import("./scenes/MainnetRun").MainnetRunProps, "dur">)
     | ({ type: "flow3d" } & Omit<import("./scenes/Flow3D").Flow3DProps, "dur">)
+    | ({ type: "xposts" } & Omit<import("./scenes/XPosts").XPostsProps, "dur">)
   );
 
 export type Film = {

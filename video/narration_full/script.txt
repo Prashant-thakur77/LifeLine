@@ -20,6 +20,6 @@ And it needs NEAR. Intents move the money from any chain in one step. A function
 Under the hood: the keeper's sixteen-rule policy engine sees your health fall, and its only key can call rescue. The Rust vault on NEAR checks 1Click's signature on chain, then NEAR Intents moves the USDC into your margin. A hacked keeper gets refused, and NEAR AI explains every rescue.
 On eighteen thousand replayed positions, thirty-four percent were liquidated without protection. With Lifeline, twenty point six.
 Fifteen hundred and thirty-five TypeScript tests and sixty-two contract tests run on every change.
-Three in the morning. You're asleep. And your position is still open.
 Lifeline. Topped up before liquidation, live on NEAR mainnet. Go to lifeline.prashantthakur.dev/attack, try to rob the vault, and tell us which attack you'd try first.
 This is just the start. Follow us on X to be part of the journey. We are live on mainnet, so try us out.
+Three in the morning. You're asleep. And your position is still open.

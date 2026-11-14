@@ -179,12 +179,11 @@ if FULL:
     def pip(take):
         return {"src": REC, "from": round(SEG[take][0] - LEAD, 3), "name": "Prashant"}
     byid = {sc["id"]: sc for sc in scenes}
-    for sid, take in (("scale", "p2"), ("hook", "p3"), ("speed", "p4"), ("compare", "p6"), ("end", "p8")):
+    for sid, take in (("scale", "p2"), ("hook", "p3"), ("speed", "p4"), ("compare", "p6")):
         byid[sid]["face"] = pip(take)
     byid["cold"]["duration"] = 4.5
     byid["threat"]["duration"] = 2.6
-    byid["end"].pop("duration", None)
-    byid["end"]["min"] = 6
+    byid["end"]["duration"] = 5.0
     byid["arch"].clear()
     byid["arch"].update({"id": "arch", "type": "flow3d", "min": 17, "drift": False,
         "cues": {"hl": word_at("f10", "health", 1.5), "keeper": word_at("f10", "only key", 4.0), "vault": word_at("f10", "signature", 7.0),
@@ -201,8 +200,15 @@ if FULL:
         out.append(sc)
         if sc["id"] == "cold":
             out.append(cam("me1", "p1", {"name": "Prashant Thakur", "role": "Building Lifeline on NEAR", "at": 0.6}))
-        if sc["id"] == "close":
-            out.append(cam("me7", "p7"))
+    # the close: the founder's invite, the X account, then the night-sea story, then the end card
+    tail = [x for x in out if x["id"] in ("close", "end")]
+    out = [x for x in out if x["id"] not in ("close", "end")]
+    XDIR = os.path.join(HERE, "film-full/public/x")
+    shots = sorted(f for f in os.listdir(XDIR) if f.endswith(".png")) if os.path.isdir(XDIR) else []
+    out.append(cam("me7", "p7"))
+    out.append({"id": "xpage", "type": "xposts", "handle": "@LifelineNear", "images": [{"src": f"x/{f}"} for f in shots],
+                "drift": False, "face": pip("p8"), "min": 7})
+    out += tail
     scenes = [sc for sc in out if sc["id"] not in ("aiproof", "stress")]   # kept the full cut near four minutes
 
 for s in scenes:

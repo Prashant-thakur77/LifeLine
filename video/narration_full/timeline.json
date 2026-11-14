@@ -1,5 +1,5 @@
 {
- "duration": 253.8,
+ "duration": 258.8,
  "scenes": [
   {
    "id": "cold",
@@ -146,22 +146,28 @@
    "voice": true
   },
   {
-   "id": "close",
+   "id": "me7",
    "start": 226.267,
-   "duration": 5.467,
+   "duration": 14.567,
    "voice": true
   },
   {
-   "id": "me7",
-   "start": 231.733,
-   "duration": 14.5,
+   "id": "xpage",
+   "start": 240.833,
+   "duration": 7.433,
+   "voice": true
+  },
+  {
+   "id": "close",
+   "start": 248.267,
+   "duration": 5.533,
    "voice": true
   },
   {
    "id": "end",
-   "start": 246.233,
-   "duration": 7.567,
-   "voice": true
+   "start": 253.8,
+   "duration": 5.0,
+   "voice": false
   }
  ],
  "lines": [
@@ -320,25 +326,25 @@
    "caption": "Fifteen hundred and thirty-five TypeScript tests and sixty-two contract tests run on every change."
   },
   {
-   "id": "n18",
-   "scene": "close",
-   "start": 226.567,
-   "end": 231.127,
-   "caption": "Three in the morning. You're asleep. And your position is still open."
-  },
-  {
    "id": "p7",
    "scene": "me7",
-   "start": 232.033,
-   "end": 245.683,
+   "start": 226.567,
+   "end": 240.217,
    "caption": "Lifeline. Topped up before liquidation, live on NEAR mainnet. Go to lifeline.prashantthakur.dev/attack, try to rob the vault, and tell us which attack you'd try first."
   },
   {
    "id": "p8",
-   "scene": "end",
-   "start": 246.533,
-   "end": 253.133,
+   "scene": "xpage",
+   "start": 241.133,
+   "end": 247.733,
    "caption": "This is just the start. Follow us on X to be part of the journey. We are live on mainnet, so try us out."
+  },
+  {
+   "id": "n18",
+   "scene": "close",
+   "start": 248.567,
+   "end": 253.127,
+   "caption": "Three in the morning. You're asleep. And your position is still open."
   }
  ]
 }

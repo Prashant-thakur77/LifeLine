@@ -765,19 +765,6 @@
    "duration": 8.067
   },
   {
-   "id": "close",
-   "type": "sea",
-   "mode": "calm",
-   "sky": "night",
-   "from": 2.01,
-   "to": 2.01,
-   "clock": "3:12",
-   "waterIn": true,
-   "min": 4.5,
-   "duration": 5.467,
-   "drift": false
-  },
-  {
    "id": "me7",
    "type": "footage",
    "src": "founder/raw.mp4",
@@ -788,7 +775,34 @@
    "objectPosition": "50% 18%",
    "drift": false,
    "backdrop": false,
-   "duration": 14.5
+   "duration": 14.567
+  },
+  {
+   "id": "xpage",
+   "type": "xposts",
+   "handle": "@LifelineNear",
+   "images": [],
+   "drift": false,
+   "face": {
+    "src": "founder/raw.mp4",
+    "from": 98.05,
+    "name": "Prashant"
+   },
+   "min": 7,
+   "duration": 7.433
+  },
+  {
+   "id": "close",
+   "type": "sea",
+   "mode": "calm",
+   "sky": "night",
+   "from": 2.01,
+   "to": 2.01,
+   "clock": "3:12",
+   "waterIn": true,
+   "min": 4.5,
+   "duration": 5.533,
+   "drift": false
   },
   {
    "id": "end",
@@ -801,13 +815,7 @@
     "/verify",
     "Follow @LifelineNear on X"
    ],
-   "face": {
-    "src": "founder/raw.mp4",
-    "from": 98.05,
-    "name": "Prashant"
-   },
-   "min": 6,
-   "duration": 7.567
+   "duration": 5.0
   }
  ]
 }

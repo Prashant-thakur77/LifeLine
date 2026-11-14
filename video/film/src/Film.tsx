@@ -30,6 +30,7 @@ import { Board } from "./scenes/Board";
 import { ChainList } from "./scenes/ChainList";
 import { MainnetRun } from "./scenes/MainnetRun";
 import { Flow3D } from "./scenes/Flow3D";
+import { XPosts } from "./scenes/XPosts";
 import { Pill } from "./components/Pill";
 import { ProvLabel } from "./components/ProvLabel";
 import { FacePip } from "./components/FacePip";
@@ -88,6 +89,7 @@ const SceneBody: React.FC<{ s: Scene; dur: number }> = ({ s, dur }) => {
     case "chainlist": return <ChainList {...s} dur={dur} />;
     case "mainnet": return <MainnetRun {...s} dur={dur} />;
     case "flow3d": return <Flow3D {...s} dur={dur} />;
+    case "xposts": return <XPosts {...s} dur={dur} />;
   }
 };
 
