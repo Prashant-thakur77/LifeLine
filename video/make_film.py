@@ -67,6 +67,25 @@ def mainnet_scene(sid):
                       {"t": landed, "label": "Margin on Hyperliquid", "detail": f"{amount} in the perps balance"}],
             "drift": False}
 
+
+def rescue_scene(sid):
+    """The vault's first mainnet rescue, every value read from research/mainnet/RESCUE.md."""
+    r = open(os.path.join(REPO, "research/mainnet/RESCUE.md")).read()
+    landed = float(re.search(r"\*\*([\d.]+) s\*\*", r).group(1))
+    credited = re.search(r"\[([\d.]+) USDC credited\]", r).group(1)
+    before = re.search(r"Keeper reads health ([\d.]+)", r).group(1)
+    after = re.search(r"maintenance margin [\d.]+, health (\d+\.\d+)", r).group(1)
+    tx = re.search(r"Rescue transaction\]\(https://nearblocks.io/txns/(\w+)\)", r).group(1)
+    quote = re.search(r"\*\*Quote:\*\* `([0-9a-f-]{36})`", r).group(1)
+    fee = re.search(r"\*\*1Click:\*\* ([\d.]+) of the 2 USDC", r).group(1)
+    return {"id": sid, "type": "mainnet", "when": "14 NOV 2026 · 20:16 UTC", "landed": landed, "amount": f"{float(credited):.2f} USDC",
+            "route": "VAULT RESCUE ON NEAR → MARGIN ON HYPERLIQUID", "amountNote": f"landed · health {before} → {after}",
+            "quote": quote, "cost": f"1Click took {float(fee):.2f} of the 2 USDC · Hyperliquid fee 0 · vault.lifeline-hq.near",
+            "source": f"rescue {tx[:8]}…{tx[-4:]} · quote signed by 1Click, checked by the vault on chain",
+            "steps": [{"t": 0.0, "label": "Vault pays the rescue", "detail": f"{tx[:8]}…{tx[-4:]} · health {before} · 2 USDC"},
+                      {"t": landed, "label": "Margin on Hyperliquid", "detail": f"{credited} USDC · health {after}"}],
+            "drift": False}
+
 HL_PROOF = {"src": "captures/M1.mp4", "trimBefore": 3.0, "full": True, "ground": "night",
             "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 30, "y": 70, "w": 1560, "h": 878}}],
             "label": {"text": "Hyperliquid's own explorer · the payout from 1Click's account to ours"}}
@@ -185,6 +204,9 @@ if FULL:
     def pip(take):
         return {"src": REC, "from": round(SEG[take][0] - LEAD, 3), "name": "Prashant"}
     byid = {sc["id"]: sc for sc in scenes}
+    sp = rescue_scene("speed")   # the vault's own first mainnet rescue, in place of the earlier money-path run
+    byid["speed"].clear(); byid["speed"].update(sp)
+    byid["hlproof"].update(src="captures/M3.mp4", label={"text": "Hyperliquid's own explorer · the rescue's 1.68 USDC arriving in our account"})
     for sid, take in (("scale", "p2"), ("hook", "p3"), ("speed", "p4"), ("compare", "p6")):
         byid[sid]["face"] = pip(take)
     byid["cold"]["duration"] = 4.5
