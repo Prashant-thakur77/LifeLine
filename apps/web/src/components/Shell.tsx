@@ -230,10 +230,14 @@ export function Footer() {
                     config.vaultId
                   ) : (
                     <>
+                      <a href="https://nearblocks.io/address/vault.lifeline-hq.near" target="_blank" rel="noreferrer noopener" className="underline decoration-sun underline-offset-4 hover:text-sun">
+                        vault.lifeline-hq.near
+                      </a>{" "}
+                      on NEAR mainnet, first rescue done ·{" "}
                       <a href="https://testnet.nearblocks.io/address/vault.lifeline-team.testnet" target="_blank" rel="noreferrer noopener" className="underline decoration-sun underline-offset-4 hover:text-sun">
                         vault.lifeline-team.testnet
                       </a>{" "}
-                      on NEAR testnet · money path proven on mainnet
+                      on testnet
                     </>
                   )}
                 </dd>

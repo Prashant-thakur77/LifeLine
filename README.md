@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-1%2C535%20TS%20%2B%2062%20contract-brightgreen)](#tests-and-checks)
 [![Vault](https://img.shields.io/badge/vault-NEAR%20mainnet%20and%20testnet-00C08B)](https://nearblocks.io/address/vault.lifeline-hq.near)
-[![1Click route](https://img.shields.io/badge/1Click%20route%20to%20Hyperliquid-proven%20on%20mainnet-00C08B)](research/mainnet/RESULTS.md)
+[![First mainnet rescue](https://img.shields.io/badge/first%20mainnet%20rescue-48.6%20s%20to%20Hyperliquid-00C08B)](research/mainnet/RESCUE.md)
 [![Demo](https://img.shields.io/badge/live%20demo-lifeline.prashantthakur.dev-ff5a1f)](https://lifeline.prashantthakur.dev)
 [![Built at NEAR HACKATHON](https://img.shields.io/badge/built%20at-NEAR%20HACKATHON-black)](https://nearhackathon.com)
 

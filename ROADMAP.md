@@ -4,9 +4,15 @@ What comes after the hackathon, in order. Each step either takes Lifeline to rea
 
 ## 1. Mainnet
 
-- Deploy the vault and keeper to NEAR mainnet, following the runbook in [docs/mainnet.md](docs/mainnet.md): the vault from the same reproducible build, set to trust 1Click's own signing key, and a keeper account whose only key can call `rescue`.
-- Run the first real rescue from the mainnet vault into a Hyperliquid account, and publish its transactions next to the money-path run in [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md).
-- Point the dashboard at the mainnet vault. The footer and the verify page switch to mainnet on their own once a mainnet vault is configured.
+Done during the hackathon:
+
+- The vault is live on NEAR mainnet at [`vault.lifeline-hq.near`](https://nearblocks.io/address/vault.lifeline-hq.near), from the same reproducible build as testnet and trusting 1Click's own signing key. Its keeper, `keeper.lifeline-hq.near`, holds only a function-call key for `rescue`.
+- The first real rescue: 2 USDC from the vault through 1Click, and 1.684355 USDC in a Hyperliquid perps balance 48.6 s after the rescue transaction ([research/mainnet/RESCUE.md](research/mainnet/RESCUE.md)).
+
+Next:
+
+- Run the keeper against the mainnet vault around the clock, with its own Cloudflare Worker and alerts when it stops.
+- Point the hosted dashboard at the mainnet vault and open sign-up. The footer and the verify page switch to mainnet on their own once a mainnet vault is configured.
 
 ## 2. Trust
 
