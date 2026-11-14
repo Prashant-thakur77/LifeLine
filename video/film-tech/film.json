@@ -298,16 +298,60 @@
   },
   {
    "id": "t_money",
-   "type": "kinetic",
-   "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026",
-   "lines": [
-    "14.6 seconds",
-    "signed quote → deposit → margin"
+   "type": "mainnet",
+   "when": "14 NOV 2026 · 13:13 UTC",
+   "landed": 56.9,
+   "amount": "2.531506 USDC",
+   "quote": "9487fc67-f6fc-4818-8b51-473479041f82",
+   "cost": "cost $0.32 of $2.86, almost all 1Click's flat fee · Hyperliquid fee 0",
+   "steps": [
+    {
+     "t": 0.0,
+     "label": "Deposit on NEAR",
+     "detail": "6avvisKA…N1Hv · 0.86 wNEAR"
+    },
+    {
+     "t": 2.3,
+     "label": "1Click sees it",
+     "detail": "PENDING_DEPOSIT"
+    },
+    {
+     "t": 17.3,
+     "label": "Swapping through NEAR Intents",
+     "detail": "PROCESSING"
+    },
+    {
+     "t": 56.9,
+     "label": "Margin on Hyperliquid",
+     "detail": "2.531506 USDC in the perps balance"
+    }
    ],
-   "emphasis": [
-    "14.6"
+   "drift": false,
+   "duration": 13.167
+  },
+  {
+   "id": "t_hlproof",
+   "type": "screen",
+   "src": "captures/M1.mp4",
+   "trimBefore": 3.0,
+   "full": true,
+   "ground": "night",
+   "zooms": [
+    {
+     "at": 0.3,
+     "dur": 30,
+     "box": {
+      "x": 30,
+      "y": 70,
+      "w": 1560,
+      "h": 878
+     }
+    }
    ],
-   "duration": 12.333
+   "label": {
+    "text": "Hyperliquid's own explorer · the payout from 1Click's account to ours"
+   },
+   "duration": 6.333
   },
   {
    "id": "t_arch",
@@ -349,7 +393,7 @@
      "at": 6.0
     }
    ],
-   "duration": 11.2
+   "duration": 11.133
   },
   {
    "id": "t_proof",
@@ -371,7 +415,7 @@
    ],
    "footnote": "18,000 positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest",
    "min": 7,
-   "duration": 11.1
+   "duration": 11.233
   },
   {
    "id": "t_stress",
@@ -393,20 +437,20 @@
    ],
    "footnote": "same positions · each 4h candle's move squeezed into one minute · research/backtest",
    "min": 6,
-   "duration": 8.567
+   "duration": 8.5
   },
   {
    "id": "t_tests",
    "type": "kinetic",
    "kicker": "pnpm test · CI on every pull request",
    "lines": [
-    "1,519 TypeScript tests",
+    "1,535 TypeScript tests",
     "62 contract tests"
    ],
    "emphasis": [
-    "1,519"
+    "1,535"
    ],
-   "duration": 9.267
+   "duration": 9.2
   },
   {
    "id": "t_close",
@@ -418,14 +462,14 @@
    "clock": "3:12",
    "waterIn": true,
    "min": 6,
-   "duration": 8.8,
+   "duration": 8.9,
    "drift": false
   },
   {
    "id": "end",
    "type": "endcard",
    "name": "Lifeline",
-   "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
+   "tagline": "Topped up before liquidation. Proven on NEAR mainnet.",
    "links": [
     "lifeline.prashantthakur.dev",
     "/attack",

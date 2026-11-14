@@ -47,6 +47,30 @@ POS = re.search(r"On ([\d,]+) random BTC, ETH and SOL positions", bt).group(1)
 tp = open(os.path.join(REPO, "research/tidepool/RESULTS.md")).read()
 DELIVERY = re.search(r"Deposit to balance on Hyperliquid: ([\d.]+) s", tp).group(1)
 
+
+def mainnet_scene(sid):
+    """The real mainnet run, every value read from research/mainnet/RESULTS.md."""
+    mr = open(os.path.join(REPO, "research/mainnet/RESULTS.md")).read()
+    landed = float(re.search(r"Deposit to balance on Hyperliquid: ([\d.]+) s", mr).group(1))
+    amount = re.search(r"Hyperliquid after:\s+([\d.]+ USDC)", mr).group(1)
+    pend = float(re.search(r"`PENDING_DEPOSIT` at ([\d.]+) s", mr).group(1))
+    proc = float(re.search(r"`PROCESSING` at ([\d.]+) s", mr).group(1))
+    quote = re.search(r"Quote:\s+([0-9a-f-]{36})", mr).group(1)
+    tx = re.search(r"NEAR tx:\s+(\w+)", mr).group(1)
+    near_in = re.search(r"([\d.]+) wNEAR in, at least", mr).group(1)
+    cost = re.search(r"\$([\d.]+) of wNEAR in, \$([\d.]+) of USDC out", mr)
+    return {"id": sid, "type": "mainnet", "when": "14 NOV 2026 · 13:13 UTC", "landed": landed, "amount": amount, "quote": quote,
+            "cost": f"cost ${float(cost.group(1)) - float(cost.group(2)):.2f} of ${float(cost.group(1)):.2f}, almost all 1Click's flat fee · Hyperliquid fee 0",
+            "steps": [{"t": 0.0, "label": "Deposit on NEAR", "detail": f"{tx[:8]}…{tx[-4:]} · {near_in} wNEAR"},
+                      {"t": pend, "label": "1Click sees it", "detail": "PENDING_DEPOSIT"},
+                      {"t": proc, "label": "Swapping through NEAR Intents", "detail": "PROCESSING"},
+                      {"t": landed, "label": "Margin on Hyperliquid", "detail": f"{amount} in the perps balance"}],
+            "drift": False}
+
+HL_PROOF = {"src": "captures/M1.mp4", "trimBefore": 3.0, "full": True, "ground": "night",
+            "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 30, "y": 70, "w": 1560, "h": 878}}],
+            "label": {"text": "Hyperliquid's own explorer · the payout from 1Click's account to ours"}}
+
 LIVE = "live site · lifeline.prashantthakur.dev"
 scenes = [
     {"id": "cold", "type": "sea", "mode": "fall", "sky": "night", "from": 1.62, "to": 1.07, "clock": "3:07", "clockTo": "3:09",
@@ -55,6 +79,7 @@ scenes = [
      "emphasis": ["$7.4"], "waterOut": True, "min": 5},
     {"id": "hook", "type": "screen", "src": "captures/L1.mp4", "trimBefore": 0.4, "zooms": [{"at": 1.2, "dur": 30, "box": {"x": 140, "y": 420, "w": 1180, "h": 664}}], "full": True, "ground": "paper", "waterIn": True,
      "label": {"text": "live site · vault on NEAR, funded from any chain via NEAR Intents · replay of a simulated rescue"}},
+    mainnet_scene("speed"),
     {"id": "fund", "type": "screen", "src": "captures/F1.mp4", "trimBefore": 0.5, "zooms": [{"at": 1.0, "dur": 30, "box": {"x": 240, "y": 240, "w": 1200, "h": 675}}], "full": True, "ground": "paper",
      "label": {"text": f"{LIVE}/fund · NEAR Intents (1Click)"}},
     {"id": "rules", "type": "screen", "src": "captures/S1.mp4", "trimBefore": 1.2, "zooms": [{"at": 0.6, "dur": 30, "box": {"x": 330, "y": 470, "w": 1100, "h": 619}}], "full": True, "ground": "paper", "label": {"text": f"{LIVE}/start · your policy"}},
@@ -62,8 +87,6 @@ scenes = [
      "label": {"text": f"{LIVE}/position · demo account, live keeper"}},
     {"id": "rescue", "type": "sea", "mode": "rescue", "sky": "day", "from": 1.44, "to": 2.01, "throwAt": word_at("n08", "vault", 3.0),
      "amount": "+3.47 USDC", "tag": "Reserve · vault on NEAR", "label": {"text": "the demo keeper's rescue · simulated position, real 1Click quote"}},
-    {"id": "speed", "type": "kinetic", "kicker": "NEAR testnet → Hyperliquid testnet · 13 Nov 2026", "lines": [f"{DELIVERY} seconds", "deposit to margin."],
-     "emphasis": [DELIVERY]},
     {"id": "wake", "type": "screen", "src": "captures/G1.mp4", "trimBefore": 4.0, "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 260, "y": 420, "w": 1100, "h": 619}}], "full": True, "ground": "paper", "label": {"text": f"{LIVE}/ledger · public audit log"}},
     {"id": "threat", "type": "kinetic", "lines": ["Assume the bot", "gets hacked."], "emphasis": ["hacked."], "waterOut": True},
     {"id": "lab", "type": "screen", "src": "captures/A1.mp4", "trimBefore": 3.2, "full": True, "ground": "paper", "waterIn": True,
@@ -89,8 +112,8 @@ scenes = [
      "rows": [{"label": "No protection", "value": NO_PROT}, {"label": "With Lifeline", "value": WITH, "ours": True}],
      "footnote": f"{POS} BTC, ETH and SOL positions · real Hyperliquid 4h candles, Jul 2024 – Nov 2026 · research/backtest", "min": 7},
     {"id": "close", "type": "sea", "mode": "calm", "sky": "night", "from": 2.01, "to": 2.01, "clock": "3:12", "waterIn": True, "min": 4.5},
-    {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Funded from any chain, on NEAR.",
-     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify"], "duration": 4.5},
+    {"id": "end", "type": "endcard", "name": "Lifeline", "tagline": "Topped up before liquidation. Proven on NEAR mainnet.",
+     "links": ["lifeline.prashantthakur.dev", "/attack", "/verify"], "duration": 4.0},
 ]
 if FULL:
     import datetime
@@ -130,6 +153,7 @@ if FULL:
                             {"name": "NEAR AI", "does": "explains every rescue from verified hardware"}],
                   "start": 1.6, "each": 2.6}],
     }
+    extra["speed"] = [{"id": "hlproof", "type": "screen", **HL_PROOF}]
     out = []
     for sc in scenes:
         out += before.get(sc["id"], [])

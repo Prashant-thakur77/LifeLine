@@ -1,12 +1,13 @@
 Three in the morning. Your Hyperliquid position is minutes from liquidation, and you're asleep.
 It happens to traders every day. In one October cascade, over seven point four billion dollars of Hyperliquid positions were wiped out.
 Lifeline, built on NEAR, stops that. It watches your account every five seconds, and tops up your margin from a reserve you fund from any chain through NEAR Intents.
+And it's proven on NEAR mainnet: real money moved from NEAR into a Hyperliquid perps balance in under a minute.
+Hyperliquid's own explorer shows the payout, from 1Click to our account.
 NEAR Intents swaps your funds from any chain into USDC on NEAR, and you deposit it into the Lifeline vault.
 Then set your rules: when to warn you, when to rescue, and how much.
 Your policy lives in the vault on NEAR, so only you can change it, from your own wallet.
 The keeper reads your health every five seconds. At one, you're liquidated.
 Below your trigger, it gets a signed quote from 1Click, and the vault pays it straight into your Hyperliquid margin.
-On testnet, that money reached Hyperliquid in under fifteen seconds.
 You wake up to a message explaining it. Every step is on a public ledger.
 This test account has thirty-four real rescues on NEAR testnet, and each one is a transaction you can open.
 A bot that moves money is a target. So we assume it gets hacked.

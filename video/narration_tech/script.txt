@@ -11,7 +11,8 @@ Paying itself. Paying the attacker. An edited quote. Over the cap. A stale quote
 The verify page checks the rest in your browser: the keeper's keys, and the vault's code against the chain.
 The vault is a reproducible build. Rebuild the commit it names, and you get the exact code hash deployed on testnet.
 Explanations come from a model on NEAR AI Cloud, in attested hardware. Each answer is signed inside the enclave. Your browser checks that signature, finds the key in a fresh hardware report, and verifies Intel's signature on it.
-The money path runs end to end on testnet: a signed quote, a real NEAR deposit, and the USDC in a Hyperliquid perps balance fourteen point six seconds later.
+The money path is proven on NEAR mainnet: a quote signed by 1Click's own key, a real NEAR deposit, and the USDC in a Hyperliquid perps balance in under a minute.
+Hyperliquid's own explorer shows the payout, from 1Click to our account.
 Under the hood: Hyperliquid for health, the policy engine, a Rust vault on NEAR, NEAR Intents for the money, and NEAR AI for the words.
 On eighteen thousand positions replayed over two years of real Hyperliquid prices, liquidations fell from thirty-four point two percent to twenty point six.
 In a harsher test, where every price move lands within one minute, they still fell, to twenty-nine point one.

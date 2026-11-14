@@ -21,6 +21,21 @@
   "cfg": 0.3
  },
  {
+  "scene": "speed",
+  "id": "n09",
+  "caption": "And it's proven on NEAR mainnet: real money moved from NEAR into a Hyperliquid perps balance in under a minute.",
+  "exaggeration": 0.5,
+  "cfg": 0.3,
+  "spoken": "And it's proven on Near mainnet: real money moved from Near into a Hyperliquid perps balance in under a minute."
+ },
+ {
+  "scene": "hlproof",
+  "id": "f09",
+  "caption": "Hyperliquid's own explorer shows the payout, from 1Click to our account.",
+  "exaggeration": 0.5,
+  "cfg": 0.3
+ },
+ {
   "scene": "fund",
   "id": "n05",
   "caption": "NEAR Intents swaps your funds from any chain into USDC on NEAR, and you deposit it into the Lifeline vault.",
@@ -53,13 +68,6 @@
   "scene": "rescue",
   "id": "n08",
   "caption": "Below your trigger, it gets a signed quote from 1Click, and the vault pays it straight into your Hyperliquid margin.",
-  "exaggeration": 0.5,
-  "cfg": 0.3
- },
- {
-  "scene": "speed",
-  "id": "n09",
-  "caption": "On testnet, that money reached Hyperliquid in under fifteen seconds.",
   "exaggeration": 0.5,
   "cfg": 0.3
  },

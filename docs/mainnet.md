@@ -1,5 +1,7 @@
 # Going live on mainnet
 
+Already proven on mainnet with real money: the money path. A quote signed by 1Click's own key, checked field by field, paid by a real NEAR deposit and delivered into a Hyperliquid perps balance in 56.9 s ([research/mainnet/RESULTS.md](../research/mainnet/RESULTS.md)). What follows deploys the vault and keeper themselves.
+
 The steps to go live: the vault and keeper on mainnet, then the first real rescue. Each step that sends a transaction or spends money needs a human's yes first.
 
 `$TEAM` is the team's mainnet account (for example `lifeline-team.near`). Keys stay in `~/.near-credentials` and the password manager, never in git or chat.

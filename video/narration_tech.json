@@ -93,7 +93,15 @@
  {
   "scene": "t_money",
   "id": "t14",
-  "caption": "The money path runs end to end on testnet: a signed quote, a real NEAR deposit, and the USDC in a Hyperliquid perps balance fourteen point six seconds later.",
+  "caption": "The money path is proven on NEAR mainnet: a quote signed by 1Click's own key, a real NEAR deposit, and the USDC in a Hyperliquid perps balance in under a minute.",
+  "exaggeration": 0.5,
+  "cfg": 0.3,
+  "spoken": "The money path is proven on Near mainnet: a quote signed by 1Click's own key, a real Near deposit, and the USDC in a Hyperliquid perps balance in under a minute."
+ },
+ {
+  "scene": "t_hlproof",
+  "id": "t20",
+  "caption": "Hyperliquid's own explorer shows the payout, from 1Click to our account.",
   "exaggeration": 0.5,
   "cfg": 0.3
  },

@@ -19,10 +19,11 @@ Lifeline watches a trader's Hyperliquid margin every 5 seconds. When their accou
 | NEAR mainnet deposit to USDC in a Hyperliquid mainnet perps balance, via 1Click (one sample) | 56.9 s | [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
 | Automated tests, all passing | 1,535 TypeScript, 51 vault unit, 11 vault sandbox | `pnpm test`, run on 14 November 2026 |
 | Hacked-keeper attacks in the public lab, refused by the vault on chain | 7 of 7, each a testnet transaction | [Attack lab](#the-attack-lab-on-testnet) |
+| Real rescues the testnet vault has paid for its test account, `alice.lifeline-team.testnet` (2 USDC each, through `rescue`) | 34 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` |
 
 ## Verify it yourself in 5 minutes
 
-Steps 1 to 8 need only a browser. Steps 9 to 11 need Node 22 and pnpm: clone the repo, then `pnpm install`. None needs a wallet, keys or funds.
+Steps 1 to 8 need only a browser. Step 9 needs the NEAR CLI. Steps 10 to 12 need Node 22 and pnpm: clone the repo, then `pnpm install`. None needs a wallet, keys or funds.
 
 | # | Do | See |
 | --- | --- | --- |
@@ -34,13 +35,30 @@ Steps 1 to 8 need only a browser. Steps 9 to 11 need Node 22 and pnpm: clone the
 | 6 | Compare the vault's code hash with the reproducible build | `vault.lifeline-team.testnet` runs code hash `FUWd4fuXeaL5eu5k6YfkmufXfm7T8uq7gDD6PvuuzAnq`, the bytes `cargo near build reproducible-wasm` gives from commit `37e98488` ([how to rebuild](contracts/vault/README.md)). The verify page makes this comparison too |
 | 7 | Read [research/tidepool/RESULTS.md](research/tidepool/RESULTS.md) | The money path on testnet: a signed quote checked, a NEAR testnet deposit ([5TcTu5rQ…](https://testnet.nearblocks.io/txns/5TcTu5rQ4yejKkkZwpwnf16zhcTpaUmMzD9AvtrcPD2T)), and USDC in a Hyperliquid testnet perps balance 14.6 s later, with every link |
 | 8 | Open the mainnet deposit [6avvisKA…](https://nearblocks.io/txns/6avvisKAmLYnWR2vkGzSfvteFnGHGc3NEAMt9gWLN1Hv) and Hyperliquid's payout [0xde0a883c…](https://app.hyperliquid.xyz/explorer/tx/0xde0a883ce25d0f3ddf840448c6f174010100a0227d502e0f81d3338fa150e928) | The money path on mainnet, with real money: 0.86 wNEAR paid to a signed 1Click quote's fresh deposit address, and 2.531506 USDC sent into a Hyperliquid mainnet perps balance 56.9 s later, with no Hyperliquid fee. Every link is in [research/mainnet/RESULTS.md](research/mainnet/RESULTS.md) |
-| 9 | `pnpm demo:sim` | The real keeper code rescues a pretend position opened at the live ETH price, with a real signed 1Click quote, the policy engine's verdict and the audit record. It took 16 s on 14 November 2026 and ends with `PASS: exactly one rescue.` |
-| 10 | `pnpm demo:attack` | Nine attacks refused by the policy engine or the quote signature check, an honest rescue allowed as a control, and the on-chain refusal from step 5 re-checked on a public NEAR node. Ends with `PASS` |
-| 11 | `pnpm test` | 62 TypeScript test files with 1,535 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
+| 9 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` (NEAR CLI, no keys) | `34`: the real rescues the testnet vault has paid this account, each one a `rescue` call by the keeper's restricted key that moved 2 test USDC to a fresh deposit address. `get_rescues` lists them with their quotes and deposit addresses |
+| 10 | `pnpm demo:sim` | The real keeper code rescues a pretend position opened at the live ETH price, with a real signed 1Click quote, the policy engine's verdict and the audit record. It took 16 s on 14 November 2026 and ends with `PASS: exactly one rescue.` |
+| 11 | `pnpm demo:attack` | Nine attacks refused by the policy engine or the quote signature check, an honest rescue allowed as a control, and the on-chain refusal from step 5 re-checked on a public NEAR node. Ends with `PASS` |
+| 12 | `pnpm test` | 62 TypeScript test files with 1,535 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
 
 ## Status
 
-The keeper, the policy engine, the vault contract, the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and the demos all run today. The vault and keeper are deployed and tested end to end on NEAR testnet, and the project is ready for mainnet: the launch is one runbook, [docs/mainnet.md](docs/mainnet.md). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
+The keeper, the policy engine, the vault contract, the dashboard, the Telegram bot, the AI explanations with attestation, the backtest and the demos all run today. What is proven where:
+
+- **On NEAR mainnet, with real money:** the money path. The keeper's own 1Click client got a quote signed by 1Click's key, checked every field, and a real NEAR deposit became 2.531506 USDC in a Hyperliquid perps balance 56.9 s later ([research/mainnet/RESULTS.md](research/mainnet/RESULTS.md)).
+- **On NEAR testnet:** the vault and keeper end to end. The vault, deployed from a reproducible build, has paid 34 real rescues for its test account, and refused every attack in the public lab.
+- **Next:** the vault and keeper on mainnet, one runbook away: [docs/mainnet.md](docs/mainnet.md). The hosted demo keeper runs in simulation mode: its prices and 1Click quotes are real, its positions and settlement are pretend, and the dashboard marks it as the simulation.
+
+## Demo films
+
+Three films, each built entirely from code in [video/](video/): the narration, the scenes, the music and the captions are regenerated by its scripts, and every number on screen is read from this repo or the chain, never typed by hand.
+
+| Film | Length | What it shows |
+| --- | --- | --- |
+| Full demo | 3:42 | The problem, the product, the mainnet run, real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
+| Short demo | 2:19 | The same story, cut for a standard X upload |
+| Technical walkthrough | 3:44 | Health and rescue sizing, the policy engine, the vault's on-chain checks in its real Rust code, the rescue-only key, live attacks, the reproducible build, NEAR AI's signed answers, the mainnet run, the backtest and the tests |
+
+`cd video && python3 make_film.py` (add `VARIANT=full` for the full demo) and `python3 make_film_tech.py` write each film's data; [video/DELIVERABLES.md](video/DELIVERABLES.md) has the rest.
 
 ## The problem
 
