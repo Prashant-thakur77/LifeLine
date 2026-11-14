@@ -7,7 +7,7 @@
  *   pnpm demo:mainnet --send   the real run: wraps and sends at most 1.5 NEAR. Reads .env.
  */
 import { existsSync } from "node:fs";
-import { MAINNET, MIN_OUT, ONE_NEAR, checkReserve, formatNear, readMainnetSettings, sizeAmount, wrapAndDepositActions } from "./mainnet";
+import { MAINNET, MIN_OUT, ONE_NEAR, TARGET_OUT, checkReserve, formatNear, readMainnetSettings, sizeAmount, wrapAndDepositActions } from "./mainnet";
 import { nearAccount, runProof } from "./proof-run";
 
 const env = new URL("../../.env", import.meta.url);
@@ -46,7 +46,7 @@ async function main() {
       // A dry quote for 1 wNEAR sizes the live one; createOneClick checks its signature too.
       const sample = await client.getQuote({ amount: ONE_NEAR.toString(), recipient: settings.hlAddress, refundTo: settings.nearAccount, dry: true });
       const amount = sizeAmount(sample);
-      console.log(`  sizing: 1 wNEAR quotes at least ${Number(sample.minAmountOut) / 1e8} USDC after a ${Number(sample.withdrawFee) / 1e8} USDC fee, so ${formatNear(BigInt(amount))} wNEAR for about 3.5 USDC out\n`);
+      console.log(`  sizing: 1 wNEAR quotes at least ${Number(sample.minAmountOut) / 1e8} USDC after a ${Number(sample.withdrawFee) / 1e8} USDC fee, so ${formatNear(BigInt(amount))} wNEAR for about ${Number(TARGET_OUT) / 1e8} USDC out\n`);
       return amount;
     },
     describeAmount: (units) => `${formatNear(BigInt(units))} wNEAR`,

@@ -23,13 +23,13 @@ export const ONE_NEAR = 10n ** 24n;
 /** The most this demo will ever send, wrapped or not. */
 export const MAX_SEND = (15n * ONE_NEAR) / 10n;
 /** NEAR left in the account after the run, for gas and storage. */
-export const RESERVE = ONE_NEAR / 2n;
+export const RESERVE = (15n * ONE_NEAR) / 100n;
 /** Set aside for the transaction's gas when checking the reserve; a 4-call transaction costs far less. */
 const GAS_ALLOWANCE = ONE_NEAR / 20n;
-/** About 3.5 USDC out (8 decimals). Hyperliquid keeps about 1 USDC of a first transfer to a new address. */
-export const TARGET_OUT = 350_000_000n;
-/** The least the live quote may promise: 3.3 USDC, leaving room for the price to move between the two quotes. */
-export const MIN_OUT = 330_000_000n;
+/** About 2.5 USDC out (8 decimals). Hyperliquid keeps about 1 USDC of a first transfer to a new address. */
+export const TARGET_OUT = 250_000_000n;
+/** The least the live quote may promise: 2.3 USDC, leaving room for the price to move between the two quotes. */
+export const MIN_OUT = 230_000_000n;
 const ROUND_TO = ONE_NEAR / 100n;
 
 export type MainnetSettings = { dry: boolean; hlAddress: string; nearAccount: string; nearKey: string | null };
@@ -98,7 +98,7 @@ export function wrapAndDepositActions(p: {
 export function checkReserve(balanceYocto: bigint, steps: DepositAction[]): bigint {
   const spend = steps.reduce((sum, s) => sum + s.depositYocto, 0n);
   const left = balanceYocto - spend - GAS_ALLOWANCE;
-  if (left < RESERVE) throw new Error(`that would leave ${formatNear(left)} NEAR, under the 0.5 NEAR kept for gas and storage`);
+  if (left < RESERVE) throw new Error(`that would leave ${formatNear(left)} NEAR, under the ${formatNear(RESERVE)} NEAR kept for gas and storage`);
   return left;
 }
 

@@ -40,14 +40,18 @@ describe("sizeAmount", () => {
   // 1 wNEAR quoted at 3.2 USDC minimum out, after a 0.3 USDC flat fee (8 decimals).
   const sample = { amountIn: ONE_NEAR.toString(), minAmountOut: "320000000", withdrawFee: "30000000" };
 
-  it("sends enough for the target after the flat fee, rounded up to 0.01 NEAR", () => {
-    // (3.5 + 0.3) / (3.2 + 0.3) = 1.0857… NEAR, so 1.09.
-    expect(sizeAmount(sample)).toBe((109n * ONE_NEAR / 100n).toString());
+  it("sends enough for the 2.5 USDC target after the flat fee, rounded up to 0.01 NEAR", () => {
+    // (2.5 + 0.3) / (3.2 + 0.3) = 0.8 NEAR exactly.
+    expect(sizeAmount(sample)).toBe((80n * ONE_NEAR / 100n).toString());
+    // (2.5 + 0.3) / (3.0 + 0.3) = 0.8484… NEAR, so 0.85.
+    expect(sizeAmount({ ...sample, minAmountOut: "300000000" })).toBe((85n * ONE_NEAR / 100n).toString());
   });
 
   it("refuses anything over 1.5 NEAR, as when NEAR's price falls", () => {
-    expect(() => sizeAmount({ ...sample, minAmountOut: "200000000" })).toThrow(/1.5 NEAR cap/);
-    expect(BigInt(sizeAmount({ ...sample, minAmountOut: "223333334" }))).toBeLessThanOrEqual(MAX_SEND);
+    // (2.5 + 0.3) / (1.5 + 0.3) = 1.5555… NEAR: over the cap.
+    expect(() => sizeAmount({ ...sample, minAmountOut: "150000000" })).toThrow(/1.5 NEAR cap/);
+    // (2.5 + 0.3) / (1.6 + 0.3) = 1.4736… NEAR, so 1.48: under it.
+    expect(BigInt(sizeAmount({ ...sample, minAmountOut: "160000000" }))).toBeLessThanOrEqual(MAX_SEND);
   });
 
   it("refuses a sample that delivers nothing", () => {
@@ -84,13 +88,17 @@ describe("wrapAndDepositActions", () => {
 describe("checkReserve", () => {
   const steps = wrapAndDepositActions({ account: ACCOUNT, depositAddress: DEPOSIT, amount: ONE_NEAR.toString(), wnearBalance: "0", accountRegistered: false, depositRegistered: false, storageYocto: 1_250_000_000_000_000_000_000n });
 
-  it("passes when at least 0.5 NEAR is left after the deposits and gas", () => {
-    // 1 NEAR wrapped + 2 × 0.00125 storage + 1 yocto + 0.05 gas allowance from 1.6 NEAR leaves about 0.5475.
-    expect(checkReserve(16n * ONE_NEAR / 10n, steps)).toBeGreaterThanOrEqual(RESERVE);
+  it("keeps 0.15 NEAR back", () => {
+    expect(RESERVE).toBe(15n * ONE_NEAR / 100n);
+  });
+
+  it("passes when at least 0.15 NEAR is left after the deposits and gas", () => {
+    // 1 NEAR wrapped + 2 × 0.00125 storage + 1 yocto + 0.05 gas allowance from 1.3 NEAR leaves about 0.2475.
+    expect(checkReserve(13n * ONE_NEAR / 10n, steps)).toBeGreaterThanOrEqual(RESERVE);
   });
 
   it("refuses when less would be left, and says how much", () => {
-    expect(() => checkReserve(15n * ONE_NEAR / 10n, steps)).toThrow(/leave 0.4474 NEAR, under the 0.5/);
+    expect(() => checkReserve(12n * ONE_NEAR / 10n, steps)).toThrow(/leave 0.1474 NEAR, under the 0.1500 NEAR/);
   });
 });
 
