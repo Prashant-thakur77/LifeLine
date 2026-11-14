@@ -9,6 +9,7 @@
     "demo:sim": "tsx src/demo-sim.ts",
     "demo:attack": "tsx src/demo-attack.ts",
     "demo:tidepool": "tsx src/demo-tidepool.ts",
+    "demo:mainnet": "tsx src/demo-mainnet.ts",
     "latency": "tsx src/latency.ts"
   },
   "dependencies": {
