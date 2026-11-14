@@ -91,7 +91,7 @@ async function main() {
     console.log(result.refused ? `REFUSED      by the vault contract on ${proof.network}, re-checked on chain just now` : `NOT CONFIRMED  ${result.detail}`);
     console.log(`             transaction: ${explorerFor(proof)}`);
     if (result.refused) console.log(`             ${result.detail}`);
-    if (proof.network === "testnet") console.log("             The mainnet run waits for the mainnet vault and a human's go-ahead.");
+    if (proof.network === "testnet") console.log("             The same check runs on mainnet against the mainnet vault.");
   }
 
   console.log(`\nWhat this doesn't stop: the vault can't see Hyperliquid, so a hacked keeper could still move a reserve into the user's own Hyperliquid account when no rescue is needed, up to ${money(POLICY_DEFAULTS.maxPerRescue)} USDC per rescue and ${money(POLICY_DEFAULTS.maxPerDay)} USDC a day. The money stays the user's, and they can pause or withdraw at any time. It's listed under Limitations in the README.`);

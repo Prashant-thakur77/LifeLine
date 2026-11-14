@@ -191,7 +191,7 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
   const vaultConfig = useCheck(async () => judgeVaultConfig(viewResult<VaultConfig>(await rpc<ViewAnswer>(d.rpcUrl, calls.view(d.vault, "get_config"))), d), run);
   const refusal = useCheck(async () => {
     if (d.refusal === null) throw new Error("No refused attack is recorded on this network yet.");
-    const tx = await rpc<TxStatus>(d.rpcUrl, calls.tx(d.refusal.txHash, d.refusal.signer));
+    const tx = await rpc<TxStatus>(d.archivalRpcUrl, calls.tx(d.refusal.txHash, d.refusal.signer));
     return judgeRefusal(tx, { keeper: d.keeper, vault: d.vault, panic: d.refusal.panic, pointedAt: d.keeper });
   }, run);
 
@@ -219,7 +219,7 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
       <CheckCard
         claim="A hacked keeper was refused, on chain"
         outcome={refusal}
-        rpcUrl={d.rpcUrl}
+        rpcUrl={d.archivalRpcUrl}
         requests={d.refusal ? [calls.tx(d.refusal.txHash, d.refusal.signer)] : []}
         links={d.refusal ? [{ label: "The transaction", href: nearblocksTx(d.refusal.txHash, d.network) }] : []}
       />
