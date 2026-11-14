@@ -49,6 +49,7 @@ function encodeValue(type: string, value: unknown, types: Types): Uint8Array {
   if (type === "bytes") return keccak_256(hexToBytes((value as string).replace(/^0x/, "")));
   if (type === "address") return word(BigInt(value as string));
   if (type === "bool") return word(value ? 1n : 0n);
+  if (type === "bytes32") return value as Uint8Array;
   if (/^uint\d+$/.test(type)) return word(BigInt(value as number | string));
   throw new Error(`unsupported EIP-712 type ${type}`);
 }
@@ -109,6 +110,63 @@ export function userSignedAction(primary: string, fields: Field[], action: Recor
   return { action: full, signature: signDigest(digest, secret), digest };
 }
 
+/** MessagePack, as Python's msgpack.packb encodes Hyperliquid's actions: smallest int form, keys in insertion order. */
+export function msgpack(value: unknown): Uint8Array {
+  const out: number[] = [];
+  const be = (n: bigint, bytes: number) => {
+    for (let i = bytes - 1; i >= 0; i--) out.push(Number((n >> BigInt(8 * i)) & 0xffn));
+  };
+  const put = (v: unknown): void => {
+    if (v === null || v === undefined) out.push(0xc0);
+    else if (v === true) out.push(0xc3);
+    else if (v === false) out.push(0xc2);
+    else if (typeof v === "number" || typeof v === "bigint") {
+      const n = BigInt(v);
+      if (n < 0n) throw new Error("negative ints aren't used in these actions");
+      if (n < 0x80n) out.push(Number(n));
+      else if (n <= 0xffn) (out.push(0xcc), be(n, 1));
+      else if (n <= 0xffffn) (out.push(0xcd), be(n, 2));
+      else if (n <= 0xffffffffn) (out.push(0xce), be(n, 4));
+      else (out.push(0xcf), be(n, 8));
+    } else if (typeof v === "string") {
+      const b = enc.encode(v);
+      if (b.length < 32) out.push(0xa0 | b.length);
+      else if (b.length <= 0xff) out.push(0xd9, b.length);
+      else (out.push(0xda), be(BigInt(b.length), 2));
+      out.push(...b);
+    } else if (Array.isArray(v)) {
+      if (v.length >= 16) throw new Error("long arrays aren't used in these actions");
+      out.push(0x90 | v.length);
+      v.forEach(put);
+    } else if (typeof v === "object") {
+      const entries = Object.entries(v as Record<string, unknown>);
+      if (entries.length >= 16) throw new Error("big maps aren't used in these actions");
+      out.push(0x80 | entries.length);
+      for (const [k, x] of entries) (put(k), put(x));
+    } else throw new Error(`can't encode ${typeof v}`);
+  };
+  put(value);
+  return new Uint8Array(out);
+}
+
+/** Hyperliquid's L1 action signature (sign_l1_action in its SDK): a phantom agent over the action's hash. No vault, no expiry. */
+export function signL1Action(action: Record<string, unknown>, nonce: number, secret: Uint8Array, mainnet = true) {
+  const connectionId = keccak_256(concat(msgpack(action), word(BigInt(nonce)).slice(24), new Uint8Array([0])));
+  const digest = typedDataDigest(
+    { name: "Exchange", version: "1", chainId: 1337, verifyingContract: "0x0000000000000000000000000000000000000000" },
+    "Agent",
+    { Agent: [{ name: "source", type: "string" }, { name: "connectionId", type: "bytes32" }] },
+    { source: mainnet ? "a" : "b", connectionId },
+  );
+  return { signature: signDigest(digest, secret), digest };
+}
+
+/** A perp price as Hyperliquid accepts it: at most 5 significant figures and 6 − szDecimals decimals. */
+export function perpPrice(px: number, szDecimals: number): string {
+  const sig = Number(px.toPrecision(5));
+  return String(Number(sig.toFixed(6 - szDecimals)));
+}
+
 const API = "https://api.hyperliquid.xyz";
 const info = async (body: unknown) => (await fetch(`${API}/info`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json();
 
@@ -157,8 +215,27 @@ if (process.argv[1]?.endsWith("hl-account.ts")) {
       const spot = Number((await read(user)).spotUsdc);
       if (!arg || !/^\d+(\.\d{1,6})?$/.test(arg) || Number(arg) <= 0 || Number(arg) > spot || Number(arg) > 2.531506) throw new Error(`amount must be at most the spot USDC (${spot}) and at most 2.531506`);
       await post(userSignedAction("HyperliquidTransaction:UsdClassTransfer", USD_CLASS_TRANSFER, { type: "usdClassTransfer", amount: arg, toPerp: true, nonce: Date.now() }, secret), user);
+    } else if (command === "leverage" || command === "long") {
+      const [meta, ctx] = (await info({ type: "metaAndAssetCtxs" })) as [{ universe: { name: string; szDecimals: number; maxLeverage: number }[] }, { markPx: string; midPx: string }[]];
+      const asset = meta.universe.findIndex((u) => u.name === "XMR");
+      const xmr = meta.universe[asset]!;
+      const nonce = Date.now();
+      let action: Record<string, unknown>;
+      if (command === "leverage") {
+        action = { type: "updateLeverage", asset, isCross: true, leverage: 5 };
+      } else {
+        if (arg !== "0.022") throw new Error("this run only places the agreed 0.022 XMR");
+        // Immediate-or-cancel, at most 1% above the mid: a market buy that can't fill far from the price.
+        const px = perpPrice(Number(ctx[asset]!.midPx) * 1.01, xmr.szDecimals);
+        action = { type: "order", orders: [{ a: asset, b: true, p: px, s: arg, r: false, t: { limit: { tif: "Ioc" } } }], grouping: "na" };
+        console.log(`  XMR (asset ${asset}) mid ${ctx[asset]!.midPx}, mark ${ctx[asset]!.markPx}: buy ${arg} IOC, limit ${px}`);
+      }
+      const { signature, digest } = signL1Action(action, nonce, secret);
+      if (recoverAddress(digest, signature) !== user) throw new Error("the signature doesn't recover to the account: not sending");
+      const response = await fetch(`${API}/exchange`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, nonce, signature, vaultAddress: null }) });
+      console.log(`  ${String(action.type)}: HTTP ${response.status} ${await response.text()}`);
     } else {
-      throw new Error("usage: hl-account.ts read | disable-unified | spot-to-perp <amount>");
+      throw new Error("usage: hl-account.ts read | disable-unified | spot-to-perp <amount> | leverage | long 0.022");
     }
   })().then(
     () => process.exit(0),

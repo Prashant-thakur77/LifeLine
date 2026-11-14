@@ -1,7 +1,7 @@
 import { keccak_256 } from "@noble/hashes/sha3.js";
-import { bytesToHex } from "@noble/hashes/utils.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { describe, expect, it } from "vitest";
-import { HL_DOMAIN, USER_SET_ABSTRACTION, addressOf, recoverAddress, signDigest, typedDataDigest, userSignedAction } from "../src/hl-account";
+import { HL_DOMAIN, USER_SET_ABSTRACTION, addressOf, perpPrice, recoverAddress, signDigest, signL1Action, typedDataDigest, userSignedAction } from "../src/hl-account";
 
 // The example from the EIP-712 specification (eips.ethereum.org/EIPS/eip-712), with its published digest and signature.
 const MAIL_TYPES = {
@@ -37,6 +37,35 @@ describe("EIP-712, held to the specification's own example", () => {
       v: 28,
     });
     expect(recoverAddress(typedDataDigest(MAIL_DOMAIN, "Mail", MAIL_TYPES, MAIL), sig)).toBe(addressOf(COW));
+  });
+});
+
+describe("Hyperliquid's L1 action signature, held to its SDK's own test vectors (tests/signing_test.py)", () => {
+  const SDK_KEY = hexToBytes("0123456789012345678901234567890123456789012345678901234567890123");
+  const asBig = (hex: string) => BigInt(hex);
+
+  it("signs the SDK's dummy action as the SDK does, on mainnet", () => {
+    const { signature } = signL1Action({ type: "dummy", num: 100_000_000_000 }, 0, SDK_KEY);
+    expect(asBig(signature.r)).toBe(asBig("0x53749d5b30552aeb2fca34b530185976545bb22d0b3ce6f62e31be961a59298"));
+    expect(asBig(signature.s)).toBe(asBig("0x755c40ba9bf05223521753995abb2f73ab3229be8ec921f350cb447e384d8ed8"));
+    expect(signature.v).toBe(27);
+  });
+
+  it("signs the SDK's order as the SDK does, on mainnet and testnet", () => {
+    const order = { type: "order", orders: [{ a: 1, b: true, p: "100", s: "100", r: false, t: { limit: { tif: "Gtc" } } }], grouping: "na" };
+    const main = signL1Action(order, 0, SDK_KEY).signature;
+    expect(asBig(main.r)).toBe(asBig("0xd65369825a9df5d80099e513cce430311d7d26ddf477f5b3a33d2806b100d78e"));
+    expect(asBig(main.s)).toBe(asBig("0x2b54116ff64054968aa237c20ca9ff68000f977c93289157748a3162b6ea940e"));
+    expect(main.v).toBe(28);
+    const test = signL1Action(order, 0, SDK_KEY, false).signature;
+    expect(asBig(test.r)).toBe(asBig("0x82b2ba28e76b3d761093aaded1b1cdad4960b3af30212b343fb2e6cdfa4e3d54"));
+    expect(test.v).toBe(27);
+  });
+
+  it("prices a perp order at 5 significant figures and 6 − szDecimals decimals", () => {
+    expect(perpPrice(502.13337, 3)).toBe("502.13");
+    expect(perpPrice(67400.4, 5)).toBe("67400");
+    expect(perpPrice(1.234567, 0)).toBe("1.2346");
   });
 });
 
