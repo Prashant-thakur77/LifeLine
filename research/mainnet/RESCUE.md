@@ -1,6 +1,6 @@
 # The first Lifeline rescue on mainnet
 
-On 14 November 2026 at 20:16 UTC, Lifeline's keeper rescued a real Hyperliquid position from Lifeline's vault on NEAR mainnet, through 1Click.
+On 14 November 2026, 20:16 UTC, Lifeline's keeper rescued a real Hyperliquid position from Lifeline's vault on NEAR mainnet, through 1Click.
 
 **Why it fired:** the trigger was set above the account's current health, not because the price fell. The policy's trigger was 2.5. The position's health was 2.31 when it was opened and 2.27 when the keeper read it, after XMR had moved down about 0.6%. Either reading is below 2.5, so the keeper rescued on its first look. The position was small on purpose: **0.022 XMR, about $11**, long at 5x cross, on an account holding 2.53 USDC.
 
