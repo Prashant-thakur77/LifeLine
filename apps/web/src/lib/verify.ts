@@ -49,6 +49,16 @@ export const DEPLOYMENTS: Deployment[] = [
     quoteSigner: { key: "ed25519:82DdwitgHq5bvhASvXLPn2Anwc2YtJthFYXv616pej8U", isOneClick: false },
     refusal: { txHash: REFUSED_RESCUE.txHash, signer: REFUSED_RESCUE.signer, panic: REFUSED_RESCUE.panic },
   },
+  {
+    network: "mainnet",
+    rpcUrl: DEFAULT_RPC_URL.mainnet,
+    archivalRpcUrl: "https://archival-rpc.mainnet.fastnear.com",
+    vault: "vault.lifeline-hq.near",
+    keeper: "keeper.lifeline-hq.near",
+    vaultCodeHash: VAULT_CODE_HASH,
+    quoteSigner: { key: ONE_CLICK_QUOTE_SIGNER, isOneClick: true },
+    refusal: null,
+  },
 ];
 
 // ---- What the node answers ----
