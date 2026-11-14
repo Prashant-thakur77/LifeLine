@@ -103,31 +103,31 @@
   {
    "id": "speed",
    "type": "mainnet",
-   "when": "14 NOV 2026 · 13:13 UTC",
-   "landed": 56.9,
-   "amount": "2.531506 USDC",
-   "quote": "9487fc67-f6fc-4818-8b51-473479041f82",
-   "cost": "cost $0.32 of $2.86, almost all 1Click's flat fee · Hyperliquid fee 0",
+   "when": "14 NOV 2026 · 20:16 UTC",
+   "banner": "FIRST RESCUE ON NEAR MAINNET · 14 NOV 2026 · 20:16 UTC",
+   "landed": 48.6,
+   "amount": "1.68 USDC",
+   "min": 10,
+   "route": "VAULT ON NEAR → NEAR INTENTS → HYPERLIQUID",
+   "amountNote": "landed in Hyperliquid · health → 3.83",
+   "quote": "7d553dc5-ea55-4715-b287-c79715357f1d",
+   "cost": "1Click took 0.32 of the 2 USDC · Hyperliquid fee 0 · vault.lifeline-hq.near",
+   "source": "tx Dz7iBdE4… · research/mainnet/RESCUE.md · test position ~$11, trigger set above health on purpose",
    "steps": [
     {
      "t": 0.0,
-     "label": "Deposit on NEAR",
-     "detail": "6avvisKA…N1Hv · 0.86 wNEAR"
+     "label": "Keeper saw health 2.27 < trigger 2.5",
+     "detail": "keeper.lifeline-hq.near · its only key can call rescue"
     },
     {
-     "t": 2.3,
-     "label": "1Click sees it",
-     "detail": "PENDING_DEPOSIT"
+     "t": 0.0,
+     "label": "Vault on NEAR paid 2 USDC",
+     "detail": "through NEAR Intents · quote signed by 1Click · Dz7iBdE4…"
     },
     {
-     "t": 17.3,
-     "label": "Swapping through NEAR Intents",
-     "detail": "PROCESSING"
-    },
-    {
-     "t": 56.9,
-     "label": "Margin on Hyperliquid",
-     "detail": "2.531506 USDC in the perps balance"
+     "t": 48.6,
+     "label": "1.68 USDC landed in 48.6 s",
+     "detail": "1.684355 USDC in Hyperliquid · health → 3.83"
     }
    ],
    "drift": false,
@@ -141,7 +141,7 @@
   {
    "id": "hlproof",
    "type": "screen",
-   "src": "captures/M1.mp4",
+   "src": "captures/M3.mp4",
    "trimBefore": 3.0,
    "full": true,
    "ground": "night",
@@ -158,7 +158,7 @@
     }
    ],
    "label": {
-    "text": "Hyperliquid's own explorer · the payout from 1Click's account to ours"
+    "text": "Hyperliquid's own explorer · the rescue's 1.68 USDC arriving in our account"
    },
    "duration": 6.3
   },

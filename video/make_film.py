@@ -67,6 +67,29 @@ def mainnet_scene(sid):
                       {"t": landed, "label": "Margin on Hyperliquid", "detail": f"{amount} in the perps balance"}],
             "drift": False}
 
+
+def rescue_scene(sid):
+    """The vault's first mainnet rescue, every value read from research/mainnet/RESCUE.md."""
+    r = open(os.path.join(REPO, "research/mainnet/RESCUE.md")).read()
+    landed = float(re.search(r"\*\*([\d.]+) s\*\*", r).group(1))
+    credited = re.search(r"\[([\d.]+) USDC credited\]", r).group(1)
+    before, trigger = re.search(r"Keeper reads health ([\d.]+), under the ([\d.]+) trigger", r).groups()
+    after = re.search(r"maintenance margin [\d.]+, health (\d+\.\d+)", r).group(1)
+    tx = re.search(r"Rescue transaction\]\(https://nearblocks.io/txns/(\w+)\)", r).group(1)
+    quote = re.search(r"\*\*Quote:\*\* `([0-9a-f-]{36})`", r).group(1)
+    fee = re.search(r"\*\*1Click:\*\* ([\d.]+) of the 2 USDC", r).group(1)
+    size = re.search(r"about (\$\d+)\*\*", r).group(1)
+    when = re.search(r"On 14 November 2026 at (\d\d:\d\d) UTC", r).group(1)
+    return {"id": sid, "type": "mainnet", "when": f"14 NOV 2026 · {when} UTC", "banner": f"FIRST RESCUE ON NEAR MAINNET · 14 NOV 2026 · {when} UTC",
+            "landed": landed, "amount": f"{float(credited):.2f} USDC", "min": 10,
+            "route": "VAULT ON NEAR → NEAR INTENTS → HYPERLIQUID", "amountNote": f"landed in Hyperliquid · health → {after}",
+            "quote": quote, "cost": f"1Click took {float(fee):.2f} of the 2 USDC · Hyperliquid fee 0 · vault.lifeline-hq.near",
+            "source": f"tx {tx[:8]}… · research/mainnet/RESCUE.md · test position ~{size}, trigger set above health on purpose",
+            "steps": [{"t": 0.0, "label": f"Keeper saw health {before} < trigger {trigger}", "detail": "keeper.lifeline-hq.near · its only key can call rescue"},
+                      {"t": 0.0, "label": "Vault on NEAR paid 2 USDC", "detail": f"through NEAR Intents · quote signed by 1Click · {tx[:8]}…"},
+                      {"t": landed, "label": f"{float(credited):.2f} USDC landed in {landed} s", "detail": f"{credited} USDC in Hyperliquid · health → {after}"}],
+            "drift": False}
+
 HL_PROOF = {"src": "captures/M1.mp4", "trimBefore": 3.0, "full": True, "ground": "night",
             "zooms": [{"at": 0.3, "dur": 30, "box": {"x": 30, "y": 70, "w": 1560, "h": 878}}],
             "label": {"text": "Hyperliquid's own explorer · the payout from 1Click's account to ours"}}
@@ -79,7 +102,7 @@ scenes = [
      "emphasis": ["$7.4"], "waterOut": True, "min": 5},
     {"id": "hook", "type": "screen", "src": "captures/L1.mp4", "trimBefore": 0.4, "zooms": [{"at": 1.2, "dur": 30, "box": {"x": 140, "y": 420, "w": 1180, "h": 664}}], "full": True, "ground": "paper", "waterIn": True,
      "label": {"text": "live site · vault on NEAR, funded from any chain via NEAR Intents · replay of a simulated rescue"}},
-    mainnet_scene("speed"),
+    rescue_scene("speed"),
     {"id": "fund", "type": "screen", "src": "captures/F1.mp4", "trimBefore": 0.5, "zooms": [{"at": 1.0, "dur": 30, "box": {"x": 240, "y": 240, "w": 1200, "h": 675}}], "full": True, "ground": "paper",
      "label": {"text": f"{LIVE}/fund · NEAR Intents (1Click)"}},
     {"id": "rules", "type": "screen", "src": "captures/S1.mp4", "trimBefore": 1.2, "zooms": [{"at": 0.6, "dur": 30, "box": {"x": 330, "y": 470, "w": 1100, "h": 619}}], "full": True, "ground": "paper", "label": {"text": f"{LIVE}/start · your policy"}},
@@ -185,6 +208,7 @@ if FULL:
     def pip(take):
         return {"src": REC, "from": round(SEG[take][0] - LEAD, 3), "name": "Prashant"}
     byid = {sc["id"]: sc for sc in scenes}
+    byid["hlproof"].update(src="captures/M3.mp4", label={"text": "Hyperliquid's own explorer · the rescue's 1.68 USDC arriving in our account"})
     for sid, take in (("scale", "p2"), ("hook", "p3"), ("speed", "p4"), ("compare", "p6")):
         byid[sid]["face"] = pip(take)
     byid["cold"]["duration"] = 4.5

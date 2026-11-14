@@ -273,3 +273,15 @@ describe("the refused attack's lookup", () => {
     for (const d of DEPLOYMENTS) expect(d.archivalRpcUrl).toMatch(/^https:\/\/archival-rpc\./);
   });
 });
+
+describe("the deployments the verify page checks", () => {
+  it("checks the mainnet vault against 1Click's own key, and the testnet vault with its recorded refusal", async () => {
+    const { DEPLOYMENTS, ONE_CLICK_QUOTE_SIGNER, VAULT_CODE_HASH } = await import("../src/lib/verify");
+    const mainnet = DEPLOYMENTS.find((d) => d.network === "mainnet");
+    expect(mainnet?.vault).toBe("vault.lifeline-hq.near");
+    expect(mainnet?.keeper).toBe("keeper.lifeline-hq.near");
+    expect(mainnet?.quoteSigner).toEqual({ key: ONE_CLICK_QUOTE_SIGNER, isOneClick: true });
+    expect(mainnet?.vaultCodeHash).toBe(VAULT_CODE_HASH);
+    expect(DEPLOYMENTS.find((d) => d.network === "testnet")?.refusal).not.toBeNull();
+  });
+});

@@ -92,7 +92,7 @@ Three films, each built entirely from code in [video/](video/): the narration, t
 
 | Film | Length | What it shows |
 | --- | --- | --- |
-| Full demo | 3:43 | Prashant on camera with the problem, then the product, the mainnet run, real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
+| Full demo | 3:43 | Prashant on camera with the problem, then the product, the vault's first mainnet rescue (48.6 s, read from research/mainnet/RESCUE.md), real testnet rescues read from the vault, the attack lab, how Lifeline differs from exchange auto top-up, why it needs NEAR, and the numbers |
 | Short demo | 2:19 | The same story, cut for a standard X upload |
 | Technical walkthrough | 3:44 | Health and rescue sizing, the policy engine, the vault's on-chain checks in its real Rust code, the rescue-only key, live attacks, the reproducible build, NEAR AI's signed answers, the mainnet run, the backtest and the tests |
 

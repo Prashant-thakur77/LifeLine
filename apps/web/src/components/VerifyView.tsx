@@ -195,7 +195,7 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
     return judgeRefusal(tx, { keeper: d.keeper, vault: d.vault, panic: d.refusal.panic, pointedAt: d.keeper });
   }, run);
 
-  const states = { keeperKeys, code, vaultKeys, vaultConfig, refusal };
+  const states = d.refusal ? { keeperKeys, code, vaultKeys, vaultConfig, refusal } : { keeperKeys, code, vaultKeys, vaultConfig };
   useEffect(() => {
     for (const [key, outcome] of Object.entries(states)) onReport(`${d.network}:${key}`, reported(outcome));
   });
@@ -216,13 +216,15 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
         requests={[calls.account(d.vault), calls.view(d.vault, "contract_source_metadata")]}
         links={[{ label: d.vault, href: nearblocksAccount(d.vault, d.network) }]}
       />
-      <CheckCard
-        claim="A hacked keeper was refused, on chain"
-        outcome={refusal}
-        rpcUrl={d.archivalRpcUrl}
-        requests={d.refusal ? [calls.tx(d.refusal.txHash, d.refusal.signer)] : []}
-        links={d.refusal ? [{ label: "The transaction", href: nearblocksTx(d.refusal.txHash, d.network) }] : []}
-      />
+      {d.refusal ? (
+        <CheckCard
+          claim="A hacked keeper was refused, on chain"
+          outcome={refusal}
+          rpcUrl={d.archivalRpcUrl}
+          requests={[calls.tx(d.refusal.txHash, d.refusal.signer)]}
+          links={[{ label: "The transaction", href: nearblocksTx(d.refusal.txHash, d.network) }]}
+        />
+      ) : null}
       <CheckCard claim="The vault takes quotes from one key" outcome={vaultConfig} rpcUrl={d.rpcUrl} requests={[calls.view(d.vault, "get_config")]} />
       <CheckCard claim="Nobody can swap the vault's code" outcome={vaultKeys} rpcUrl={d.rpcUrl} requests={[calls.keys(d.vault)]} />
     </div>
@@ -445,7 +447,7 @@ export function VerifyView() {
     setStates((current) => (current[key] === state ? current : { ...current, [key]: state }));
   }, []);
   const values = Object.values(states);
-  const expected = DEPLOYMENTS.length * 5 + 2;
+  const expected = DEPLOYMENTS.reduce((n, d) => n + (d.refusal ? 5 : 4), 0) + 2;
   const counted = expected - values.filter((v) => v === "nothing to check").length;
   const count = (v: Reported) => values.filter((s) => s === v).length;
   const pending = expected - values.length + count("checking");
@@ -491,7 +493,7 @@ export function VerifyView() {
             <h2 id={`chain-${d.network}`} className="text-[clamp(28px,3.4vw,44px)] font-extrabold uppercase leading-none text-ink [font-variation-settings:'wdth'_70]">
               The vault and keeper, on NEAR {d.network}
             </h2>
-            <span className="text-[13px] text-muted">The mainnet deployment joins this page at launch.</span>
+            <span className="text-[13px] text-muted">{d.network === "mainnet" ? "Live since 14 November 2026, with its first rescue done." : "The attack lab runs here."}</span>
           </div>
           <DeploymentChecks d={d} run={run} onReport={onReport} />
         </section>

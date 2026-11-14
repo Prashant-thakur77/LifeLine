@@ -12,10 +12,14 @@ export type MainnetRunProps = {
   amount: string;
   cost: string;
   quote: string;
+  banner?: string;     // replaces the top stamp
+  route?: string;      // the headline over the clock
+  amountNote?: string; // what follows the amount once it lands
+  source?: string;     // the footer line
   dur: number;
 };
 
-export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amount, cost, quote, dur }) => {
+export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amount, cost, quote, banner, route, amountNote, source, dur }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const runFrames = Math.max(fps * 2, dur - fps * 2.2);
@@ -26,16 +30,16 @@ export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amo
   return (
     <AbsoluteFill style={{ background: `linear-gradient(180deg, ${P.night}, #101c4a)`, padding: `${T.safeY}px ${T.safeX}px`, color: P.paper }}>
       <div style={{ display: "inline-block", alignSelf: "flex-start", fontFamily: T.monoFont, fontWeight: 600, fontSize: 28, letterSpacing: 5, color: P.ink, background: P.okBright,
-        padding: "6px 16px", border: `3px solid ${P.paper}`, opacity: ramp(f, 0, 10) }}>REAL MONEY · NEAR MAINNET · {when}</div>
+        padding: "6px 16px", border: `3px solid ${P.paper}`, opacity: ramp(f, 0, 10) }}>{banner ?? `REAL MONEY · NEAR MAINNET · ${when}`}</div>
       <div style={{ display: "flex", marginTop: 40, gap: 70 }}>
         <div style={{ width: 640 }}>
-          <div style={{ fontFamily: T.monoFont, fontSize: 30, letterSpacing: 4, opacity: 0.8 }}>DEPOSIT ON NEAR → MARGIN ON HYPERLIQUID</div>
+          <div style={{ fontFamily: T.monoFont, fontSize: 30, letterSpacing: 4, opacity: 0.8 }}>{route ?? "DEPOSIT ON NEAR → MARGIN ON HYPERLIQUID"}</div>
           <div style={{ fontFamily: T.monoFont, fontWeight: 300, fontSize: 230, lineHeight: 1, letterSpacing: -8, color: done ? P.okBright : P.paper, marginTop: 10 }}>
             {runT.toFixed(1)}<span style={{ fontSize: 90 }}>s</span>
           </div>
           <div style={{ marginTop: 26, fontFamily: T.font, fontWeight: 700, fontSize: 46, opacity: ramp(f, Math.round(frameOf(landed)), 12),
             translate: `0 ${(1 - OUT(ramp(f, Math.round(frameOf(landed)), 14))) * 20}px` }}>
-            {amount} in a Hyperliquid perps balance that held 0
+            {amount} {amountNote ?? "in a Hyperliquid perps balance that held 0"}
           </div>
           <div style={{ marginTop: 18, fontFamily: T.monoFont, fontSize: 28, opacity: ramp(f, Math.round(frameOf(landed)) + 10, 12) * 0.85 }}>{cost}</div>
         </div>
@@ -59,7 +63,7 @@ export const MainnetRun: React.FC<MainnetRunProps> = ({ when, steps, landed, amo
         </div>
       </div>
       <div style={{ position: "absolute", left: T.safeX, bottom: 150, fontFamily: T.monoFont, fontSize: 24, opacity: ramp(f, fps, 12) * 0.75 }}>
-        1Click quote {quote} · signed by 1Click's own key · research/mainnet/RESULTS.md
+        {source ?? `1Click quote ${quote} · signed by 1Click's own key · research/mainnet/RESULTS.md`}
       </div>
     </AbsoluteFill>
   );

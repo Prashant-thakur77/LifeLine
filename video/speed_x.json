@@ -1,0 +1,2 @@
+{"film": "film/film.json", "video": "film/out/film.mp4", "vo": "narration/vo_full.wav",
+ "sfx": "audio/sfx_track.wav", "mix": "mix.json", "out": "final.mp4", "default": 1.012, "factors": {"end": 1.0}}
