@@ -164,6 +164,13 @@ Checked on 2026-11-08 on Cloudflare, with the sim deployed at `lifeline-sim.pras
 - `wrangler deploy` once failed with "The request to Cloudflare's API timed out" and left the old version live. Check `wrangler deployments list` after a deploy.
 - A deploy reaches a running Durable Object only when it hibernates or after 300 s, Cloudflare's default deferred code update. The keeper never hibernates, so a fix takes up to 5 minutes to reach it. On the switch the object restarts, and the keeper picks up any unfinished rescue from its log.
 
+Checked on 2026-11-24:
+
+- `userAbstraction` gives an account's margin mode: `disabled` or `default` (standard), `unifiedAccount` or `portfolioMargin`. Of 31 leaderboard accounts with positions, 23 were unified and 3 portfolio margin.
+- In a unified account one USDC balance stands behind every perps dex. On 10 of 10 real ones, spot USDC `total` minus `tokenToAvailableAfterMaintenance` equalled cross maintenance summed over all dexes plus isolated `marginUsed`, to the cent. So their true health is (USDC minus isolated margin) over that maintenance; the keeper's `clearinghouseState` reading is lower, so it rescues early. The keeper still uses the locked formula.
+- Portfolio margin liquidates at `portfolioMarginRatio` above 0.95, so the health formula doesn't describe it.
+- The storm test's liquidation move matched Hyperliquid's `liquidationPx` within its 0.25% step on 10 of 11 live single-position accounts; the other one's was outside the tested range.
+
 Checked on 2026-11-14:
 
 - The money path on mainnet: 0.86 wNEAR through a 1Click quote signed by 1Click's key became 2.531506 USDC in a Hyperliquid mainnet perps balance 56.9 s after the NEAR deposit, with no Hyperliquid fee (`pnpm demo:mainnet`, research/mainnet/RESULTS.md).
