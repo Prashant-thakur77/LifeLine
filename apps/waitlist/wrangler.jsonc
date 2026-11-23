@@ -1,0 +1,17 @@
+// The waitlist on Cloudflare: one Durable Object with its own SQLite, kept apart from the
+// keeper so people's emails never share a process with a key that can move money.
+//
+//   pnpm --filter @lifeline/waitlist cf:dev      locally
+//   pnpm --filter @lifeline/waitlist cf:deploy   lifeline-waitlist.prashantthakur.dev
+//
+// WAITLIST_ADMIN_TOKEN (a secret) turns on the export; without it the export answers 404.
+{
+  "name": "lifeline-waitlist",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "durable_objects": { "bindings": [{ "name": "WAITLIST", "class_name": "WaitlistObject" }] },
+  "exports": { "WaitlistObject": { "type": "durable-object", "storage": "sqlite" } },
+  "observability": { "enabled": true },
+  "vars": { "ALLOWED_ORIGINS": "https://lifeline.prashantthakur.dev" },
+  "routes": [{ "pattern": "lifeline-waitlist.prashantthakur.dev", "custom_domain": true }]
+}

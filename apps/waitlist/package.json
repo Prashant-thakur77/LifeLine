@@ -1,0 +1,22 @@
+{
+  "name": "@lifeline/waitlist",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/entry.ts", "./pow": "./src/pow.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
+    "cf:dev": "pnpm dlx wrangler@4.158.0 dev",
+    "cf:deploy": "pnpm dlx wrangler@4.158.0 deploy"
+  },
+  "dependencies": { "@noble/hashes": "2.2.0" },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261025.1",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "catalog:",
+    "better-sqlite3": "13.0.3",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

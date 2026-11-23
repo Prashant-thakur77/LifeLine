@@ -274,6 +274,31 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
+  apps/waitlist:
+    dependencies:
+      '@noble/hashes':
+        specifier: 2.2.0
+        version: 2.2.0
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261025.1
+        version: 5.20261025.1
+      '@types/better-sqlite3':
+        specifier: 9.6.0
+        version: 9.6.0
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.5
+      better-sqlite3:
+        specifier: 13.0.3
+        version: 13.0.3
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
   apps/web:
     dependencies:
       '@hot-labs/near-connect':
@@ -285,6 +310,9 @@ importers:
       '@lifeline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@lifeline/waitlist':
+        specifier: workspace:*
+        version: link:../waitlist
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
