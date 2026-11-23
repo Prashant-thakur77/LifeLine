@@ -12,6 +12,7 @@ import { PRESETS, draftFromParams, draftFromVault, matchPreset, presetDraft, val
 import { describeTxError } from "../lib/tx";
 import { setPolicyTx, vaultViews } from "../lib/vault";
 import { isHlAddress } from "../lib/accounts";
+import { SayIt } from "./SayIt";
 import { TxStatus, useTx } from "./Tx";
 import { Badge, Button, ButtonLink, Card, ExternalLink, Field, inputClass, Notice, PageHeader, cx } from "./ui";
 import { useWallet } from "./WalletProvider";
@@ -157,6 +158,15 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
           </Notice>
         </li>
       ) : null}
+      <li className="pl-12 sm:pl-14">
+        <SayIt
+          onApply={(changes) => {
+            const next = { ...draft, ...changes };
+            setDraft(next);
+            setChoice(matchPreset(Number(next.warn), Number(next.trigger), Number(next.target)));
+          }}
+        />
+      </li>
       <Step n={2} title="Your Hyperliquid address" done={hlOk}>
         <Field
           label="The address you trade with on Hyperliquid"
