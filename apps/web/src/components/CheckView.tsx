@@ -12,6 +12,7 @@ import { checkAddress } from "../lib/hl";
 import { hyperliquidAddress } from "../lib/links";
 import { Button, ButtonLink, Card, ExternalLink, Notice, PageHeader, Skeleton, Stat, cx, inputClass } from "./ui";
 import { WatchScene } from "./art/Scenes";
+import { StormPanel } from "./StormPanel";
 import { Waterline, type WaterTone } from "./Waterline";
 
 const REASONS: Record<Extract<HealthResult, { status: "unknown" }>["reason"], string> = {
@@ -158,6 +159,8 @@ export function CheckView() {
               </ButtonLink>
             </div>
           </div>
+
+          <StormPanel key={address} address={address} />
 
           {snapshot && snapshot.positions.length > 0 ? (
             <Card className="overflow-x-auto lg:col-span-12">

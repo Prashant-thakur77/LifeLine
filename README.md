@@ -95,6 +95,7 @@ Everything above and the numbers below were written for the submission, which is
 | Release | What it adds | Try it |
 | --- | --- | --- |
 | v1.2.0 | A waitlist you talk to: one sentence about your trading answers most of it | https://lifeline.prashantthakur.dev/waitlist |
+| v1.3.0 | Storm test on any Hyperliquid address: the move that liquidates it, with and without Lifeline, across every margin mode and market, plus positions out of reach, missing stops and keys that can trade | https://lifeline.prashantthakur.dev/check |
 
 ## Demo films
 
