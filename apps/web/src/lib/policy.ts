@@ -104,6 +104,17 @@ export function draftFromVault(view: VaultPolicyView): PolicyDraft {
   };
 }
 
+/** The form as a link asked for it, over the standard preset. It's only a draft: the form checks it like anything typed. */
+export function draftFromParams(params: { get(name: string): string | null }): PolicyDraft | null {
+  const names = { hlAddress: "hl", warn: "warn", trigger: "trigger", target: "target", maxPerRescueUsdc: "perRescue", maxPerDayUsdc: "perDay", cooldownSec: "cooldown" } as const;
+  const found = Object.entries(names).flatMap(([field, name]) => {
+    const value = params.get(name)?.trim();
+    const fine = value !== undefined && (field === "hlAddress" ? /^0x[0-9a-fA-F]{40}$/ : /^\d{1,12}(\.\d{1,6})?$/).test(value);
+    return fine ? [[field, value] as const] : [];
+  });
+  return found.length === 0 ? null : { ...presetDraft("standard"), ...Object.fromEntries(found) };
+}
+
 /** Which preset these three levels are, or "custom". */
 export function matchPreset(warn: number, trigger: number, target: number): PresetId | "custom" {
   return PRESETS.find((p) => p.warn === warn && p.trigger === trigger && p.target === target)?.id ?? "custom";

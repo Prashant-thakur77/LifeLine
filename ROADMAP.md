@@ -28,6 +28,7 @@ Next:
 
 ## 4. Reach
 
+- Done: an MCP server, so AI agents can read accounts, run storm tests and prepare policies for a person to sign ([docs/agents.md](docs/agents.md)).
 - An SDK for perps front-ends that already fund through NEAR Intents, so a trader can turn Lifeline on where they trade.
 - Rescues paid from wNEAR as well as USDC: the vault can already allow wNEAR deposits, and the caps need a per-token unit.
 - More venues after Hyperliquid, wherever 1Click can deliver margin.

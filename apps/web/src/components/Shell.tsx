@@ -39,6 +39,7 @@ const NAV = [
   { href: "/ledger", label: "Ledger", keepsUser: false },
   { href: "/verify", label: "Verify", keepsUser: false },
   { href: "/attack", label: "Rob it", keepsUser: false },
+  { href: "/agents", label: "Agents", keepsUser: false },
   { href: "/fund", label: "Fund", keepsUser: false },
   { href: "/start", label: "Set up", keepsUser: false },
   { href: "/telegram", label: "Alerts", keepsUser: false },

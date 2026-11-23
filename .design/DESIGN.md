@@ -74,6 +74,7 @@ The hero's paper sea (`components/Waterline.tsx`, `components/HeroWater.tsx`): h
 | Check any address | `/check?address=` | Hyperliquid `clearinghouseState`, read in the browser with the keeper's own parser; refreshes every 10 s; "unknown" is never shown as safe |
 | Storm test | `/check` | `packages/hyperliquid` `account.ts` and `storm.ts` on a live reading of every perps dex; an estimate, and says so |
 | Waitlist | `/waitlist` | `apps/waitlist`; counts stay hidden until 25 people |
+| Agents | `/agents` | Runs the real MCP tools from the browser; results are shown as they came |
 | Backtest explorer | Landing | `lib/backtest.ts`, held equal to `research/backtest/RESULTS.md` by a test |
 | Check it yourself | `/verify` | Public NEAR node (keys, code hash, config, the refused transaction), NEAR AI Cloud's live report with a nonce made in the browser, Intel's quote verifier as WebAssembly; each card says proven, trusted or failed and shows its request as curl |
 | Rob the vault | `/attack` | The demo keeper's attack lab: each button sends a real rescue with the lab keeper's key to the testnet vault; the refusal is read back in the browser from a public node; the target's reserve and the key's permissions are read from the chain |

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { POLICY_RANGES } from "@lifeline/shared";
 import { usePoll } from "../hooks/usePoll";
@@ -7,7 +8,7 @@ import { config } from "../lib/env";
 import { formatHealth, formatSeconds } from "../lib/format";
 import { healthToFraction } from "../lib/gauge";
 import { hyperliquidAddress, nearblocksAccount, pageHref } from "../lib/links";
-import { PRESETS, draftFromVault, matchPreset, presetDraft, validatePolicy, type PolicyDraft, type PresetId } from "../lib/policy";
+import { PRESETS, draftFromParams, draftFromVault, matchPreset, presetDraft, validatePolicy, type PolicyDraft, type PresetId } from "../lib/policy";
 import { describeTxError } from "../lib/tx";
 import { setPolicyTx, vaultViews } from "../lib/vault";
 import { isHlAddress } from "../lib/accounts";
@@ -103,18 +104,27 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
   const [draft, setDraft] = useState<PolicyDraft>(() => presetDraft("standard"));
   const [choice, setChoice] = useState<Choice>("standard");
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const params = useSearchParams();
+  const [fromLink, setFromLink] = useState(false);
+  useEffect(() => {
+    const asked = draftFromParams(params);
+    if (asked === null) return;
+    setDraft(asked);
+    setChoice(matchPreset(Number(asked.warn), Number(asked.trigger), Number(asked.target)));
+    setFromLink(true);
+  }, [params]);
   const [attempted, setAttempted] = useState(false);
   const tx = useTx();
 
   // A returning user edits what they already have: once per account, so a later
   // refresh of the same policy doesn't overwrite their edits.
   useEffect(() => {
-    if (!existing.data || !accountId || loadedFor === accountId) return;
+    if (!existing.data || !accountId || loadedFor === accountId || fromLink) return;
     const loaded = draftFromVault(existing.data);
     setDraft(loaded);
     setChoice(matchPreset(Number(loaded.warn), Number(loaded.trigger), Number(loaded.target)));
     setLoadedFor(accountId);
-  }, [existing.data, accountId, loadedFor]);
+  }, [existing.data, accountId, loadedFor, fromLink]);
 
   const check = validatePolicy(draft, config.keeperAccountId);
   const errors = check.ok ? {} : check.errors;
@@ -140,6 +150,13 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
 
   return (
     <>
+      {fromLink ? (
+        <li className="pl-12 sm:pl-14">
+          <Notice tone="warn" title="A link filled in this form">
+            Nothing is signed yet. Check every number, and above all that the Hyperliquid address is your own: it is the only place the vault will ever pay.
+          </Notice>
+        </li>
+      ) : null}
       <Step n={2} title="Your Hyperliquid address" done={hlOk}>
         <Field
           label="The address you trade with on Hyperliquid"

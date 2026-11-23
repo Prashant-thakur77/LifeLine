@@ -1,0 +1,22 @@
+# Lifeline
+
+> Automatic margin top-up for Hyperliquid traders, from a vault on NEAR that only ever pays the user's own Hyperliquid address. Agents can read accounts, run storm tests and prepare unsigned transactions through an MCP server; only a person can sign.
+
+- MCP server (streamable HTTP, no sign-in): https://lifeline-mcp.prashantthakur.dev/mcp
+- The mainnet vault is live and has paid one real rescue. Its keeper doesn't run around the clock yet, so mainnet sign-up is closed; use testnet.
+- The demo keeper at lifeline-sim.prashantthakur.dev is a simulation with real prices and quotes.
+
+## Docs
+
+- [Agent skill](https://lifeline.prashantthakur.dev/skill.md): when and how to use the tools
+- [Agent guide](https://raw.githubusercontent.com/Prashant-thakur77/LifeLine/main/docs/agents.md): the tools and their limits
+- [README](https://raw.githubusercontent.com/Prashant-thakur77/LifeLine/main/README.md): what Lifeline is and what is proven where
+- [Vault contract](https://raw.githubusercontent.com/Prashant-thakur77/LifeLine/main/contracts/vault/README.md): methods, checks and refusal codes
+- [Security](https://raw.githubusercontent.com/Prashant-thakur77/LifeLine/main/SECURITY.md): guarantees and what they rest on
+
+## Pages
+
+- [Check any account](https://lifeline.prashantthakur.dev/check)
+- [Agents](https://lifeline.prashantthakur.dev/agents)
+- [Verify](https://lifeline.prashantthakur.dev/verify)
+- [Waitlist](https://lifeline.prashantthakur.dev/waitlist)
