@@ -229,6 +229,9 @@ export function Footer() {
                   {item.label}
                 </Link>
               ))}
+              <Link href="/autopsy" className="w-fit font-semibold hover:text-sun">
+                Autopsy
+              </Link>
               <Link href="/waitlist" className="w-fit font-semibold hover:text-sun">
                 Waitlist
               </Link>

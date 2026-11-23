@@ -98,6 +98,7 @@ Everything above and the numbers below were written for the submission, which is
 | v1.3.0 | Storm test on any Hyperliquid address: the move that liquidates it, with and without Lifeline, across every margin mode and market, plus positions out of reach, missing stops and keys that can trade | https://lifeline.prashantthakur.dev/check |
 | v1.4.0 | An MCP server, so AI agents can read accounts, run storm tests and prepare policies. It returns unsigned transactions only and holds no key. [docs/agents.md](docs/agents.md) | https://lifeline.prashantthakur.dev/agents |
 | v1.5.0 | Say your rules: write the policy in plain words. Fixed rules read it, show what they understood and never guess | https://lifeline.prashantthakur.dev/start |
+| v1.6.0 | Liquidation autopsy: an address's past liquidations, the margin that would have carried each one through, and whether holding on would have paid | https://lifeline.prashantthakur.dev/autopsy |
 
 ## Demo films
 
