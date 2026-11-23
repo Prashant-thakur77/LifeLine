@@ -41,13 +41,20 @@ describe("the aftermath", () => {
   });
   test("a price that never got worse needed only the fee", () => expect(aftermath({ ...L, price: 95 }, day(99, 101, 100), H, 24, 100 * H)!.neededUsd).toBeCloseTo(0.3153));
   test("the candle it happened in counts, and one that closed before doesn't", () => {
-    expect(aftermath({ ...L, endedAt: H / 2 }, [candle(0, 85, 101, 100), ...day(90, 101, 100).slice(1)], H, 24, 100 * H)!.worst).toBe(85);
+    expect(aftermath({ ...L, endedAt: H / 2 }, [candle(0, 85, 101, 100), ...day(90, 101, 100).slice(1), candle(24 * H, 99, 101, 100)], H, 24, 100 * H)!.worst).toBe(85);
     expect(aftermath({ ...L, endedAt: H }, [candle(0, 1, 101, 100), ...day(90, 101, 100).slice(1)], H, 23, 100 * H)!.worst).toBe(90);
   });
   test("no answer for a window that isn't over, or has gaps", () => {
     expect(aftermath(L, day(90, 101, 100), H, 24, 23 * H)).toBeNull();
     expect(aftermath(L, day(90, 101, 100).slice(0, 10), H, 24, 100 * H)).toBeNull();
     expect(aftermath(L, [], H, 24, 100 * H)).toBeNull();
+  });
+  test("one daily candle isn't a day, and one still open isn't an end", () => {
+    const D = 24 * H;
+    const daily = (at: number) => ({ ...candle(at, 90, 101, 100), closeTime: at + D - 1 });
+    expect(aftermath({ ...L, endedAt: H }, [daily(0)], D, 24, 100 * H)).toBeNull();
+    expect(aftermath({ ...L, endedAt: H }, [daily(0), daily(D)], D, 24, 30 * H)).toBeNull();
+    expect(aftermath({ ...L, endedAt: H }, [daily(0), daily(D)], D, 24, 100 * H)).not.toBeNull();
   });
   test("daily candles can't answer for less than a day", () => expect(aftermath(L, [], 24 * H, 12, 100 * H)).toBeNull());
 });

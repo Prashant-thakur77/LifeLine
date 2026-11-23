@@ -120,12 +120,13 @@ function PolicyForm({ accountId }: { accountId: string | null }) {
   // A returning user edits what they already have: once per account, so a later
   // refresh of the same policy doesn't overwrite their edits.
   useEffect(() => {
-    if (!existing.data || !accountId || loadedFor === accountId || fromLink) return;
-    const loaded = draftFromVault(existing.data);
+    if (!existing.data || !accountId || loadedFor === accountId) return;
+    const saved = draftFromVault(existing.data);
+    const loaded = draftFromParams(params, saved) ?? saved;
     setDraft(loaded);
     setChoice(matchPreset(Number(loaded.warn), Number(loaded.trigger), Number(loaded.target)));
     setLoadedFor(accountId);
-  }, [existing.data, accountId, loadedFor, fromLink]);
+  }, [existing.data, accountId, loadedFor, params]);
 
   const check = validatePolicy(draft, config.keeperAccountId);
   const errors = check.ok ? {} : check.errors;

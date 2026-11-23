@@ -99,6 +99,7 @@ Everything above and the numbers below were written for the submission, which is
 | v1.4.0 | An MCP server, so AI agents can read accounts, run storm tests and prepare policies. It returns unsigned transactions only and holds no key. [docs/agents.md](docs/agents.md) | https://lifeline.prashantthakur.dev/agents |
 | v1.5.0 | Say your rules: write the policy in plain words. Fixed rules read it, show what they understood and never guess | https://lifeline.prashantthakur.dev/start |
 | v1.6.0 | Liquidation autopsy: an address's past liquidations, the margin that would have carried each one through, and whether holding on would have paid | https://lifeline.prashantthakur.dev/autopsy |
+| v1.7.0 | Decision receipts: every keeper decision, refusals included, chained by hash. The verify page relinks them in your browser and remembers the last link, so the records after it can't be rewritten unseen | https://lifeline.prashantthakur.dev/verify |
 
 ## Demo films
 

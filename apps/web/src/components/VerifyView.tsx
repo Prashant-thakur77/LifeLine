@@ -42,6 +42,7 @@ import {
   type Verdict,
   type VaultConfig,
 } from "../lib/verify";
+import { checkReceipts, loadWitness, saveWitness } from "../lib/receipts";
 import { Stamp, type StampKind } from "./Stamp";
 import { Button, Card, CopyButton, ExternalLink, Notice, PageHeader, Skeleton, cx } from "./ui";
 
@@ -228,6 +229,38 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
       <CheckCard claim="The vault takes quotes from one key" outcome={vaultConfig} rpcUrl={d.rpcUrl} requests={[calls.view(d.vault, "get_config")]} />
       <CheckCard claim="Nobody can swap the vault's code" outcome={vaultKeys} rpcUrl={d.rpcUrl} requests={[calls.keys(d.vault)]} />
     </div>
+  );
+}
+
+/** The keeper's log, relinked here from the last link this browser saw. */
+function ReceiptsCheck({ run, onReport }: { run: number; onReport: Report }) {
+  const base = config.simKeeperApiUrl;
+  const outcome = useCheck(async () => {
+    const { judged, witness } = await checkReceipts((after) => keeper.receipts(base, after), loadWitness(base));
+    if (witness) saveWitness(base, witness);
+    return judged;
+  }, run);
+  useEffect(() => onReport("log:receipts", reported(outcome)));
+  return (
+    <Card className="p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <h3 className="text-[18px] font-bold leading-snug text-ink">New decisions follow from the ones seen before</h3>
+        <Stamp kind={outcome.status === "done" ? outcome.judged.verdict : outcome.status} />
+      </div>
+      {outcome.status === "checking" ? (
+        <Skeleton className="mt-3 h-16" />
+      ) : outcome.status === "error" ? (
+        <p className="mt-2 text-[14.5px] leading-relaxed text-body">The keeper didn&apos;t answer: {outcome.message} That says nothing either way.</p>
+      ) : (
+        <>
+          <p className="mt-2 max-w-3xl text-[14.5px] leading-relaxed text-body">{outcome.judged.finding}</p>
+          <Facts facts={outcome.judged.facts} />
+        </>
+      )}
+      <p className="mt-3 text-[13px]">
+        <ExternalLink href={`${base}/api/receipts?limit=5`}>The newest receipts</ExternalLink>
+      </p>
+    </Card>
   );
 }
 
@@ -447,7 +480,7 @@ export function VerifyView() {
     setStates((current) => (current[key] === state ? current : { ...current, [key]: state }));
   }, []);
   const values = Object.values(states);
-  const expected = DEPLOYMENTS.reduce((n, d) => n + (d.refusal ? 5 : 4), 0) + 2;
+  const expected = DEPLOYMENTS.reduce((n, d) => n + (d.refusal ? 5 : 4), 0) + 3;
   const counted = expected - values.filter((v) => v === "nothing to check").length;
   const count = (v: Reported) => values.filter((s) => s === v).length;
   const pending = expected - values.length + count("checking");
@@ -498,6 +531,13 @@ export function VerifyView() {
           <DeploymentChecks d={d} run={run} onReport={onReport} />
         </section>
       ))}
+
+      <section className="mb-14" aria-labelledby="log-title">
+        <h2 id="log-title" className="mb-5 text-[clamp(28px,3.4vw,44px)] font-extrabold uppercase leading-none text-ink [font-variation-settings:'wdth'_70]">
+          The demo keeper&apos;s log
+        </h2>
+        <ReceiptsCheck run={run} onReport={onReport} />
+      </section>
 
       <section id="ai" className="mb-14 scroll-mt-24" aria-labelledby="ai-title">
         <h2 id="ai-title" className="mb-5 text-[clamp(28px,3.4vw,44px)] font-extrabold uppercase leading-none text-ink [font-variation-settings:'wdth'_70]">

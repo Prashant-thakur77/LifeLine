@@ -22,6 +22,7 @@ const TICK_MS = KEEPER_POLL_INTERVAL_SEC * 1000;
 // and the free plan allows 100,000 a day: an alarm every 5 s alone would use 17,280.
 const ALARM_MS = 60_000;
 const TICKS_PER_ALARM = ALARM_MS / TICK_MS;
+const SEAL_PER_TICK = 100; // far more than a tick writes, so an old log is sealed within minutes
 const STALE_ALARM_MS = 2 * ALARM_MS; // an alarm this far overdue isn't going to fire by itself
 const SIM_REST_MS = 15 * 60_000; // between demo drops: about four rescues an hour
 const WEBHOOK_PATH = "/telegram/webhook";
@@ -296,6 +297,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
     track(
       running.engine.tick().then(() => {
         lastTickAt = now();
+        running.store.sealReceipts(SEAL_PER_TICK);
       }),
     );
 
@@ -325,7 +327,7 @@ export function createKeeperHost(deps: HostDeps): KeeperHost {
           startedAt: startedAt?.toISOString() ?? null,
           lastTickAt: lastTickAt?.toISOString() ?? null,
           nextAlarmAt: alarmAt === null ? null : new Date(alarmAt).toISOString(),
-          api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/stats", "/api/attestation", "/api/proof/:recordId", "/api/proof/latest?user=", ...(running.lab ? ["/api/lab", "POST /api/lab/attack"] : []), "POST /api/telegram/link"],
+          api: ["/api/health/:user", "/api/audit?user=", "/api/ledger", "/api/receipts?after=", "/api/stats", "/api/attestation", "/api/proof/:recordId", "/api/proof/latest?user=", ...(running.lab ? ["/api/lab", "POST /api/lab/attack"] : []), "POST /api/telegram/link"],
         },
         running.config.corsOrigin,
       );

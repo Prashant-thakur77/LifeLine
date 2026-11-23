@@ -7,7 +7,7 @@ export const dayOf = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { 
 
 /** One sentence that is as plain about the bad outcome as the good one. */
 export function sentence(l: Liquidation, a: Aftermath): string {
-  const held = `About ${formatUsd(a.neededUsd)} more margin would have held this ${l.side} for ${WINDOW_LABEL[a.hours]}.`;
+  const held = `At least about ${formatUsd(a.neededUsd)} more margin would have held this ${l.side} for ${WINDOW_LABEL[a.hours]}.`;
   return a.againstLiquidationUsd > 0
     ? `${held} By then it was worth ${formatUsd(a.againstLiquidationUsd)} more than when it was liquidated.`
     : `${held} But by then it was worth ${formatUsd(-a.againstLiquidationUsd)} less, so being liquidated cost less than holding on.`;

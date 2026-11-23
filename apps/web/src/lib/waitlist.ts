@@ -171,7 +171,6 @@ export async function joinWaitlist(draft: Draft, website: string): Promise<Ticke
 }
 
 export const leaveWaitlist = (email: string, leaveCode: string) => call<{ ok: true }>("/api/leave", { email, leaveCode });
-export const waitlistSummary = () => call<{ people: number | null; wants: Record<Want, number> | null }>("/api/summary");
 
 export const shareText = (berth: string) => `I have berth ${berth} on the Lifeline waitlist: automatic margin top-up before liquidation, from a vault that only pays my own address.`;
 export const shareHref = (berth: string) =>

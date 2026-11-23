@@ -1,5 +1,6 @@
 import type { AuditRecord, HealthResponse, StatsResponse } from "@lifeline/shared";
 import type { AnswerProof } from "./explain";
+import { GENESIS, linkHash, type Receipt, type ReceiptsResponse } from "./receipts";
 import type { SqlDatabase } from "./sql";
 
 const TELEGRAM_CODE_TTL_MS = 10 * 60 * 1000;
@@ -28,6 +29,12 @@ const SCHEMA = `
     BEGIN SELECT RAISE(ABORT, 'the audit log is append-only'); END;
   CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit
     BEGIN SELECT RAISE(ABORT, 'the audit log is append-only'); END;
+
+  CREATE TABLE IF NOT EXISTS receipts (seq INTEGER PRIMARY KEY, hash TEXT NOT NULL);
+  CREATE TRIGGER IF NOT EXISTS receipts_no_update BEFORE UPDATE ON receipts
+    BEGIN SELECT RAISE(ABORT, 'receipts are append-only'); END;
+  CREATE TRIGGER IF NOT EXISTS receipts_no_delete BEFORE DELETE ON receipts
+    BEGIN SELECT RAISE(ABORT, 'receipts are append-only'); END;
 
   CREATE TABLE IF NOT EXISTS explanations (
     record_id TEXT PRIMARY KEY REFERENCES audit (id),
@@ -101,6 +108,7 @@ export function percentile(values: number[], p: number): number | null {
 export class Store {
   private readonly latestHealth = new Map<string, { response: HealthResponse; writtenAt: number; written: HealthResponse }>();
   private cachedStats: StatsResponse | null = null;
+  private sealed: { seq: number; hash: string } | null | undefined = undefined; // undefined: not read yet
 
   constructor(readonly db: SqlDatabase) {
     db.exec(SCHEMA);
@@ -116,6 +124,42 @@ export class Store {
       JSON.stringify(record),
     );
     this.cachedStats = null;
+  }
+
+  /**
+   * Seals records not sealed yet, oldest first, and says how many. Kept apart from append so
+   * a log from before receipts is sealed a little at a time.
+   */
+  sealReceipts(limit: number): number {
+    return this.db.transaction(() => {
+      const start = this.receiptHead();
+      const rows = this.db.all<{ seq: number; json: string }>("SELECT seq, json FROM audit WHERE seq > ? ORDER BY seq LIMIT ?", start?.seq ?? 0, limit);
+      let head = start;
+      for (const { seq, json } of rows) {
+        head = { seq, hash: linkHash(head?.hash ?? GENESIS, seq, json) };
+        this.db.run("INSERT INTO receipts (seq, hash) VALUES (?, ?)", head.seq, head.hash);
+      }
+      // Remembered only once every row is in: a refused write rolls the rows back and throws.
+      this.sealed = head;
+      return rows.length;
+    });
+  }
+
+  private receiptHead(): { seq: number; hash: string } | null {
+    if (this.sealed === undefined) this.sealed = this.db.get<{ seq: number; hash: string }>("SELECT seq, hash FROM receipts ORDER BY seq DESC LIMIT 1") ?? null;
+    return this.sealed;
+  }
+
+  /** Sealed records after `after`, oldest first, or the newest `limit` when `after` is null. */
+  receipts(after: number | null, limit: number): ReceiptsResponse {
+    const SELECT = "SELECT r.seq, r.hash, a.json FROM receipts r JOIN audit a ON a.seq = r.seq";
+    const entries =
+      after === null
+        ? this.db.all<Receipt>(`${SELECT} ORDER BY r.seq DESC LIMIT ?`, limit).reverse()
+        : this.db.all<Receipt>(`${SELECT} WHERE r.seq > ? ORDER BY r.seq LIMIT ?`, after, limit);
+    const first = entries[0]?.seq ?? (after ?? 0) + 1;
+    const before = this.db.get<{ seq: number; hash: string }>("SELECT seq, hash FROM receipts WHERE seq < ? ORDER BY seq DESC LIMIT 1", first) ?? null;
+    return { head: this.receiptHead(), before, entries };
   }
 
   audit(user: string, limit: number): AuditRecord[] {

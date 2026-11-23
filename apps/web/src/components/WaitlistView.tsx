@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
 import { MAX_NAME, MAX_NOTE } from "@lifeline/waitlist";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { ticketPng } from "../lib/ticket-image";
 import {
   CHAIN_LABEL, CHOICES, EMPTY_DRAFT, ROLE_LABEL, SIZE_LABEL, STEPS, VENUE_LABEL, WANT_LABEL,
-  joinWaitlist, leaveWaitlist, nextStep, problemWith, shareHref, toggle, understand, waitlistSummary, withStory,
+  joinWaitlist, leaveWaitlist, nextStep, problemWith, shareHref, toggle, understand, withStory,
   type Draft, type Step, type Ticket,
 } from "../lib/waitlist";
 import { Mark } from "./Shell";
@@ -58,7 +58,7 @@ function Typed({ text, reduced }: { text: string; reduced: boolean }) {
   );
 }
 
-function Choices<T extends string>({ legend, list, labels, chosen, many, onPick, extra }: { legend: string; list: readonly T[]; labels: Record<T, string>; chosen: T[]; many: boolean; onPick: (item: T) => void; extra?: (item: T) => ReactNode }) {
+function Choices<T extends string>({ legend, list, labels, chosen, many, onPick }: { legend: string; list: readonly T[]; labels: Record<T, string>; chosen: T[]; many: boolean; onPick: (item: T) => void }) {
   const name = useId();
   const box = useRef<HTMLFieldSetElement>(null);
   return (
@@ -92,7 +92,6 @@ function Choices<T extends string>({ legend, list, labels, chosen, many, onPick,
               {on ? "✓" : i + 1}
             </span>
             {labels[item]}
-            {extra?.(item)}
           </label>
         );
       })}
@@ -178,8 +177,6 @@ export function WaitlistView() {
   const [website, setWebsite] = useState("");
   const [busy, setBusy] = useState(false);
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [wants, setWants] = useState<Record<string, number> | null>(null);
-  const [people, setPeople] = useState<number | null>(null);
   const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const form = useRef<HTMLFormElement>(null);
   const done = useRef<HTMLHeadingElement>(null);
@@ -188,10 +185,6 @@ export function WaitlistView() {
   const line = lineFor(step, draft);
   const heard = useMemo(() => understand(draft.note), [draft.note]);
   const progress = ticket ? 1 : STEPS.indexOf(step) / STEPS.length;
-
-  useEffect(() => {
-    void waitlistSummary().then((s) => (setWants(s.wants), setPeople(s.people)), () => {});
-  }, []);
 
   // The next question takes the focus, so you can keep typing. Not on arrival: the page shouldn't jump.
   useEffect(() => {
@@ -267,7 +260,7 @@ export function WaitlistView() {
         <form ref={form} onSubmit={go} noValidate className="flex min-h-[440px] flex-col">
           <p className="mb-5 flex items-center gap-3 font-readout text-[11px] uppercase tracking-[0.08em] text-muted">
             <span className="rounded-sm bg-ink px-1.5 py-0.5 text-paper">Waitlist</span>
-            {people === null ? "Takes about a minute" : `${people} aboard so far`}
+            Takes about a minute
           </p>
           <h1 className="text-[clamp(38px,5.6vw,72px)] font-extrabold uppercase leading-[0.92] tracking-[-0.01em] [font-variation-settings:'wdth'_70]" aria-live="polite">
             <Typed key={step} text={line} reduced={reduced} />
@@ -319,7 +312,6 @@ export function WaitlistView() {
                 chosen={draft.wants}
                 many
                 onPick={(w) => set({ wants: toggle(draft.wants, w) })}
-                extra={(w) => (wants && people ? <span className="font-readout text-[11px] font-normal text-muted">{Math.round(((wants[w] ?? 0) / people) * 100)}%</span> : null)}
               />
             ) : (
               <>
@@ -400,7 +392,7 @@ function Aboard({ draft, ticket, reduced, heading }: { draft: Draft; ticket: Tic
             </span>
           </h1>
           <p className="mt-5 max-w-lg text-[16.5px] leading-relaxed text-body">
-            Your berth is <strong className="text-ink">{ticket.berth}</strong>. We&apos;ll write to {draft.email.trim()} when mainnet sign-up opens. If that address was already on the list, it keeps its first entry.
+            Your berth is <strong className="text-ink">{ticket.berth}</strong>. We&apos;ll write to {draft.email.trim()} when mainnet sign-up opens. If that address was already on the list, the first entry stays and only its leave code works.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button variant="primary" size="lg" onClick={save}>
@@ -414,7 +406,7 @@ function Aboard({ draft, ticket, reduced, heading }: { draft: Draft; ticket: Tic
           <Notice tone="warn" title="Keep your leave code" className="mt-8 max-w-lg" action={<CopyButton value={ticket.leaveCode} label="Copy the code" />}>
             <code className="break-all font-readout text-[13px]">{ticket.leaveCode}</code>
             <br />
-            It deletes your entry, and we can&apos;t show it again.
+            It deletes the entry made just now, and we can&apos;t show it again.
           </Notice>
         </div>
         <div className="wl-land">

@@ -35,7 +35,7 @@ describe("reading one dex", () => {
   });
   test.each([
     ["nothing", null], ["no summary", { assetPositions: [] }], ["a bad number", state("x", "1", [pos()])], ["positions with no maintenance", state("1", "0", [pos()])],
-    ["maintenance with no positions", state("1", "5", [])], ["a zero size", state("1", "1", [pos({ szi: "0" })])], ["a bad liquidation price", state("1", "1", [pos({ liquidationPx: "?" })])],
+    ["maintenance with no positions", state("1", "5", [])], ["a worthless position", state("1", "1", [pos({ positionValue: "0" })])], ["a zero size", state("1", "1", [pos({ szi: "0" })])], ["a bad liquidation price", state("1", "1", [pos({ liquidationPx: "?" })])],
     ["no leverage", state("1", "1", [pos({ leverage: null })])], ["isolated with no margin", state("1", "0", [pos({ leverage: { type: "isolated" }, marginUsed: null })])],
   ])("%s isn't read as safe", (_, raw) => expect(parseDexState("", raw)).toBeNull());
 });
@@ -67,6 +67,15 @@ describe("reading an account", () => {
     ["no spot answer", { mode: "unifiedAccount", main: none, spot: null }],
   ])("%s throws, never a number", async (_, answers) => {
     await expect(readAccountRisk("0x", reader(answers))).rejects.toThrow();
+  });
+  test("a list of markets that can't be read throws", async () => {
+    for (const dexes of [{}, [null, {}], [null, 4]]) {
+      const read = async (b: Record<string, unknown>) => (b.type === "perpDexs" ? dexes : b.type === "userAbstraction" ? "default" : none);
+      await expect(readAccountRisk("0x", read)).rejects.toThrow(/markets/);
+    }
+  });
+  test("unified with money locked and no position seen throws", async () => {
+    await expect(readAccountRisk("0x", reader({ mode: "unifiedAccount", main: none, spot: spot("100", "95") }))).rejects.toThrow(/add up/);
   });
   test("unified with nothing in it", async () => {
     expect((await readAccountRisk("0x", reader({ mode: "unifiedAccount", main: none, spot: { balances: [] } }))).health).toBe(Number.POSITIVE_INFINITY);
@@ -125,11 +134,16 @@ describe("the storm", () => {
 });
 
 describe("stops and keys", () => {
-  const stop = { coin: "ETH", isTrigger: true, reduceOnly: true, side: "A", triggerPx: "1900" };
+  const stop = { coin: "ETH", isTrigger: true, reduceOnly: true, side: "A", triggerPx: "1900", sz: "1" };
   test("a stop on the losing side counts", () => expect(stopsFor([p()], [stop])).toEqual([{ coin: "ETH", hasStop: true }]));
-  test.each([{ side: "B" }, { triggerPx: "2100" }, { reduceOnly: false }, { isTrigger: false }, { coin: "BTC" }, { triggerPx: "x" }])("%o doesn't", (o) =>
+  test.each([{ side: "B" }, { triggerPx: "2100" }, { reduceOnly: false }, { isTrigger: false }, { coin: "BTC" }, { triggerPx: "x" }, { sz: "0.5" }])("%o doesn't", (o) =>
     expect(stopsFor([p()], [{ ...stop, ...o }])![0]!.hasStop).toBe(false),
   );
+  test("stops add up to the whole position, and one for the position is enough", () => {
+    expect(stopsFor([p()], [{ ...stop, sz: "0.5" }, { ...stop, sz: "0.5", triggerPx: "1950" }])![0]!.hasStop).toBe(true);
+    expect(stopsFor([p()], [{ ...stop, sz: "0.0", isPositionTpsl: true }])![0]!.hasStop).toBe(true);
+  });
+  test("a stop past liquidation comes too late", () => expect(stopsFor([p({ liquidationPx: 1950 })], [stop])![0]!.hasStop).toBe(false));
   test("a short's stop is a buy above", () => expect(stopsFor([p({ size: -1 })], [{ ...stop, side: "B", triggerPx: "2100" }])![0]!.hasStop).toBe(true));
   test("an unreadable answer is unknown, not none", () => {
     expect(stopsFor([p()], {})).toBeNull();

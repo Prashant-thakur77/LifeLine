@@ -177,6 +177,13 @@ async function route(request: Request, deps: ApiDeps): Promise<unknown> {
     case "/api/ledger":
       expect("GET");
       return store.ledger(parseLimit(searchParams));
+    case "/api/receipts": {
+      expect("GET");
+      const raw = searchParams.get("after");
+      if (raw !== null && !/^\d{1,15}$/.test(raw)) throw new HttpError(400, "after must be a whole number");
+      store.sealReceipts(MAX_LIMIT);
+      return store.receipts(raw === null ? null : Number(raw), parseLimit(searchParams));
+    }
     case "/api/stats":
       expect("GET");
       return store.stats();

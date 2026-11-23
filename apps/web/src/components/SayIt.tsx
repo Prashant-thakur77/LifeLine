@@ -53,7 +53,7 @@ export function SayIt({ onApply }: { onApply: (changes: Partial<PolicyDraft>) =>
                 </li>
               ))}
             </ul>
-            {said.unused.length > 0 ? <p className="mt-2 text-[14px] text-ink">Not used: {said.unused.join(", ")}. Say what it&apos;s for, or set it below.</p> : null}
+            {said.unused.length > 0 ? <p className="mt-2 text-[14px] text-ink">Not used: {said.unused.join(", ")}. Say what it&apos;s for, or take it out.</p> : null}
             {said.heard.length === 0 && said.unused.length === 0 && said.clashes.length === 0 ? <p className="mt-2 text-[14px] text-ink">Nothing I can use yet. Try &ldquo;rescue me below 1.5&rdquo;.</p> : null}
           </>
         )}
@@ -61,7 +61,7 @@ export function SayIt({ onApply }: { onApply: (changes: Partial<PolicyDraft>) =>
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <Button
           variant="secondary"
-          disabled={said.heard.length === 0}
+          disabled={said.heard.length === 0 || said.unused.length > 0 || said.clashes.length > 0}
           onClick={() => {
             onApply(said.changes);
             setApplied(true);

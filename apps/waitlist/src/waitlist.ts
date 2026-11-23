@@ -1,7 +1,7 @@
 import { hmac } from "@noble/hashes/hmac.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, randomBytes, utf8ToBytes } from "@noble/hashes/utils.js";
-import { CONSENT_VERSION, POW_BITS, WANTS, cleanEmail, parseEntry, type Entry, type Want } from "./entry";
+import { CONSENT_VERSION, POW_BITS, cleanEmail, parseEntry, type Entry } from "./entry";
 import { CHALLENGE_TTL_MS, checkPow, issueChallenge } from "./pow";
 
 type SqlValue = string | number | null;
@@ -24,8 +24,6 @@ const PER_VISITOR = 5;
 const PER_VISITOR_WINDOW_MS = 60 * 60_000;
 const PER_DAY = 2000; // well inside the free plan's rows; a flood stops here
 const MAX_VISITORS_HELD = 5000;
-/** Below this many people, counts stay private: a small list would show who just joined. */
-export const SHOW_COUNT_FROM = 25;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS entries (
@@ -90,7 +88,8 @@ export const csvCell = (value: string): string => {
 
 /**
  * The waitlist. What it answers never says whether an email was already on it: a repeat
- * sign-up gets the same berth and a leave code like anyone else, but changes nothing.
+ * sign-up gets the same berth and a leave code like anyone else, but changes nothing. So no
+ * count is served either: it would go up for a new email and not for a listed one.
  */
 export function createWaitlist(deps: WaitlistDeps) {
   const now = deps.now ?? (() => new Date());
@@ -166,14 +165,6 @@ export function createWaitlist(deps: WaitlistDeps) {
     return { ok: true }; // the same answer either way
   };
 
-  const summary = () => {
-    const all = rows<{ json: string }>("SELECT json FROM entries").map((r) => JSON.parse(r.json) as Entry);
-    if (all.length < SHOW_COUNT_FROM) return { people: null, wants: null };
-    const wants = Object.fromEntries(WANTS.map((w) => [w, 0])) as Record<Want, number>;
-    for (const entry of all) for (const want of entry.wants) wants[want] += 1;
-    return { people: all.length, wants };
-  };
-
   const csv = () => {
     const list = rows<{ joined_at: string; json: string }>("SELECT joined_at, json FROM entries ORDER BY joined_at");
     const head = ["joined_at", "name", "email", "role", "venues", "chains", "size", "liquidated", "wants", "note"];
@@ -199,7 +190,6 @@ export function createWaitlist(deps: WaitlistDeps) {
     const key = `${request.method} ${pathname}`;
     if (key === "GET /") return json({ service: "lifeline-waitlist" });
     if (key === "GET /api/challenge") return json({ challenge: issueChallenge(secret, now().getTime()), bits: powBits });
-    if (key === "GET /api/summary") return json(summary());
     if (key === "GET /api/export" && deps.adminToken !== null) {
       const given = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
       if (!sameSecret(given, deps.adminToken)) throw new Refusal(401, "not allowed");

@@ -30,6 +30,13 @@ describe("rules in plain words", () => {
     expect(sayPolicy(text).unused).toHaveLength(1);
   });
   test("a limit said with a never is still a limit", () => expect(sayPolicy("never more than $20 a day").changes).toEqual({ maxPerDayUsdc: "20" }));
+  test.each([
+    "$1.2345678 a day", "$20-30 a day", "10 to 20 USDC per rescue", "wait 1.5 minutes between rescues", "rescue below 1,6", "refill to 2,5", "rescue below 1.5-1.7",
+    "please do not ever under any circumstances rescue me below 1.5", "I was hit when health was above 1.2", "my account got liquidated under 1.1",
+  ])("not guessed at: %s", (text) => {
+    expect(sayPolicy(text).changes).toEqual({});
+    expect(sayPolicy(text).unused.length).toBeGreaterThan(0);
+  });
   test("a money amount is never read as a health", () => {
     expect(sayPolicy("top me up to 2 USDC").changes.target).toBeUndefined();
     expect(sayPolicy("refill to 5k").changes).toEqual({});

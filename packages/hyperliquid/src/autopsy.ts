@@ -61,7 +61,7 @@ export type Aftermath = {
   /** The worst price in the window. */
   worst: number;
   end: number;
-  /** About how much more margin would have kept it open to the end. */
+  /** At least about how much more margin would have kept it open: a short's maintenance grows too as the price rises. */
   neededUsd: number;
   /** What the position then made or lost against being closed at the liquidation. */
   againstLiquidationUsd: number;
@@ -78,10 +78,12 @@ export function aftermath(l: Liquidation, candles: Candle[], intervalMs: number,
   if (until > now) return null;
   const inside = candles.filter((c) => c.closeTime > l.endedAt && c.openTime < until).sort((a, b) => a.openTime - b.openTime);
   const expected = Math.floor((hours * HOUR) / intervalMs);
-  if (expected < 1 || inside.length < Math.max(1, expected * 0.9 - 1)) return null;
+  const final = inside.at(-1);
+  // The last candle must reach the end of the window and have closed.
+  if (expected < 1 || final === undefined || final.closeTime < until - 1 || final.closeTime >= now || inside.length < Math.ceil(expected * 0.9)) return null;
   const direction = l.side === "long" ? 1 : -1;
   const worst = l.side === "long" ? Math.min(l.price, ...inside.map((c) => c.low)) : Math.max(l.price, ...inside.map((c) => c.high));
-  const end = inside.at(-1)!.close;
+  const end = final.close;
   const adverse = Math.max(0, (l.price - worst) * direction) * l.size;
   return { hours, worst, end, neededUsd: adverse * 1.01 + FLAT_FEE_USD, againstLiquidationUsd: (end - l.price) * direction * l.size };
 }

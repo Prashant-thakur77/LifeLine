@@ -28,5 +28,9 @@ describe("a link that fills the policy form", () => {
   test("fills what's well formed and keeps the rest standard", () => {
     expect(from(`hl=0x${"a".repeat(40)}&trigger=1.6&perRescue=12.5`)).toMatchObject({ hlAddress: `0x${"a".repeat(40)}`, trigger: "1.6", maxPerRescueUsdc: "12.5", target: "2" });
   });
+  test("over a saved policy, only what the link names changes", () => {
+    const saved = { hlAddress: `0x${"c".repeat(40)}`, warn: "2.4", trigger: "2", target: "2.8", maxPerRescueUsdc: "5", maxPerDayUsdc: "9", cooldownSec: "600" };
+    expect(draftFromParams(new URLSearchParams("perDay=50"), saved)).toEqual({ ...saved, maxPerDayUsdc: "50" });
+  });
   test.each(["", "user=alice.near", "hl=evil", "trigger=1e9&warn=-1", "perDay=<script>"])("ignores %s", (q) => expect(from(q)).toBeNull());
 });

@@ -118,6 +118,7 @@ The contract emits NEP-297 events (`EVENT_JSON:`) named `deposit`, `policy_set`,
 | `GET /api/health/:user` | The latest `HealthSnapshot` plus the user's policy |
 | `GET /api/audit?user=&limit=` | `AuditRecord[]`, newest first |
 | `GET /api/ledger?limit=` | Every user's `AuditRecord[]`, for the public ledger page |
+| `GET /api/receipts?after=&limit=` | Hash-chained receipts of the audit log, oldest first after a number, or the newest: `{ head, before, entries: [{ seq, hash, json }] }`. `hash` is SHA-256 of the previous hash, the number and the record's exact bytes, joined by newlines |
 | `GET /api/stats` | Total rescues, total USD rescued, blocked count, p50 and p95 latency |
 | `POST /api/telegram/link` | A one-time code the user sends to the bot to link their chat |
 | `GET /api/attestation` | The latest NEAR AI Cloud attestation check result |
