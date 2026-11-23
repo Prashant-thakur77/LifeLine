@@ -6,7 +6,7 @@ import { TOOLS, ToolError, type ToolDeps } from "./tools";
 // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http
 
 export const MODERN = "2026-07-28";
-const LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26"] as const;
+const LEGACY = ["2025-11-25", "2025-06-18"] as const;
 const SUPPORTED = [MODERN, ...LEGACY];
 export const SERVER_INFO = { name: "lifeline", title: "Lifeline", version: "1.4.0" };
 export const INSTRUCTIONS =

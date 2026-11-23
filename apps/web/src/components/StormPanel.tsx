@@ -57,7 +57,7 @@ function Checked({ check }: { check: AccountCheck }) {
           </Notice>
         </div>
       ) : risk.covered.length === 0 ? (
-        <p className="p-5 text-[15px] text-body">No cross positions, so there is nothing a top-up could protect right now.</p>
+        <p className="p-5 text-[15px] text-body">No cross positions{risk.unread.length > 0 ? " on the markets that could be read" : ""}, so there is nothing a top-up could protect right now.</p>
       ) : (
         <Storm risk={risk} />
       )}
@@ -216,7 +216,7 @@ function Findings({ check: { risk, stops, agents } }: { check: AccountCheck }) {
   const items: { title: string; body: string; tone: "warn" | "safe" | "neutral" }[] = [
     risk.uncovered.length > 0 && risk.mode !== "portfolio"
       ? { title: `${risk.uncovered.length} position${risk.uncovered.length === 1 ? "" : "s"} a top-up can't reach`, body: `${list(risk.uncovered.map((p) => p.coin))}: isolated, or on a market with its own balance.`, tone: "warn" as const }
-      : risk.mode === "portfolio"
+      : risk.mode === "portfolio" || risk.unread.length > 0 || risk.covered.length === 0
         ? null
         : { title: "Every position is within reach", body: "All of them share the cross margin a top-up adds to.", tone: "safe" as const },
     stops === null
@@ -224,8 +224,8 @@ function Findings({ check: { risk, stops, agents } }: { check: AccountCheck }) {
       : stops.length === 0
         ? null
         : bare.length > 0
-          ? { title: `${bare.length} of ${stops.length} without a stop`, body: `${list(bare)}: no reduce-only stop order on the losing side.`, tone: "warn" as const }
-          : { title: "A stop on every position", body: "Each has a reduce-only stop on the losing side.", tone: "safe" as const },
+          ? { title: `${bare.length} of ${stops.length} without a stop`, body: `${list(bare)}: no reduce-only stop before liquidation for the whole position.`, tone: "warn" as const }
+          : { title: "A stop on every position", body: "Each has reduce-only stops for its whole size, before liquidation.", tone: "safe" as const },
     live === null
       ? { title: "Trading keys not read", body: "Hyperliquid didn't answer.", tone: "neutral" as const }
       : { title: `${live} named key${live === 1 ? "" : "s"} can trade it`, body: "These are API wallets: they can open and close positions, and can't withdraw.", tone: live > 3 ? ("warn" as const) : ("neutral" as const) },

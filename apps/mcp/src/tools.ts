@@ -40,7 +40,7 @@ const round = (n: number, places = 4) => (Number.isFinite(n) ? Number(n.toFixed(
 const usdc = (units: unknown) => (typeof units === "string" && /^\d+$/.test(units) ? Number(units) / 1e6 : null);
 
 /** A coin's name comes from whoever listed the market, so only a plain one is passed on. */
-const coinName = (coin: string) => (/^[A-Za-z0-9:_@./-]{1,32}$/.test(coin) ? coin : "unnamed");
+const coinName = (coin: string) => (/^(@\d{1,6}|([a-z0-9]{1,8}:)?[A-Za-z0-9]{1,12})$/.test(coin) ? coin : "unnamed");
 
 async function readRisk(address: string, deps: ToolDeps): Promise<AccountRisk> {
   try {
@@ -53,7 +53,7 @@ async function readRisk(address: string, deps: ToolDeps): Promise<AccountRisk> {
 const described = (risk: AccountRisk) => ({
   marginMode: risk.mode,
   health: risk.mode === "portfolio" ? null : round(risk.health),
-  noPositions: risk.mode !== "portfolio" && risk.health === Number.POSITIVE_INFINITY,
+  noPositions: risk.covered.length === 0 && risk.uncovered.length === 0 && risk.unread.length === 0,
   valueUsd: round(risk.value, 2),
   maintenanceUsd: round(risk.maintenance, 2),
   portfolioMarginRatio: risk.portfolioRatio,
@@ -93,7 +93,7 @@ type PolicyView = { hl_address: string; keeper: string; warn: number; trigger: n
 
 const describePolicy = (p: PolicyView) => ({
   hlAddress: p.hl_address,
-  keeper: p.keeper,
+  keeper: Object.values(DEPLOYED).some((d) => d.keeper === p.keeper) ? p.keeper : "another account",
   warn: p.warn,
   trigger: p.trigger,
   target: p.target,
@@ -271,12 +271,12 @@ export const TOOLS: Tool[] = [
         account,
         network,
         hl_address: { ...hlAddress, description: "The only Hyperliquid address the vault may ever pay" },
-        warn: { type: "number", minimum: POLICY_RANGES.warn.min, maximum: POLICY_RANGES.warn.max, description: `Warn below this health (default ${POLICY_DEFAULTS.warn})` },
-        trigger: { type: "number", minimum: POLICY_RANGES.trigger.min, maximum: POLICY_RANGES.trigger.max, description: `Rescue below this health (default ${POLICY_DEFAULTS.trigger})` },
-        target: { type: "number", minimum: POLICY_RANGES.trigger.min, maximum: POLICY_RANGES.target.max, description: `Refill to this health (default ${POLICY_DEFAULTS.target})` },
-        max_per_rescue_usdc: { type: "number", minimum: 2, maximum: 1_000_000, description: "Most in one rescue, in USDC (default 25; 1Click won't send less than 2)" },
-        max_per_day_usdc: { type: "number", minimum: 2, maximum: 10_000_000, description: "Most in any 24 hours, in USDC (default 50)" },
-        cooldown_sec: { type: "integer", minimum: POLICY_RANGES.cooldownSec.min, maximum: POLICY_RANGES.cooldownSec.max, description: "Seconds between rescues (default 120)" },
+        warn: { type: "number", minimum: POLICY_RANGES.warn.min, maximum: POLICY_RANGES.warn.max, description: `Warn below this health (kept, or ${POLICY_DEFAULTS.warn})` },
+        trigger: { type: "number", minimum: POLICY_RANGES.trigger.min, maximum: POLICY_RANGES.trigger.max, description: `Rescue below this health (kept, or ${POLICY_DEFAULTS.trigger})` },
+        target: { type: "number", minimum: POLICY_RANGES.trigger.min, maximum: POLICY_RANGES.target.max, description: `Refill to this health (kept, or ${POLICY_DEFAULTS.target})` },
+        max_per_rescue_usdc: { type: "number", minimum: 2, maximum: 1_000_000, description: "Most in one rescue, in USDC (kept, or 25; 1Click won't send less than 2)" },
+        max_per_day_usdc: { type: "number", minimum: 2, maximum: 10_000_000, description: "Most in any 24 hours, in USDC (kept, or 50)" },
+        cooldown_sec: { type: "integer", minimum: POLICY_RANGES.cooldownSec.min, maximum: POLICY_RANGES.cooldownSec.max, description: "Seconds between rescues (kept, or 120)" },
       },
       required: ["account", "network", "hl_address"],
       additionalProperties: false,
@@ -285,30 +285,39 @@ export const TOOLS: Tool[] = [
     run: async (args, deps) => {
       const net = args.network as Network;
       const user = String(args.account);
+      const current = await view<PolicyView | null>(deps, net, "get_policy", { user });
       const p = {
         hl_address: String(args.hl_address).toLowerCase(),
         keeper: DEPLOYED[net].keeper,
-        warn: Number(args.warn ?? POLICY_DEFAULTS.warn),
-        trigger: Number(args.trigger ?? POLICY_DEFAULTS.trigger),
-        target: Number(args.target ?? POLICY_DEFAULTS.target),
-        max_per_rescue: String(Math.round(Number(args.max_per_rescue_usdc ?? 25) * 1e6)),
-        max_per_day: String(Math.round(Number(args.max_per_day_usdc ?? 50) * 1e6)),
-        cooldown_sec: Number(args.cooldown_sec ?? POLICY_DEFAULTS.cooldownSec),
+        // What isn't asked for stays as the user has it, so a small change can't quietly reset the rest.
+        warn: Number(args.warn ?? current?.warn ?? POLICY_DEFAULTS.warn),
+        trigger: Number(args.trigger ?? current?.trigger ?? POLICY_DEFAULTS.trigger),
+        target: Number(args.target ?? current?.target ?? POLICY_DEFAULTS.target),
+        max_per_rescue: args.max_per_rescue_usdc === undefined ? (current?.max_per_rescue ?? POLICY_DEFAULTS.maxPerRescue) : String(Math.round(Number(args.max_per_rescue_usdc) * 1e6)),
+        max_per_day: args.max_per_day_usdc === undefined ? (current?.max_per_day ?? POLICY_DEFAULTS.maxPerDay) : String(Math.round(Number(args.max_per_day_usdc) * 1e6)),
+        cooldown_sec: Number(args.cooldown_sec ?? current?.cooldown_sec ?? POLICY_DEFAULTS.cooldownSec),
       };
       if (!(p.trigger < p.warn)) throw new ToolError("trigger must be below warn.");
       if (!(p.target > p.trigger)) throw new ToolError("target must be above trigger.");
       if (Number(p.max_per_day) < Number(p.max_per_rescue)) throw new ToolError("max_per_day_usdc must be at least max_per_rescue_usdc.");
-      const current = await view<PolicyView | null>(deps, net, "get_policy", { user });
       const warnings: Warning[] = [];
       if (net === "mainnet") warnings.push(warning("KEEPER_NOT_ALWAYS_ON", "error", "The mainnet keeper doesn't run around the clock yet, so a mainnet policy would not protect anyone. Use testnet, or join the waitlist."));
       if (current !== null && current.hl_address.toLowerCase() !== p.hl_address) warnings.push(warning("ADDRESS_CHANGES", "warning", "This changes the Hyperliquid address the vault pays. Check it is the user's own."));
       if (current !== null && Number(p.max_per_day) > Number(current.max_per_day)) warnings.push(warning("CAP_RAISED", "warning", "This raises the daily cap: more can be sent in 24 hours than now."));
+      if (current !== null && Number(p.max_per_rescue) > Number(current.max_per_rescue)) warnings.push(warning("RESCUE_CAP_RAISED", "warning", "This raises the cap for one rescue."));
+      if (current !== null && p.cooldown_sec < current.cooldown_sec) warnings.push(warning("COOLDOWN_SHORTER", "warning", "This lets rescues follow each other sooner than now."));
+      if (current !== null && p.trigger < current.trigger) warnings.push(warning("TRIGGER_LOWERED", "warning", "This makes rescues start later than now."));
+      if (current !== null && current.keeper !== p.keeper) warnings.push(warning("KEEPER_CHANGES", "warning", "This replaces the keeper the user chose with Lifeline's."));
+      if (current?.paused) warnings.push(warning("PAUSED", "warning", "The user's rescues are paused now. Check they want this policy at all."));
       if (p.trigger < 1.3) warnings.push(warning("LATE_TRIGGER", "warning", "A trigger this close to 1.0 leaves little time: a rescue takes the better part of a minute."));
       const risk = await readAccountRisk(p.hl_address, deps.info).catch(() => null);
       if (risk === null) warnings.push(warning("ACCOUNT_NOT_READ", "warning", "The Hyperliquid account couldn't be read, so this wasn't checked against its positions."));
       else if (risk.mode === "portfolio") warnings.push(warning("PORTFOLIO_MARGIN", "error", "This is a portfolio margin account, which Lifeline can't protect yet."));
       else if (risk.mode === "unified") warnings.push(warning("UNIFIED_ACCOUNT", "warning", "A top-up into a unified account hasn't been tested with real money, and the keeper reads its health lower than it is."));
+      else if (risk.covered.length === 0) warnings.push(warning("NOTHING_TO_PROTECT", "warning", "This account has no cross positions a top-up could protect."));
       else if (risk.health < p.trigger) warnings.push(warning("BELOW_TRIGGER_NOW", "warning", "This account is already below the trigger: a rescue would start at once."));
+      if (risk !== null && risk.mode !== "portfolio" && risk.uncovered.length > 0) warnings.push(warning("SOME_OUT_OF_REACH", "warning", `${risk.uncovered.length} of its positions can't be reached by a top-up.`));
+      if (risk !== null && risk.unread.length > 0) warnings.push(warning("MARKETS_NOT_READ", "warning", "Some markets couldn't be read, so there may be positions nobody checked."));
       const summary = `Let ${p.keeper} top up ${p.hl_address}, and only that address, when health falls below ${p.trigger}, refilling to ${p.target}. At most ${usdc(p.max_per_rescue)} USDC per rescue and ${usdc(p.max_per_day)} USDC per 24 hours, ${p.cooldown_sec} s apart. Warn below ${p.warn}.`;
       const query = new URLSearchParams({ hl: p.hl_address, warn: String(p.warn), trigger: String(p.trigger), target: String(p.target), perRescue: String(usdc(p.max_per_rescue)), perDay: String(usdc(p.max_per_day)), cooldown: String(p.cooldown_sec) });
       return { ...unsigned(deps, net, user, "set_policy", { policy: p }, 30, current === null ? REGISTRATION : YOCTO, summary, warnings, `${SITE}/start?${query}`), replaces: current === null ? null : describePolicy(current) };

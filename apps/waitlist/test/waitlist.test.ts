@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { describe, expect, test } from "vitest";
 import { cleanEmail, cleanText, parseEntry } from "../src/entry";
 import { checkPow, issueChallenge, leadingZeroBits, powDigest } from "../src/pow";
-import { SHOW_COUNT_FROM, createWaitlist, csvCell, type WaitlistStorage } from "../src/waitlist";
+import { createWaitlist, csvCell, type WaitlistStorage } from "../src/waitlist";
 
 const SITE = "https://lifeline.prashantthakur.dev";
 const BITS = 4;
@@ -162,13 +162,7 @@ describe("leaving", () => {
 });
 
 describe("what others can read", () => {
-  test("no counts until the list is big enough", async () => {
-    const { join, call } = setup();
-    for (let i = 0; i < SHOW_COUNT_FROM - 1; i += 1) await join({ email: `p${i}@example.com` }, `ip${i}`);
-    expect(await (await call("/api/summary")).json()).toEqual({ people: null, wants: null });
-    await join({ email: "last@example.com" }, "ipx");
-    expect(await (await call("/api/summary")).json()).toMatchObject({ people: SHOW_COUNT_FROM, wants: { agents: SHOW_COUNT_FROM, sdk: 0 } });
-  });
+  test("no count is served: it would say whether an email was new", async () => expect((await setup().call("/api/summary")).status).toBe(404));
   test("the export needs the token, and is off without one", async () => {
     const { call } = setup();
     expect((await call("/api/export")).status).toBe(401);

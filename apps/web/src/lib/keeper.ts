@@ -41,6 +41,10 @@ export function keeperError(status: number, body: unknown): KeeperError {
   return new KeeperError("server", status, `The keeper had a problem (HTTP ${status}). Try again shortly.`);
 }
 
+/** As apps/keeper/src/receipts.ts serves them. */
+export type ReceiptLink = { seq: number; hash: string };
+export type ReceiptsResponse = { head: ReceiptLink | null; before: ReceiptLink | null; entries: (ReceiptLink & { json: string })[] };
+
 /** As apps/keeper/src/attack-lab.ts serves them. */
 export type LabAttack = { id: string; title: string; move: string; expect: string };
 export type AttackResult = { id: string; at: string; txHash: string; refused: boolean; matched: boolean; answer: string; expected: string };
@@ -88,6 +92,8 @@ export const keeper = {
   /** A record with the bytes and signature behind its model words; "latest" for the newest one. */
   proof: (base: string, recordId: string, user?: string) =>
     request<ProvedRecord>(base, `/api/proof/${enc(recordId)}${user ? `?user=${enc(user)}` : ""}`),
+  /** Hash-chained receipts of the keeper's decisions: after a number, or the newest. */
+  receipts: (base: string, after: number | null, limit = 200) => request<ReceiptsResponse>(base, `/api/receipts?limit=${limit}${after === null ? "" : `&after=${after}`}`),
   /** The public attack lab on the demo keeper: its target, its attacks and the latest results. */
   lab: (base: string) => request<LabInfo>(base, "/api/lab"),
   /** Sends one lab attack to the testnet vault; resolves with the vault's answer. */

@@ -23,7 +23,7 @@ For other clients: `{ "mcpServers": { "lifeline": { "type": "http", "url": "http
 
 - **Move money.** The server has no key. `set_policy`, `unpause` and `withdraw` need an attached yoctoNEAR, which NEAR only lets a full-access key attach, so a wallet always asks the person.
 - **Choose the keeper or the payee.** `prepare_policy` always names Lifeline's keeper, and the vault only ever pays the one Hyperliquid address in the policy.
-- **Be steered by text in the data.** Tools return codes, numbers, addresses and checked names. Written explanations, key names and unusual coin names are left out.
+- **Be steered by text in the data.** Tools return codes, numbers, addresses and checked names. Written explanations, key names, other people's keeper names and unusual coin names are left out.
 - **Mistake a failed reading for a safe one.** It's an error that says so.
 - **Send a mainnet policy as if it protected anyone.** Until the mainnet keeper runs around the clock, that comes back `blocked`.
 
