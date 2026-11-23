@@ -22,6 +22,7 @@ pnpm typecheck
 | `packages/hyperliquid` | Hyperliquid health and candles |
 | `apps/keeper` | Watch loop, rescues, audit log, API |
 | `apps/web` | The dashboard |
+| `apps/waitlist` | The waitlist Worker |
 | `research/` | Backtest, latency and money-path runs, each with a `RESULTS.md` |
 
 ## Making a change

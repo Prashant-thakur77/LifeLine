@@ -97,7 +97,7 @@ function WalletButton() {
   if (status === "loading") {
     return (
       <Button size="sm" variant="primary" aria-disabled title="The wallet connector is loading" className="cursor-progress">
-        Connect wallet
+        Connect<span className="max-[430px]:hidden">wallet</span>
       </Button>
     );
   }
@@ -127,7 +127,7 @@ function WalletButton() {
             }
           }}
         >
-          Connect wallet
+          Connect<span className="max-[430px]:hidden">wallet</span>
         </Button>
         {error ? (
           <p role="alert" className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-danger/40 bg-card p-3 text-[13px] text-ink-2 shadow-xl">
@@ -183,15 +183,22 @@ export function Header() {
           <Mark className="size-8 transition-transform duration-500 group-hover:rotate-[90deg]" />
           <span className="text-[24px] font-black uppercase leading-none tracking-[-0.01em] text-ink [font-variation-settings:'wdth'_72]">Lifeline</span>
         </Link>
-        <Suspense fallback={<div className="hidden flex-1 md:block" />}>
-          <NavLinks className="hidden flex-1 items-center gap-1 md:flex" />
+        <Suspense fallback={<div className="hidden flex-1 lg:block" />}>
+          <NavLinks className="hidden flex-1 items-center gap-1 lg:flex" />
         </Suspense>
-        <div className="ml-auto md:ml-0">
+        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          <Link
+            href="/waitlist"
+            className="inline-flex h-8 shrink-0 items-center rounded-lg border-2 border-ink bg-sun px-2.5 text-[13px] font-bold text-ink hover:bg-[#ffd566] sm:px-3"
+          >
+            <span className="hidden xl:inline">Join the&nbsp;</span>
+            <span className="xl:lowercase">Waitlist</span>
+          </Link>
           <WalletButton />
         </div>
       </div>
-      <Suspense fallback={<div className="h-11 md:hidden" />}>
-        <NavLinks className="scrollbar-none flex h-11 items-center gap-1 overflow-x-auto border-t-2 border-ink/10 px-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] md:hidden" />
+      <Suspense fallback={<div className="h-11 lg:hidden" />}>
+        <NavLinks className="scrollbar-none flex h-11 items-center gap-1 overflow-x-auto border-t-2 border-ink/10 px-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] lg:hidden" />
       </Suspense>
     </header>
   );
@@ -217,6 +224,9 @@ export function Footer() {
                   {item.label}
                 </Link>
               ))}
+              <Link href="/waitlist" className="w-fit font-semibold hover:text-sun">
+                Waitlist
+              </Link>
             </nav>
             <dl className="flex flex-col gap-3 font-readout text-[12px]">
               <div>

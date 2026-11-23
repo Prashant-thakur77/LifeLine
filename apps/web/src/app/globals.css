@@ -480,6 +480,49 @@ body::after {
   }
 }
 
+/* The waitlist: answers slide in, what it heard is stamped on, the pass lands. Transform only. */
+.wl-in {
+  animation: page-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.wl-chip {
+  animation: wl-chip 420ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i) * 45ms) backwards;
+}
+@keyframes wl-chip {
+  from {
+    transform: translateY(22px) rotate(-2deg);
+  }
+}
+.wl-stamp {
+  animation: wl-stamp 300ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes wl-stamp {
+  from {
+    transform: scale(1.5) rotate(-6deg);
+  }
+}
+.wl-bob {
+  animation: wl-bob 3.2s ease-in-out infinite alternate;
+}
+@keyframes wl-bob {
+  from {
+    transform: translateY(-3px) rotate(-8deg);
+  }
+  to {
+    transform: translateY(5px) rotate(8deg);
+  }
+}
+.wl-spin {
+  animation: buoy-roll 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.wl-land {
+  animation: wl-land 900ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes wl-land {
+  from {
+    transform: translateY(-70px) rotate(9deg) scale(1.08);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

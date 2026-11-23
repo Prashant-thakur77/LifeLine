@@ -347,8 +347,8 @@ function NextStep() {
           <ButtonLink href={pageHref("/position", DEMO_USER)} variant="secondary" size="lg">
             Open the live demo
           </ButtonLink>
-          <ButtonLink href="/start" variant="secondary" size="lg" className="bg-ink text-paper hover:bg-ink-2">
-            Protect my position
+          <ButtonLink href="/waitlist" variant="secondary" size="lg" className="bg-ink text-paper hover:bg-ink-2">
+            Get a berth on mainnet
           </ButtonLink>
         </div>
         <Mark quarters="#0b1533" className="pointer-events-none absolute -right-10 -top-20 hidden size-56 sm:block lg:size-72" />
