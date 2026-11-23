@@ -1,0 +1,13 @@
+// Lifeline for AI agents: an MCP server that reads public data and prepares unsigned
+// transactions. It holds no key and no state, so there is nothing in it to steal.
+//
+//   pnpm --filter @lifeline/mcp cf:dev      locally, at /mcp
+//   pnpm --filter @lifeline/mcp cf:deploy   lifeline-mcp.prashantthakur.dev/mcp
+{
+  "name": "lifeline-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  "vars": { "ALLOWED_ORIGINS": "https://lifeline.prashantthakur.dev" },
+  "routes": [{ "pattern": "lifeline-mcp.prashantthakur.dev", "custom_domain": true }]
+}

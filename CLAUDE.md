@@ -36,6 +36,7 @@ A never edits B's folders and B never edits A's. To ask the other side for somet
 | `packages/policy` | B | The Leash policy engine: a pure function, no network calls |
 | `apps/keeper` | B | Watch loop, rescue orchestration, audit log, REST API |
 | `apps/bot` | B | Telegram bot |
+| `apps/mcp` | B | The MCP server for AI agents. Reads and unsigned transactions only: it must never hold a key |
 | `apps/waitlist` | B | The waitlist Worker: its own Durable Object, holds people's emails, never any key |
 | `research/backtest` | B | Backtest scripts and `RESULTS.md` |
 | `scripts/` | B | `demo:sim`, the attack demo, seeding |
@@ -207,6 +208,7 @@ pnpm --filter hyperliquid live <address>   # print a real snapshot for an accoun
 pnpm --filter keeper cf:dev      # the sim keeper on Cloudflare's runtime, locally
 pnpm --filter keeper cf:deploy:sim   # deploys lifeline-sim.prashantthakur.dev (needs a Cloudflare login)
 pnpm --filter @lifeline/waitlist cf:deploy   # lifeline-waitlist.prashantthakur.dev; deploy it before the dashboard
+pnpm --filter @lifeline/mcp cf:deploy   # lifeline-mcp.prashantthakur.dev/mcp
 pnpm --filter keeper cf:deploy   # the real keeper: set its secrets first, and ask the human before mainnet
 ```
 
