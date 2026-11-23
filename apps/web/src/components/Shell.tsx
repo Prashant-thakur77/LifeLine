@@ -98,7 +98,9 @@ function WalletButton() {
   if (status === "loading") {
     return (
       <Button size="sm" variant="primary" aria-disabled title="The wallet connector is loading" className="cursor-progress">
-        Connect<span className="max-[430px]:hidden">wallet</span>
+        <span>
+            Connect<span className="max-[430px]:hidden"> wallet</span>
+          </span>
       </Button>
     );
   }
@@ -128,7 +130,9 @@ function WalletButton() {
             }
           }}
         >
-          Connect<span className="max-[430px]:hidden">wallet</span>
+          <span>
+            Connect<span className="max-[430px]:hidden"> wallet</span>
+          </span>
         </Button>
         {error ? (
           <p role="alert" className="absolute right-0 top-10 z-30 w-64 rounded-lg border border-danger/40 bg-card p-3 text-[13px] text-ink-2 shadow-xl">
