@@ -2,6 +2,7 @@
 
 import { POLICY_DEFAULTS } from "@lifeline/shared";
 import type { HealthResult } from "@lifeline/hyperliquid";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { usePoll, useNow } from "../hooks/usePoll";
@@ -160,6 +161,10 @@ export function CheckView() {
             </div>
           </div>
 
+          <Link href={`/autopsy?address=${encodeURIComponent(address)}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink bg-[#ffe1e4] p-5 hover:bg-[#ffd0d5] lg:col-span-12">
+            <span className="text-[18px] font-bold text-ink">Ever been liquidated here? See what one more top-up would have done.</span>
+            <span className="text-[15px] font-semibold text-ink underline decoration-2 underline-offset-4">Open the autopsy&nbsp;→</span>
+          </Link>
           <StormPanel key={address} address={address} />
 
           {snapshot && snapshot.positions.length > 0 ? (
