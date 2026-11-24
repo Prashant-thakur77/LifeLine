@@ -59,7 +59,7 @@ Steps 1 to 9 need only a browser. Step 10 needs the NEAR CLI. Steps 11 to 13 nee
 | 10 | `near contract call-function as-read-only vault.lifeline-team.testnet get_rescue_count json-args '{"user":"alice.lifeline-team.testnet"}' network-config testnet now` (NEAR CLI, no keys) | `34`: the real rescue transactions the testnet vault has paid this account from the latency benchmark, each one a `rescue` call by the keeper's restricted key that moved 1 or 2 test USDC to a fresh deposit address. `get_rescues` lists them with their quotes and deposit addresses |
 | 11 | `pnpm demo:sim` | The real keeper code rescues a pretend position opened at the live ETH price, with a real signed 1Click quote, the policy engine's verdict and the audit record. It took 16 s on 14 November 2026 and ends with `PASS: exactly one rescue.` |
 | 12 | `pnpm demo:attack` | Nine attacks refused by the policy engine or the quote signature check, an honest rescue allowed as a control, and the on-chain refusal from step 5 re-checked on a public NEAR node. Ends with `PASS` |
-| 13 | `pnpm test` | 64 TypeScript test files with 1,550 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. See [Tests and checks](#tests-and-checks) |
+| 13 | `pnpm test` | At the tag `hackathon-submission`: 64 TypeScript test files with 1,550 tests, then the vault's 51 unit tests and 11 sandbox tests on a local NEAR node. `main` runs 75 TypeScript files with 1,829 tests, because the later releases add their own. See [Tests and checks](#tests-and-checks) |
 
 ## Status
 
@@ -86,20 +86,22 @@ Exchange auto top-up works because the exchange holds both the position and the 
 
 ## Built during NEAR HACKATHON
 
-All of this was written during the hackathon. The repository was created on 6 November 2026 and holds no earlier code. Each part was built as a task on its own branch and merged as one commit, so some early commits are large; the biggest, 84,000 lines, is mostly saved Hyperliquid candles for the backtest. Commit authors show who wrote what: Soham Juneja ran the testnet and mainnet money-path proofs, deployed the mainnet vault and ran its first rescue, and Prashant Thakur built the rest. The [releases](https://github.com/Prashant-thakur77/LifeLine/releases) mark each milestone, from the first keeper (v0.1.0) to this submission (v1.0.0).
+All of this was written during the hackathon. The repository was created on 6 November 2026 and holds no earlier code. Each part was built as a task on its own branch and merged as one commit, so some early commits are large; the biggest, 84,000 lines, is mostly saved Hyperliquid candles for the backtest. Commit authors show who wrote what: Soham Juneja ran the testnet and mainnet money-path proofs, deployed the mainnet vault and ran its first rescue, and Prashant Thakur built the rest. The [releases](https://github.com/Prashant-thakur77/LifeLine/releases) mark each milestone, starting with the first keeper (v0.1.0). The submitted version is the tag [`hackathon-submission`](https://github.com/Prashant-thakur77/LifeLine/tree/hackathon-submission) (a54e698), merged on 14 November 2026 at 22:47 UTC, before the deadline. The tag itself was added on 23 November 2026 (UTC), to mark that commit.
 
-## After the hackathon
+## After the hackathon (from 15 Nov 2026)
 
-Everything above and the numbers below were written for the submission, which is the tag [`hackathon-submission`](https://github.com/Prashant-thakur77/LifeLine/tree/hackathon-submission). Each feature since then is its own release:
+Nothing in this section is part of the submission. The submitted version is the tag [`hackathon-submission`](https://github.com/Prashant-thakur77/LifeLine/tree/hackathon-submission) (a54e698), and the [diff since then](https://github.com/Prashant-thakur77/LifeLine/compare/hackathon-submission...main) holds all the later work. It leaves `contracts`, `packages/policy`, `packages/intents`, `packages/shared`, `apps/bot`, `scripts`, `research` and `video` as submitted. In the keeper it adds only the receipts; the rescue logic is unchanged. The hosted site and demo keeper run `main`, so they also show the features below, beside the submitted ones.
 
-| Release | What it adds | Try it |
-| --- | --- | --- |
-| v1.2.0 | A waitlist you talk to: one sentence about your trading answers most of it | https://lifeline.prashantthakur.dev/waitlist |
-| v1.3.0 | Storm test on any Hyperliquid address: the move that liquidates it, with and without Lifeline, across every margin mode and market, plus positions out of reach, missing stops and keys that can trade | https://lifeline.prashantthakur.dev/check |
-| v1.4.0 | An MCP server, so AI agents can read accounts, run storm tests and prepare policies. It returns unsigned transactions only and holds no key. [docs/agents.md](docs/agents.md) | https://lifeline.prashantthakur.dev/agents |
-| v1.5.0 | Say your rules: write the policy in plain words. Fixed rules read it, show what they understood and never guess | https://lifeline.prashantthakur.dev/start |
-| v1.6.0 | Liquidation autopsy: an address's past liquidations, the margin that would have carried each one through, and whether holding on would have paid | https://lifeline.prashantthakur.dev/autopsy |
-| v1.7.0 | Decision receipts: every keeper decision, refusals included, chained by hash. The verify page relinks them in your browser and remembers the last link, so the records after it can't be rewritten unseen | https://lifeline.prashantthakur.dev/verify |
+Each feature is its own release, dated in UTC:
+
+| Release | Date | What it adds | Try it |
+| --- | --- | --- | --- |
+| v1.2.0 | 23 Nov 2026 | A waitlist you talk to: one sentence about your trading answers most of it | https://lifeline.prashantthakur.dev/waitlist |
+| v1.3.0 | 23 Nov 2026 | Storm test on any Hyperliquid address: the move that liquidates it, with and without Lifeline, across every margin mode and market, plus positions out of reach, missing stops and keys that can trade | https://lifeline.prashantthakur.dev/check |
+| v1.4.0 | 23 Nov 2026 | An MCP server, so AI agents can read accounts, run storm tests and prepare policies. It returns unsigned transactions only and holds no key. [docs/agents.md](docs/agents.md) | https://lifeline.prashantthakur.dev/agents |
+| v1.5.0 | 23 Nov 2026 | Say your rules: write the policy in plain words. Fixed rules read it, show what they understood and never guess | https://lifeline.prashantthakur.dev/start |
+| v1.6.0 | 23 Nov 2026 | Liquidation autopsy: an address's past liquidations, the margin that would have carried each one through, and whether holding on would have paid | https://lifeline.prashantthakur.dev/autopsy |
+| v1.7.0 | 23 Nov 2026 | Decision receipts: every keeper decision, refusals included, chained by hash. The verify page relinks them in your browser and remembers the last link, so the records after it can't be rewritten unseen | https://lifeline.prashantthakur.dev/verify |
 
 ## Demo films
 
@@ -212,7 +214,7 @@ None of these needs a wallet, keys or funds. The commands need Node 22 and pnpm:
 | `pnpm --filter hyperliquid live 0xAnyAddress` | Health, margin and liquidation prices for any Hyperliquid account |
 | `pnpm backtest` | `research/backtest/RESULTS.md` and its charts regenerated from the saved candles, in about 15 seconds |
 | `pnpm latency` | The keeper's decision time measured against the live APIs, written to `research/latency/RESULTS.md` |
-| `pnpm test` | Every test: 1,550 TypeScript tests, then the vault's 51 unit and 11 sandbox tests |
+| `pnpm test` | Every test: 1,550 TypeScript tests in the submitted version (1,829 on `main`), then the vault's 51 unit and 11 sandbox tests |
 
 The vault's Rust tests need [Rust](https://rustup.rs) and `rustup target add wasm32-unknown-unknown`; without them `pnpm test` runs everything else and says so. They need rustc 1.95 or newer, because near-sdk 5.30.1 does: with an older Rust, `pnpm test` stops with an error after the TypeScript tests pass, so run `rustup update stable` first. The first run fetches a local NEAR node for the sandbox tests, and the Rust build needs about 3 GB of free disk.
 
@@ -335,7 +337,7 @@ On testnet the vault trusts a team key to sign quotes in 1Click's place, because
 
 ## Tests and checks
 
-`pnpm test` on 14 November 2026: 64 TypeScript test files with 1,550 tests passed, then 51 vault unit tests and 11 vault sandbox tests passed.
+`pnpm test` on 14 November 2026: 64 TypeScript test files with 1,550 tests passed, then 51 vault unit tests and 11 vault sandbox tests passed. The table counts the submitted version; `main` at v1.7.0 has 75 TypeScript files with 1,829 tests, and the vault's are the same.
 
 | Package | Test files | Tests | What they cover |
 | --- | --- | --- | --- |
@@ -390,8 +392,8 @@ These are the ones we know about.
 | `apps/keeper` | The watch loop, rescues, audit log, REST API, AI explanations and attestation; runs in Node or on Cloudflare |
 | `apps/bot` | The Telegram bot: one-time linking, alerts, `/status`, `/pause` |
 | `apps/web` | The dashboard |
-| `apps/mcp` | The MCP server for AI agents: reads and unsigned transactions, no keys |
-| `apps/waitlist` | The waitlist: its own Worker and database, apart from the keeper |
+| `apps/mcp` | Added after the hackathon (v1.4.0). The MCP server for AI agents: reads and unsigned transactions, no keys |
+| `apps/waitlist` | Added after the hackathon (v1.2.0). The waitlist: its own Worker and database, apart from the keeper |
 | `research/backtest`, `research/latency`, `research/tidepool`, `research/mainnet` | The backtest, the latency measurements, the Tidepool testnet run and the mainnet run |
 | `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, `latency` |
 
