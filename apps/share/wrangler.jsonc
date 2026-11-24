@@ -1,0 +1,17 @@
+// Share links for storm tests: a page with a preview card, and the card's picture. It reads
+// Hyperliquid's public API, holds no key and keeps nothing but pictures in memory.
+//
+//   pnpm --filter @lifeline/share cf:dev      locally
+//   pnpm --filter @lifeline/share cf:deploy   lifeline-share.prashantthakur.dev
+//
+// The picture is drawn in a Durable Object, because a plain request's 10 ms of CPU isn't enough.
+{
+  "name": "lifeline-share",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "durable_objects": { "bindings": [{ "name": "CARDS", "class_name": "Cards" }] },
+  "exports": { "Cards": { "type": "durable-object", "storage": "sqlite" } },
+  "observability": { "enabled": true },
+  "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"] }],
+  "routes": [{ "pattern": "lifeline-share.prashantthakur.dev", "custom_domain": true }]
+}
