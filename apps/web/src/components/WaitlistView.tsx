@@ -318,7 +318,7 @@ export function WaitlistView() {
                 <input ref={input} type="email" inputMode="email" autoComplete="email" aria-label={line} aria-invalid={problem ? true : undefined} className={big} value={draft.email} maxLength={120} placeholder="you@example.com" onChange={(e) => set({ email: e.target.value })} />
                 <label className="mt-6 flex max-w-xl cursor-pointer items-start gap-3 text-[14.5px] leading-relaxed text-body">
                   <input type="checkbox" className="mt-1 size-5 shrink-0 accent-[#ff5a1f]" checked={consent} onChange={(e) => (setConsent(e.target.checked), setProblem(null))} />
-                  <span>I&apos;m 18 or over, and Lifeline may keep my email and write to me about mainnet sign-up and what we build next.</span>
+                  <span>I&apos;m 18 or over, and Lifeline may keep my email, what brings me here and which link I came by, and write to me about mainnet sign-up and what we build next.</span>
                 </label>
               </>
             )}
@@ -346,7 +346,7 @@ export function WaitlistView() {
             {problem}
           </p>
           <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-body">
-            Privacy: we keep your email, what brings you here and which link you came by. The other answers only fill in your pass, in this browser.
+            Privacy: we keep your email, what brings you here, which link you came by and when. The other answers only fill in your pass, in this browser. Only the Lifeline team reads it, and your leave code deletes it.
           </p>
         </form>
         <div className="lg:pt-10">

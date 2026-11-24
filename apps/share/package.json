@@ -1,0 +1,15 @@
+{
+  "name": "@lifeline/share",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/card.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
+    "cf:dev": "pnpm dlx wrangler@4.158.0 dev",
+    "cf:deploy": "pnpm dlx wrangler@4.158.0 deploy"
+  },
+  "dependencies": { "@lifeline/hyperliquid": "workspace:*", "@lifeline/shared": "workspace:*", "@resvg/resvg-wasm": "2.6.2" },
+  "devDependencies": { "@cloudflare/workers-types": "5.20261025.1", "@types/node": "catalog:", "typescript": "catalog:", "vitest": "catalog:" }
+}

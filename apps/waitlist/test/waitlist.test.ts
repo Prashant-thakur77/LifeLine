@@ -108,6 +108,14 @@ describe("joining", () => {
     const row = storage.sql.exec("SELECT json FROM entries").toArray()[0] as { json: string };
     expect(Object.keys(JSON.parse(row.json)).sort()).toEqual(["consent", "email", "role", "source"]);
   });
+  test("an entry from before loses what isn't kept now, and still exports and counts", async () => {
+    const { storage, call, exported } = setup();
+    storage.sql.exec("INSERT INTO entries (email, joined_at, leave_hash, json) VALUES (?, ?, ?, ?)", "old@example.com", "2026-11-24T00:00:00Z", "h", JSON.stringify({ name: "Old", email: "old@example.com", role: "trader", note: "secret", consent: "2026-11-24" }));
+    createWaitlist({ storage, allowedOrigins: [SITE], adminToken: "admin" });
+    expect(storage.sql.exec("SELECT json FROM entries").toArray()).toEqual([{ json: JSON.stringify({ email: "old@example.com", role: "trader", source: "direct", consent: "2026-11-24" }) }]);
+    expect(await exported()).toContain('"old@example.com","trader","direct"');
+    expect(await (await call("/api/stats", { headers: { authorization: "Bearer admin" } })).json()).toMatchObject({ bySource: { direct: { all: 1 } } });
+  });
   test("a challenge works once", async () => {
     const { call, solve } = setup();
     const pow = await solve();

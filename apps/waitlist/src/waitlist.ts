@@ -96,6 +96,10 @@ export function createWaitlist(deps: WaitlistDeps) {
   const powBits = deps.powBits ?? POW_BITS;
   const rows = <T>(query: string, ...bindings: SqlValue[]) => deps.storage.sql.exec(query, ...bindings).toArray() as T[];
   rows(SCHEMA);
+  // Entries from before only these were kept: the rest of what they said is dropped.
+  rows(
+    "UPDATE entries SET json = json_object('email', email, 'role', json_extract(json, '$.role'), 'source', 'direct', 'consent', json_extract(json, '$.consent')) WHERE json_extract(json, '$.source') IS NULL",
+  );
 
   const secret = (() => {
     const found = rows<{ value: string }>("SELECT value FROM settings WHERE key = 'secret'")[0];
