@@ -17,6 +17,7 @@ Next:
 ## 2. Trust
 
 - An external audit of the vault contract.
+- Done on testnet: a second vault with the same code and no keys, checked on the verify page ([contracts/vault](contracts/vault/README.md#a-keyless-vault)).
 - After the audit, delete the vault account's full-access key, so its code can never change. The verify page already shows whether that key exists.
 - Prove ownership before linking Telegram alerts, so only the account's owner can subscribe.
 - A second, independent keeper. The vault already lets a user name the keeper they trust; a fallback keeper would cover the time one is down.

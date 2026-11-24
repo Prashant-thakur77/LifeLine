@@ -264,6 +264,26 @@ export function judgeVaultKeys(keys: AccessKeyInfo[]): Judged {
   };
 }
 
+/** A second testnet vault, whose last key was deleted on 2026-11-24 (contracts/vault/README.md). */
+export const KEYLESS_VAULT = "lifeline-keyless.testnet";
+
+/** The same bytes as the other vaults, and no key left: both at once, so neither can be true of something else. */
+export function judgeKeylessVault(account: AccountView, metadata: SourceMetadata | null, keys: AccessKeyInfo[], expectedHash: string): Judged {
+  const code = judgeVaultCode(account, metadata, expectedHash);
+  const locked = judgeVaultKeys(keys);
+  const full = keys.filter((key) => key.access_key.permission === "FullAccess").length;
+  const facts: [string, string][] = [["Full-access keys", String(full)], ["Keys of any kind", String(keys.length)], ...code.facts];
+  if (code.verdict === "failed") return { ...code, facts };
+  if (locked.verdict !== "proven") return { verdict: "failed", finding: `This vault was locked, yet its account shows ${keys.length} key${keys.length === 1 ? "" : "s"}.`, facts };
+  if (code.verdict !== "proven") return { ...code, facts };
+  return {
+    verdict: "proven",
+    finding:
+      "This testnet vault runs the build this page expects, and its account has no keys at all, so nobody, the team included, can change its code or act as it. The quotes it trusts are still signed by the team's testnet stand-in for 1Click, so this says nothing about who signs those.",
+    facts,
+  };
+}
+
 /** The vault takes quotes from one key only, for USDC margin on Hyperliquid, and not stale ones. */
 export function judgeVaultConfig(config: VaultConfig, deployment: Deployment): Judged {
   const facts: [string, string][] = [
