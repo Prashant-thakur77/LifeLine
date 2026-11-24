@@ -8,7 +8,8 @@ import { formatHealth, formatUsd } from "../lib/format";
 import { checkAccount, type AccountCheck } from "../lib/hl";
 import { FLAT_FEE_USD } from "../lib/playground";
 import { CHART, chartPath, chartScale, signedPct } from "../lib/storm-chart";
-import { Card, Field, Notice, Skeleton, cx, inputClass } from "./ui";
+import { shareCardUrl, shareOnXHref } from "../lib/share";
+import { Card, CopyButton, Field, Notice, Skeleton, cx, inputClass } from "./ui";
 
 const RANGE = { down: 90, up: 150 } as const;
 
@@ -28,7 +29,7 @@ export function StormPanel({ address }: { address: string }) {
           <p className="font-readout text-[11.5px]">{reading.data ? `${MODE_LABEL[reading.data.risk.mode]} · live reading, estimated moves` : "Live reading, estimated moves"}</p>
         </div>
         {reading.data ? (
-          <Checked check={reading.data} />
+          <Checked check={reading.data} address={address} />
         ) : reading.error ? (
           <div className="p-5">
             <Notice tone="warn" title="No storm test for this account">
@@ -45,7 +46,7 @@ export function StormPanel({ address }: { address: string }) {
   );
 }
 
-function Checked({ check }: { check: AccountCheck }) {
+function Checked({ check, address }: { check: AccountCheck; address: string }) {
   const { risk } = check;
   return (
     <>
@@ -59,10 +60,29 @@ function Checked({ check }: { check: AccountCheck }) {
       ) : risk.covered.length === 0 ? (
         <p className="p-5 text-[15px] text-body">No cross positions{risk.unread.length > 0 ? " on the markets that could be read" : ""}, so there is nothing a top-up could protect right now.</p>
       ) : (
-        <Storm risk={risk} />
+        <>
+          <Storm risk={risk} />
+          <Share address={address} />
+        </>
       )}
       <Findings check={check} />
     </>
+  );
+}
+
+/** A link whose preview shows this storm test. The picture is read again when the link is opened. */
+function Share({ address }: { address: string }) {
+  return (
+    <div className="mx-5 mb-5 flex flex-wrap items-center gap-3 rounded-lg border-2 border-ink bg-sun p-4">
+      <p className="min-w-0 flex-1 basis-64 text-[15px] font-bold text-ink">
+        Share this storm test
+        <span className="block text-[13px] font-normal">The preview shows the shortened address and, when one is within range, where it&apos;s liquidated with and without the suggested reserve.</span>
+      </p>
+      <CopyButton value={shareCardUrl(address)} label="Copy the link" />
+      <a href={shareOnXHref(address)} target="_blank" rel="noreferrer noopener" className="inline-flex h-9 items-center rounded-md border-2 border-ink bg-card px-3 text-[14px] font-bold hover:bg-paper-2">
+        Post it on X
+      </a>
+    </div>
   );
 }
 

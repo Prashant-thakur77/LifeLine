@@ -102,6 +102,7 @@ Each feature is its own release, dated in UTC:
 | v1.5.0 | 23 Nov 2026 | Say your rules: write the policy in plain words. Fixed rules read it, show what they understood and never guess | https://lifeline.prashantthakur.dev/start |
 | v1.6.0 | 23 Nov 2026 | Liquidation autopsy: an address's past liquidations, the margin that would have carried each one through, and whether holding on would have paid | https://lifeline.prashantthakur.dev/autopsy |
 | v1.7.0 | 23 Nov 2026 | Decision receipts: every keeper decision, refusals included, chained by hash. The verify page relinks them in your browser and remembers the last link, so the records after it can't be rewritten unseen | https://lifeline.prashantthakur.dev/verify |
+| v1.9.0 | 24 Nov 2026 | Shareable storm test: every one gets a link whose preview card shows the shortened address and where it is liquidated, with and without Lifeline | https://lifeline.prashantthakur.dev/check |
 
 ## Demo films
 
@@ -394,6 +395,7 @@ These are the ones we know about.
 | `apps/web` | The dashboard |
 | `apps/mcp` | Added after the hackathon (v1.4.0). The MCP server for AI agents: reads and unsigned transactions, no keys |
 | `apps/waitlist` | Added after the hackathon (v1.2.0). The waitlist: its own Worker and database, apart from the keeper |
+| `apps/share` | Added after the hackathon (v1.9.0). Share links for storm tests and their preview pictures: reads public data, no keys |
 | `research/backtest`, `research/latency`, `research/tidepool`, `research/mainnet` | The backtest, the latency measurements, the Tidepool testnet run and the mainnet run |
 | `scripts` | `demo:sim`, `demo:attack`, `demo:tidepool`, `demo:mainnet`, `latency` |
 

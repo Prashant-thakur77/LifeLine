@@ -24,6 +24,7 @@ pnpm typecheck
 | `apps/web` | The dashboard |
 | `apps/mcp` | The MCP server for AI agents |
 | `apps/waitlist` | The waitlist Worker |
+| `apps/share` | Share links and preview cards for storm tests |
 | `research/` | Backtest, latency and money-path runs, each with a `RESULTS.md` |
 
 ## Making a change
