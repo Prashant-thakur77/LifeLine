@@ -44,6 +44,19 @@ What happened there on 8 November 2026, all signed by the keeper's restricted ke
 | A rescue with Alice's real address as recipient and a signed quote, but the money pointed at the keeper's own account | [A9QZC5bV…](https://testnet.nearblocks.io/txns/A9QZC5bVA1iQUo2CEhksRNFvj77951GrmmJq835joKCn) | Refused: `BAD_QUOTE: its deposit address isn't the one this rescue pays` |
 | The keeper's key tries `withdraw` | not sent | NEAR refuses to sign it: a function-call key can't attach a deposit |
 
+### A keyless vault
+
+[`lifeline-keyless.testnet`](https://testnet.nearblocks.io/address/lifeline-keyless.testnet) is a second testnet vault, made on 24 November 2026 to show what locking one looks like. The other vaults are unchanged: the mainnet one keeps its key.
+
+| Step | Transaction | Result |
+| --- | --- | --- |
+| The same wasm deployed and set up like the testnet vault | [3vJaSZMW…](https://testnet.nearblocks.io/txns/3vJaSZMWmASfcfPMNhskqZmvf56Ma3Ht7buLrLhfVG58) | Code hash `FUWd4fuXeaL5eu5k6YfkmufXfm7T8uq7gDD6PvuuzAnq` |
+| Alice's policy, and 10 test USDC in reserve | [7bv27byW…](https://testnet.nearblocks.io/txns/7bv27byWR7dCtw9Nx3LMNNx7SU5FopsuxgcL8oK23qR3), [Bi2AjJTD…](https://testnet.nearblocks.io/txns/Bi2AjJTDcMjsj3B3UL3CZiC7A91amXjeKoX7rMzXxtdE) | Reserve 10 USDC |
+| Its only key, a full-access one, is deleted | [4rdU2Lz8…](https://testnet.nearblocks.io/txns/4rdU2Lz8vxRbEgrRvjUFrFNW8nZesycmPVoxB4hV3jGx) | No keys left, so nobody can change its code |
+| Alice withdraws 1 test USDC afterwards | [EtNB71ew…](https://testnet.nearblocks.io/txns/EtNB71ewYdAjUq6U61DXQQEjLLak8BL46g53VQFNP9vr) | Reserve 9 USDC: locking the vault didn't lock its user out |
+
+Its NEAR balance can't be taken out either; it pays for storage.
+
 ## Methods
 
 Amounts are strings in the token's base units (USDC has 6 decimals). Times are nanoseconds since the epoch, as strings.

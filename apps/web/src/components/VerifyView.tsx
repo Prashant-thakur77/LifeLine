@@ -23,9 +23,11 @@ import { nearblocksAccount, nearblocksTx, pageHref } from "../lib/links";
 import { RpcError } from "../lib/near-rpc";
 import {
   DEPLOYMENTS,
+  KEYLESS_VAULT,
   calls,
   curlFor,
   judgeKeeperKeys,
+  judgeKeylessVault,
   judgeRefusal,
   judgeVaultCode,
   judgeVaultConfig,
@@ -169,7 +171,7 @@ type Keys = { keys: AccessKeyInfo[] };
 type ViewAnswer = { result?: number[]; error?: string };
 
 /** NEP-330 metadata, or null for a contract that doesn't implement it. */
-async function sourceMetadata(d: Deployment): Promise<SourceMetadata | null> {
+async function sourceMetadata(d: Pick<Deployment, "rpcUrl" | "vault">): Promise<SourceMetadata | null> {
   try {
     return viewResult<SourceMetadata>(await rpc<ViewAnswer>(d.rpcUrl, calls.view(d.vault, "contract_source_metadata")));
   } catch (error) {
@@ -229,6 +231,29 @@ function DeploymentChecks({ d, run, onReport }: { d: Deployment; run: number; on
       <CheckCard claim="The vault takes quotes from one key" outcome={vaultConfig} rpcUrl={d.rpcUrl} requests={[calls.view(d.vault, "get_config")]} />
       <CheckCard claim="Nobody can swap the vault's code" outcome={vaultKeys} rpcUrl={d.rpcUrl} requests={[calls.keys(d.vault)]} />
     </div>
+  );
+}
+
+/** A testnet vault nobody holds a key to. */
+function KeylessCheck({ run, onReport }: { run: number; onReport: Report }) {
+  const d = { ...DEPLOYMENTS.find((x) => x.network === "testnet")!, vault: KEYLESS_VAULT };
+  const outcome = useCheck(async () => {
+    const [account, metadata, keys] = await Promise.all([rpc<AccountView>(d.rpcUrl, calls.account(d.vault)), sourceMetadata(d), rpc<Keys>(d.rpcUrl, calls.keys(d.vault))]);
+    return judgeKeylessVault(account, metadata, keys.keys, d.vaultCodeHash);
+  }, run);
+  useEffect(() => onReport("keyless", reported(outcome)));
+  return (
+    <CheckCard
+      claim="Nobody holds a key to this vault"
+      outcome={outcome}
+      rpcUrl={d.rpcUrl}
+      requests={[calls.account(d.vault), calls.keys(d.vault), calls.view(d.vault, "contract_source_metadata")]}
+      links={[
+        { label: d.vault, href: nearblocksAccount(d.vault, "testnet") },
+        { label: "Its last key deleted", href: nearblocksTx("4rdU2Lz8vxRbEgrRvjUFrFNW8nZesycmPVoxB4hV3jGx", "testnet") },
+        { label: "A withdrawal after that", href: nearblocksTx("EtNB71ewYdAjUq6U61DXQQEjLLak8BL46g53VQFNP9vr", "testnet") },
+      ]}
+    />
   );
 }
 
@@ -480,7 +505,7 @@ export function VerifyView() {
     setStates((current) => (current[key] === state ? current : { ...current, [key]: state }));
   }, []);
   const values = Object.values(states);
-  const expected = DEPLOYMENTS.reduce((n, d) => n + (d.refusal ? 5 : 4), 0) + 3;
+  const expected = DEPLOYMENTS.reduce((n, d) => n + (d.refusal ? 5 : 4), 0) + 4;
   const counted = expected - values.filter((v) => v === "nothing to check").length;
   const count = (v: Reported) => values.filter((s) => s === v).length;
   const pending = expected - values.length + count("checking");
@@ -531,6 +556,16 @@ export function VerifyView() {
           <DeploymentChecks d={d} run={run} onReport={onReport} />
         </section>
       ))}
+
+      <section className="mb-14" aria-labelledby="keyless-title">
+        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="keyless-title" className="text-[clamp(28px,3.4vw,44px)] font-extrabold uppercase leading-none text-ink [font-variation-settings:'wdth'_70]">
+            A keyless vault, on NEAR testnet
+          </h2>
+          <span className="text-[13px] text-muted">Added on 24 November 2026, separate from the vaults above.</span>
+        </div>
+        <KeylessCheck run={run} onReport={onReport} />
+      </section>
 
       <section className="mb-14" aria-labelledby="log-title">
         <h2 id="log-title" className="mb-5 text-[clamp(28px,3.4vw,44px)] font-extrabold uppercase leading-none text-ink [font-variation-settings:'wdth'_70]">

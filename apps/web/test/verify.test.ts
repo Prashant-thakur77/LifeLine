@@ -12,6 +12,7 @@ import {
   judgeVaultCode,
   judgeVaultConfig,
   judgeVaultKeys,
+  judgeKeylessVault,
   NO_CODE_HASH,
   nearAmount,
   snapshotCommit,
@@ -151,6 +152,18 @@ describe("judgeVaultKeys", () => {
 
   it("proves only a vault with no keys at all", () => {
     expect(judgeVaultKeys([]).verdict).toBe("proven");
+  });
+});
+
+describe("judgeKeylessVault", () => {
+  const account = { amount: "1", code_hash: VAULT_CODE_HASH, storage_usage: 1 };
+  const metadata: SourceMetadata = { build_info: { build_environment: "img", build_command: [], source_code_snapshot: `git+https://github.com/Prashant-thakur77/LifeLine?rev=${"a".repeat(40)}` } };
+  it("is proven only with the same code and no key of any kind", () => {
+    expect(judgeKeylessVault(account, metadata, [], VAULT_CODE_HASH).verdict).toBe("proven");
+    expect(judgeKeylessVault(account, metadata, [fullKey], VAULT_CODE_HASH).verdict).toBe("failed");
+    expect(judgeKeylessVault(account, metadata, [rescueKey(VAULT, ["on_withdraw_transfer"])], VAULT_CODE_HASH).verdict).toBe("failed");
+    expect(judgeKeylessVault({ ...account, code_hash: "other" }, metadata, [], VAULT_CODE_HASH).verdict).toBe("failed");
+    expect(judgeKeylessVault(account, null, [], VAULT_CODE_HASH).verdict).toBe("trusted");
   });
 });
 

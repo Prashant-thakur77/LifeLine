@@ -4,6 +4,7 @@ Every release, newest first. Dates are UTC. Up to v1.1.0 the date is the tagged 
 
 ## After the hackathon
 
+- 2026-11-24 · v1.12.0 · Keyless vault on testnet: the same code, its last key deleted, checked on the verify page. Mainnet is unchanged.
 - 2026-11-24 · v1.11.0 · Public changelog: this list, on the site and in the repo.
 - 2026-11-24 · v1.10.0 · Waitlist numbers: the form keeps only an email, a role and the link someone came by, and the team can count sign-ups by channel.
 - 2026-11-24 · v1.9.0 · Shareable storm test: a link whose preview card shows where an address is liquidated, with and without Lifeline.
