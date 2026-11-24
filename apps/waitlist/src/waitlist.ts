@@ -1,7 +1,7 @@
 import { hmac } from "@noble/hashes/hmac.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, randomBytes, utf8ToBytes } from "@noble/hashes/utils.js";
-import { CONSENT_VERSION, POW_BITS, cleanEmail, parseEntry, type Entry } from "./entry";
+import { CONSENT_VERSION, POW_BITS, cleanEmail, parseEntry, type Kept } from "./entry";
 import { CHALLENGE_TTL_MS, checkPow, issueChallenge } from "./pow";
 
 type SqlValue = string | number | null;
@@ -96,6 +96,10 @@ export function createWaitlist(deps: WaitlistDeps) {
   const powBits = deps.powBits ?? POW_BITS;
   const rows = <T>(query: string, ...bindings: SqlValue[]) => deps.storage.sql.exec(query, ...bindings).toArray() as T[];
   rows(SCHEMA);
+  // Entries from before only these were kept: the rest of what they said is dropped.
+  rows(
+    "UPDATE entries SET json = json_object('email', email, 'role', json_extract(json, '$.role'), 'source', 'direct', 'consent', json_extract(json, '$.consent')) WHERE json_extract(json, '$.source') IS NULL",
+  );
 
   const secret = (() => {
     const found = rows<{ value: string }>("SELECT value FROM settings WHERE key = 'secret'")[0];
@@ -139,7 +143,7 @@ export function createWaitlist(deps: WaitlistDeps) {
     return { berth: berthOf(entry.email), leaveCode };
   };
 
-  const save = (entry: Entry, challenge: string, leaveCode: string, at: Date) =>
+  const save = (entry: Kept, challenge: string, leaveCode: string, at: Date) =>
     deps.storage.transactionSync(() => {
       rows("DELETE FROM used_challenges WHERE at < ?", at.getTime() - CHALLENGE_TTL_MS);
       if (rows("SELECT 1 FROM used_challenges WHERE challenge = ?", challenge).length > 0) {
@@ -167,13 +171,28 @@ export function createWaitlist(deps: WaitlistDeps) {
 
   const csv = () => {
     const list = rows<{ joined_at: string; json: string }>("SELECT joined_at, json FROM entries ORDER BY joined_at");
-    const head = ["joined_at", "name", "email", "role", "venues", "chains", "size", "liquidated", "wants", "note"];
+    const head = ["joined_at", "email", "role", "source"];
     const lines = list.map(({ joined_at, json }) => {
-      const e = JSON.parse(json) as Entry;
-      const was = e.liquidated === null ? "" : e.liquidated ? "yes" : "no";
-      return [joined_at, e.name, e.email, e.role, e.venues.join(" "), e.chains.join(" "), e.size ?? "", was, e.wants.join(" "), e.note].map(csvCell).join(",");
+      const e = JSON.parse(json) as Kept;
+      return [joined_at, e.email, e.role, e.source].map(csvCell).join(",");
     });
     return [head.join(","), ...lines].join("\r\n");
+  };
+
+  /** The numbers we can report. Only the team sees them: a public count would say whether an email was new. */
+  const stats = () => {
+    const list = rows<{ role: string; source: string; n: number }>(
+      "SELECT json_extract(json, '$.role') AS role, json_extract(json, '$.source') AS source, count(*) AS n FROM entries GROUP BY 1, 2",
+    );
+    const bySource: Record<string, { all: number; traders: number }> = {};
+    const total = { all: 0, traders: 0 };
+    for (const { role, source, n } of list) {
+      for (const group of [total, (bySource[source] ??= { all: 0, traders: 0 })]) {
+        group.all += n;
+        if (role === "trader") group.traders += n;
+      }
+    }
+    return { at: now().toISOString(), total, bySource };
   };
 
   const headersFor = (request: Request): Record<string, string> => {
@@ -190,9 +209,10 @@ export function createWaitlist(deps: WaitlistDeps) {
     const key = `${request.method} ${pathname}`;
     if (key === "GET /") return json({ service: "lifeline-waitlist" });
     if (key === "GET /api/challenge") return json({ challenge: issueChallenge(secret, now().getTime()), bits: powBits });
-    if (key === "GET /api/export" && deps.adminToken !== null) {
+    if ((key === "GET /api/export" || key === "GET /api/stats") && deps.adminToken !== null) {
       const given = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
       if (!sameSecret(given, deps.adminToken)) throw new Refusal(401, "not allowed");
+      if (pathname === "/api/stats") return json(stats());
       return new Response(csv(), { headers: { ...headers, "content-type": "text/csv; charset=utf-8" } });
     }
     if (request.method === "POST" && (pathname === "/api/join" || pathname === "/api/leave")) {

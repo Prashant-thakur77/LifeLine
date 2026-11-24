@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { describe, expect, test } from "vitest";
-import { cleanEmail, cleanText, parseEntry } from "../src/entry";
+import { SOURCES, cleanEmail, cleanText, parseEntry, sourceOf } from "../src/entry";
 import { checkPow, issueChallenge, leadingZeroBits, powDigest } from "../src/pow";
 import { createWaitlist, csvCell, type WaitlistStorage } from "../src/waitlist";
 
@@ -47,22 +47,21 @@ function setup(adminToken: string | null = "admin") {
 
 describe("entries", () => {
   test("a good one is cleaned", () => {
-    expect(parseEntry({ ...ENTRY, name: "  A\u202e sha\n ", email: " ASHA@Example.com " })).toMatchObject({ name: "A sha", email: "asha@example.com" });
+    expect(parseEntry({ ...ENTRY, email: " ASHA@Example.com ", source: "HL-Discord" })).toEqual({ email: "asha@example.com", role: "trader", source: "hl-discord" });
   });
   test.each([
-    [{ name: " " }, /call you/],
     [{ email: "nope" }, /email/],
     [{ role: "king" }, /brings you/],
-    [{ venues: ["mars"] }, /list/],
-    [{ venues: "hyperliquid" }, /list/],
-    [{ size: "huge" }, /list/],
-    [{ liquidated: "yes" }, /list/],
     [{ consent: false }, /yes/],
     [{ consent: "true" }, /yes/],
   ])("refuses %o", (over, why) => expect(parseEntry({ ...ENTRY, ...over })).toMatch(why));
   test("refuses what isn't an object", () => expect(parseEntry(null)).toMatch(/entry/));
-  test("repeats collapse and text is cut by character, not byte", () => {
-    expect(parseEntry({ ...ENTRY, wants: ["agents", "agents"] })).toMatchObject({ wants: ["agents"] });
+  test("a source is one we know, other, or direct", () => {
+    for (const s of SOURCES) expect(sourceOf(s)).toBe(s);
+    expect([sourceOf(undefined), sourceOf(" "), sourceOf("=cmd()"), sourceOf(4)]).toEqual(["direct", "direct", "other", "direct"]);
+  });
+  test("text is cleaned, and cut by character, not byte", () => {
+    expect(cleanText("  A\u202e sha\n ", 40)).toBe("A sha");
     expect(cleanText("🛟🛟🛟", 2)).toBe("🛟🛟");
   });
   test.each(["a@b.co", "a.b+c@sub.example.org"])("accepts %s", (e) => expect(cleanEmail(e)).toBe(e));
@@ -98,10 +97,24 @@ describe("joining", () => {
   test("a repeat looks the same and changes nothing", async () => {
     const { join, exported } = setup();
     const first = (await (await join()).json()) as { berth: string };
-    const again = await join({ name: "Mallory" });
+    const again = await join({ source: "reddit" });
     expect(again.status).toBe(200);
     expect(((await again.json()) as { berth: string }).berth).toBe(first.berth);
-    expect(await exported()).not.toContain("Mallory");
+    expect(await exported()).not.toContain("reddit");
+  });
+  test("keeps the email, role and source, and nothing else that was sent", async () => {
+    const { join, storage } = setup();
+    await join({ source: "x" });
+    const row = storage.sql.exec("SELECT json FROM entries").toArray()[0] as { json: string };
+    expect(Object.keys(JSON.parse(row.json)).sort()).toEqual(["consent", "email", "role", "source"]);
+  });
+  test("an entry from before loses what isn't kept now, and still exports and counts", async () => {
+    const { storage, call, exported } = setup();
+    storage.sql.exec("INSERT INTO entries (email, joined_at, leave_hash, json) VALUES (?, ?, ?, ?)", "old@example.com", "2026-11-24T00:00:00Z", "h", JSON.stringify({ name: "Old", email: "old@example.com", role: "trader", note: "secret", consent: "2026-11-24" }));
+    createWaitlist({ storage, allowedOrigins: [SITE], adminToken: "admin" });
+    expect(storage.sql.exec("SELECT json FROM entries").toArray()).toEqual([{ json: JSON.stringify({ email: "old@example.com", role: "trader", source: "direct", consent: "2026-11-24" }) }]);
+    expect(await exported()).toContain('"old@example.com","trader","direct"');
+    expect(await (await call("/api/stats", { headers: { authorization: "Bearer admin" } })).json()).toMatchObject({ bySource: { direct: { all: 1 } } });
   });
   test("a challenge works once", async () => {
     const { call, solve } = setup();
@@ -163,6 +176,16 @@ describe("leaving", () => {
 
 describe("what others can read", () => {
   test("no count is served: it would say whether an email was new", async () => expect((await setup().call("/api/summary")).status).toBe(404));
+  test("the team's numbers are counted by source, and need the token", async () => {
+    const { join, call } = setup();
+    await join({ email: "a@example.com", source: "hl-discord" });
+    await join({ email: "b@example.com", source: "hl-discord", role: "builder" });
+    await join({ email: "c@example.com" });
+    const answer = await call("/api/stats", { headers: { authorization: "Bearer admin" } });
+    expect(await answer.json()).toMatchObject({ total: { all: 3, traders: 2 }, bySource: { "hl-discord": { all: 2, traders: 1 }, direct: { all: 1, traders: 1 } } });
+    expect((await call("/api/stats")).status).toBe(401);
+    expect((await setup(null).call("/api/stats")).status).toBe(404);
+  });
   test("the export needs the token, and is off without one", async () => {
     const { call } = setup();
     expect((await call("/api/export")).status).toBe(401);

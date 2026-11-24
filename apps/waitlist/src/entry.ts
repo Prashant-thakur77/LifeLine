@@ -23,8 +23,21 @@ export type Entry = {
   note: string;
 };
 
+/** Where a sign-up came from: the `utm_source` of the link, when it's one of these. */
+export const SOURCES = ["x", "discord", "hl-discord", "telegram", "reddit", "other", "direct"] as const;
+export type Source = (typeof SOURCES)[number];
+/** A link's `utm_source` as a source: none is "direct", one we don't know is "other". */
+export const sourceOf = (raw: unknown): Source => {
+  if (typeof raw !== "string" || raw.trim() === "") return "direct";
+  const value = raw.trim().toLowerCase();
+  return (SOURCES as readonly string[]).includes(value) ? (value as Source) : "other";
+};
+
+/** All the server keeps of someone: how to reach them, what brings them, and which link they came by. */
+export type Kept = { email: string; role: Role; source: Source };
+
 /** Which wording of the consent someone agreed to; change it whenever the wording changes. */
-export const CONSENT_VERSION = "2026-11-24";
+export const CONSENT_VERSION = "2026-11-24-minimum";
 export const MAX_NAME = 40;
 export const MAX_NOTE = 400;
 /** How many leading zero bits a sign-up's proof of work needs: under a second in a browser. */
@@ -46,36 +59,13 @@ export const cleanText = (raw: string, max: number): string =>
 
 const oneOf = <T extends string>(list: readonly T[], value: unknown): value is T => list.includes(value as T);
 
-function someOf<T extends string>(list: readonly T[], value: unknown): T[] | null {
-  if (!Array.isArray(value) || value.length > list.length) return null;
-  return value.every((v) => oneOf(list, v)) ? [...new Set(value as T[])] : null;
-}
-
-/** Reads an entry someone sent. A string is what to tell them is wrong. */
-export function parseEntry(body: unknown): Entry | string {
+/** Reads a sign-up, and takes only what we keep. A string is what to tell them is wrong. */
+export function parseEntry(body: unknown): Kept | string {
   if (typeof body !== "object" || body === null) return "send an entry";
   const raw = body as Record<string, unknown>;
-  const name = typeof raw.name === "string" ? cleanText(raw.name, MAX_NAME) : "";
-  if (name === "") return "tell us what to call you";
   const email = typeof raw.email === "string" ? cleanEmail(raw.email) : null;
   if (email === null) return "that email doesn't look right";
   if (!oneOf(ROLES, raw.role)) return "pick what brings you here";
-  const venues = someOf(VENUES, raw.venues ?? []);
-  const chains = someOf(CHAINS, raw.chains ?? []);
-  const wants = someOf(WANTS, raw.wants ?? []);
-  if (venues === null || chains === null || wants === null) return "one of the choices isn't on the list";
-  if (raw.size != null && !oneOf(SIZES, raw.size)) return "one of the choices isn't on the list";
-  if (raw.liquidated != null && typeof raw.liquidated !== "boolean") return "one of the choices isn't on the list";
   if (raw.consent !== true) return "we need your yes before we keep your email";
-  return {
-    name,
-    email,
-    role: raw.role,
-    venues,
-    chains,
-    size: (raw.size as Size | null | undefined) ?? null,
-    liquidated: (raw.liquidated as boolean | null | undefined) ?? null,
-    wants,
-    note: typeof raw.note === "string" ? cleanText(raw.note, MAX_NOTE) : "",
-  };
+  return { email, role: raw.role, source: sourceOf(raw.source) };
 }

@@ -17,6 +17,7 @@
     "demo:attack": "pnpm --filter @lifeline/scripts demo:attack",
     "demo:tidepool": "pnpm --filter @lifeline/scripts demo:tidepool",
     "demo:mainnet": "pnpm --filter @lifeline/scripts demo:mainnet",
+    "waitlist:stats": "pnpm --filter @lifeline/waitlist stats",
     "latency": "pnpm --filter @lifeline/scripts latency"
   },
   "devDependencies": {
