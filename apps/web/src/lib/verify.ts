@@ -279,7 +279,7 @@ export function judgeKeylessVault(account: AccountView, metadata: SourceMetadata
   return {
     verdict: "proven",
     finding:
-      "This testnet vault runs the same bytes as the others, and its account has no keys at all. Nobody, the team included, can change its code or act as it. Its user could still withdraw after the last key was gone.",
+      "This testnet vault runs the build this page expects, and its account has no keys at all, so nobody, the team included, can change its code or act as it. The quotes it trusts are still signed by the team's testnet stand-in for 1Click, so this says nothing about who signs those.",
     facts,
   };
 }

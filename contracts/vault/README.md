@@ -55,7 +55,7 @@ What happened there on 8 November 2026, all signed by the keeper's restricted ke
 | Its only key, a full-access one, is deleted | [4rdU2Lz8…](https://testnet.nearblocks.io/txns/4rdU2Lz8vxRbEgrRvjUFrFNW8nZesycmPVoxB4hV3jGx) | No keys left, so nobody can change its code |
 | Alice withdraws 1 test USDC afterwards | [EtNB71ew…](https://testnet.nearblocks.io/txns/EtNB71ewYdAjUq6U61DXQQEjLLak8BL46g53VQFNP9vr) | Reserve 9 USDC: locking the vault didn't lock its user out |
 
-Its NEAR balance can't be taken out either; it pays for storage.
+Its NEAR balance can't be taken out either; it pays for storage. Locking covers the code only: like the testnet vault it trusts the team's stand-in quote key, and Alice's policy names the team's keeper. That keeper's one key is for the other vault, so it can't call `rescue` on this one today.
 
 ## Methods
 
