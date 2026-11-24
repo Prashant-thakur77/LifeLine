@@ -1,19 +1,18 @@
 import { DurableObject } from "cloudflare:workers";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
 import wasm from "@resvg/resvg-wasm/index_bg.wasm";
-import { SITE, cardSvg, cleanAddress, readCard, sharePage, type Card } from "./card";
+import { SITE, cardSvg, cleanAddress, readCard, sharePage } from "./card";
+import { createBudget } from "./budget";
 
-type Env = { CARDS: DurableObjectNamespace<Cards> };
-type Made = { at: number; card: Card | null; png: Uint8Array };
+type Limiter = { limit(options: { key: string }): Promise<{ success: boolean }> };
+type Env = { PAINTER: DurableObjectNamespace<Painter>; PER_VISITOR: Limiter; ASSETS: Fetcher };
 
+const HOME = "https://lifeline-share.prashantthakur.dev";
 // Fixed files, so nothing a caller sends ever becomes a URL.
 const FONTS = [
   "https://fonts.gstatic.com/s/archivo/v25/k3k6o8UDI-1M0wlSV9XAw6lQkqWY8Q9osJaRE-NWIDdgffTTtDRp8A.ttf",
   "https://fonts.gstatic.com/s/archivo/v25/k3k6o8UDI-1M0wlSV9XAw6lQkqWY8Q82sJaRE-NWIDdgffTT6jRp8A.ttf",
 ];
-const FRESH_MS = 5 * 60_000;
-const MAX_HELD = 200;
-const PER_MINUTE = 20; // new readings; past it the general card is served
 
 const read = async (body: Record<string, unknown>): Promise<unknown> => {
   const response = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(6_000) });
@@ -41,57 +40,49 @@ const tools = () =>
     throw error;
   }));
 
-export class Cards extends DurableObject<Env> {
-  private readonly made = new Map<string, Made>();
-  private readonly making = new Map<string, Promise<Made>>();
-  private recent: number[] = [];
-
-  private async make(key: string, address: string | null): Promise<Made> {
-    const card = address === null ? null : await readCard(address, read, Date.now()).catch(() => null);
-    const image = new Resvg(cardSvg(card), { font: { fontBuffers: await tools(), defaultFontFamily: "Archivo", loadSystemFonts: false } });
-    const result = { at: Date.now(), card, png: image.render().asPng() };
-    if (this.made.size >= MAX_HELD) this.made.delete(this.made.keys().next().value!);
-    this.made.set(key, result);
-    return result;
-  }
-
-  private get(address: string | null): Promise<Made> {
-    const key = address ?? "general";
-    const held = this.made.get(key);
-    if (held && Date.now() - held.at < FRESH_MS) return Promise.resolve(held);
-    const running = this.making.get(key);
-    if (running) return running;
-    if (address !== null) {
-      this.recent = this.recent.filter((at) => Date.now() - at < 60_000);
-      if (this.recent.length >= PER_MINUTE) return held ? Promise.resolve(held) : this.get(null);
-      this.recent.push(Date.now());
+/** Draws one picture and nothing else, so it is awake for a moment per new card. The account is read before it's asked. */
+export class Painter extends DurableObject<Env> {
+  async draw(svg: string): Promise<Uint8Array> {
+    const image = new Resvg(svg, { font: { fontBuffers: await tools(), defaultFontFamily: "Archivo", loadSystemFonts: false } });
+    const rendered = image.render();
+    try {
+      return rendered.asPng();
+    } finally {
+      rendered.free();
+      image.free();
     }
-    const work = this.make(key, address).finally(() => this.making.delete(key));
-    this.making.set(key, work);
-    return work;
-  }
-
-  override async fetch(request: Request): Promise<Response> {
-    const { pathname } = new URL(request.url);
-    const [, raw = "", png] = /^\/([^./]*)(\.png)?$/.exec(pathname) ?? [];
-    const address = cleanAddress(raw);
-    const { card, png: image } = await this.get(address);
-    if (png) return new Response(image, { headers: { "content-type": "image/png", "cache-control": "public, max-age=300" } });
-    return new Response(sharePage("https://lifeline-share.prashantthakur.dev", address!, card), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer" } });
   }
 }
 
+// The Worker's own cap on new pictures, besides each visitor's: the keeper shares this account's free plan.
+const budget = createBudget({ perMinute: 10, perDay: 300 });
+const general = (env: Env) => env.ASSETS.fetch(`${HOME}/general.png`).then((r) => new Response(r.body, { headers: { "content-type": "image/png", "cache-control": "no-store" } }));
+
+async function picture(address: string, request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const cache = (caches as unknown as { default: Cache }).default;
+  const key = new Request(`${HOME}/${address}.png`);
+  const held = await cache.match(key);
+  if (held) return held;
+  const visitor = await env.PER_VISITOR.limit({ key: request.headers.get("cf-connecting-ip") ?? "anyone" });
+  if (!visitor.success || !budget(Date.now())) return general(env);
+  // A failed read isn't kept, so the next visit tries again.
+  const card = await readCard(address, read, Date.now()).catch(() => "unread" as const);
+  if (card === "unread" || card === null) return general(env);
+  const png = await env.PAINTER.get(env.PAINTER.idFromName("painter")).draw(cardSvg(card));
+  const answer = new Response(png, { headers: { "content-type": "image/png", "cache-control": "public, max-age=300" } });
+  ctx.waitUntil(cache.put(key, answer.clone()));
+  return answer;
+}
+
 export default {
-  fetch: async (request, env) => {
-    const { pathname } = new URL(request.url);
+  fetch: async (request, env, ctx) => {
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("not allowed", { status: 405 });
-    const [, raw = "", png] = /^\/([^./]*)(\.png)?$/.exec(pathname) ?? [];
+    const { pathname } = new URL(request.url);
     if (pathname === "/") return Response.redirect(`${SITE}/check`, 302);
-    if (cleanAddress(raw) === null && !(raw === "general" && png)) return new Response("not found", { status: 404 });
-    try {
-      return await env.CARDS.get(env.CARDS.idFromName("cards")).fetch(request);
-    } catch {
-      return png ? new Response("no picture just now", { status: 503 }) : Response.redirect(`${SITE}/check?address=${raw}`, 302);
-    }
+    const [, raw = "", png] = /^\/([^./]*)(\.png)?$/.exec(pathname) ?? [];
+    const address = cleanAddress(raw);
+    if (address === null) return new Response("not found", { status: 404 });
+    if (png) return picture(address, request, env, ctx).catch(() => general(env));
+    return new Response(sharePage(HOME, address), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer" } });
   },
 } satisfies ExportedHandler<Env>;

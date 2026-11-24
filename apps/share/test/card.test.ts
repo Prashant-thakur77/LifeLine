@@ -11,9 +11,11 @@ test("one position gives prices: equity meets maintenance near 2653", () => {
   // 400 + (p - 3000) = 0.02p, so p = 2653.06
   const card = cardFor(ADDRESS.toLowerCase(), risk(), AT)!;
   expect(card.title).toBe("ETH long, now $3,000");
-  expect(Number(card.without.replace(/[$,]/g, ""))).toBeGreaterThan(2640);
-  expect(Number(card.without.replace(/[$,]/g, ""))).toBeLessThanOrEqual(2654);
+  expect(Number(card.without.replace(/[$,]/g, ""))).toBeGreaterThan(2651);
+  expect(Number(card.without.replace(/[$,]/g, ""))).toBeLessThanOrEqual(2655);
   expect(Number(card.withLifeline.replace(/[$,]/g, ""))).toBeLessThan(2640);
+  expect(card.withLabel).toBe("With Lifeline, near");
+  expect(card.caveat).toBe("");
 });
 test("several coins give a move, not a price", () => {
   const card = cardFor(ADDRESS, risk({ covered: [long(), long({ coin: "BTC", size: 0.01, markPx: 90000 })], maintenance: 78, health: 400 / 78 }), AT)!;
@@ -23,8 +25,13 @@ test("several coins give a move, not a price", () => {
 test("nothing to say about portfolio margin, no positions, a dead account or one nothing can kill", () => {
   expect(cardFor(ADDRESS, risk({ mode: "portfolio" }), AT)).toBeNull();
   expect(cardFor(ADDRESS, risk({ covered: [] }), AT)).toBeNull();
+  expect(cardFor(ADDRESS, risk({ unread: ["xyz"] }), AT)).toBeNull();
   expect(cardFor(ADDRESS, risk({ health: 0.9 }), AT)).toBeNull();
   expect(cardFor(ADDRESS, risk({ value: 1e9, health: 1e9 }), AT)).toBeNull();
+});
+test("says what it leaves out, and what's untested", () => {
+  expect(cardFor(ADDRESS, risk({ uncovered: [long({ isolated: true })] }), AT)!.caveat).toContain("1 position a top-up can't reach");
+  expect(cardFor(ADDRESS, risk({ mode: "unified" }), AT)!.caveat).toContain("untested");
 });
 test("only a plain address is taken, and it's always shortened in what people see", () => {
   expect(cleanAddress(ADDRESS)).toBe(ADDRESS.toLowerCase());
@@ -36,12 +43,12 @@ test("only a plain address is taken, and it's always shortened in what people se
 test("a coin's name can't add markup", () => {
   const card = cardFor(ADDRESS, risk({ covered: [long({ coin: '<script>"&' })] }), AT);
   expect(cardSvg(card)).not.toContain("<script>");
-  expect(sharePage("https://s.test", ADDRESS, card)).not.toContain("<script>");
+  expect(sharePage("https://s.test", ADDRESS)).not.toContain("<script>");
 });
 test("the page carries the preview tags and goes on to the live test", () => {
-  const html = sharePage("https://s.test", ADDRESS, cardFor(ADDRESS, risk(), AT));
+  const html = sharePage("https://s.test", ADDRESS);
   for (const part of ['name="twitter:card" content="summary_large_image"', `content="https://s.test/${ADDRESS}.png"`, "noindex", `/check?address=${ADDRESS}`]) expect(html).toContain(part);
-  expect(sharePage("https://s.test", ADDRESS, null)).toContain("with and without Lifeline");
+  expect(html).not.toContain("$");
   expect(cardSvg(null)).toContain("Storm-test any");
 });
 test("prices read naturally at every scale", () => {

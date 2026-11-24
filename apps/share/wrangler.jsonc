@@ -4,13 +4,16 @@
 //   pnpm --filter @lifeline/share cf:dev      locally
 //   pnpm --filter @lifeline/share cf:deploy   lifeline-share.prashantthakur.dev
 //
-// The picture is drawn in a Durable Object, because a plain request's 10 ms of CPU isn't enough.
+// Only the drawing runs in a Durable Object, because a plain request's 10 ms of CPU isn't
+// enough; it's awake for that moment alone, as the keeper shares this account's free plan.
 {
   "name": "lifeline-share",
   "main": "src/worker.ts",
   "compatibility_date": "2026-11-01",
-  "durable_objects": { "bindings": [{ "name": "CARDS", "class_name": "Cards" }] },
-  "exports": { "Cards": { "type": "durable-object", "storage": "sqlite" } },
+  "durable_objects": { "bindings": [{ "name": "PAINTER", "class_name": "Painter" }] },
+  "exports": { "Painter": { "type": "durable-object", "storage": "sqlite" } },
+  "ratelimits": [{ "name": "PER_VISITOR", "namespace_id": "4101", "simple": { "limit": 6, "period": 60 } }],
+  "assets": { "directory": "public", "binding": "ASSETS" },
   "observability": { "enabled": true },
   "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"] }],
   "routes": [{ "pattern": "lifeline-share.prashantthakur.dev", "custom_domain": true }]

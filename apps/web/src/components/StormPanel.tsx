@@ -76,7 +76,7 @@ function Share({ address }: { address: string }) {
     <div className="mx-5 mb-5 flex flex-wrap items-center gap-3 rounded-lg border-2 border-ink bg-sun p-4">
       <p className="min-w-0 flex-1 basis-64 text-[15px] font-bold text-ink">
         Share this storm test
-        <span className="block text-[13px] font-normal">The preview shows the shortened address and both liquidation figures at the suggested reserve.</span>
+        <span className="block text-[13px] font-normal">The preview shows the shortened address and, when one is within range, where it&apos;s liquidated with and without the suggested reserve.</span>
       </p>
       <CopyButton value={shareCardUrl(address)} label="Copy the link" />
       <a href={shareOnXHref(address)} target="_blank" rel="noreferrer noopener" className="inline-flex h-9 items-center rounded-md border-2 border-ink bg-card px-3 text-[14px] font-bold hover:bg-paper-2">
