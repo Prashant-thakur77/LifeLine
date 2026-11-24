@@ -235,6 +235,9 @@ export function Footer() {
               <Link href="/waitlist" className="w-fit font-semibold hover:text-sun">
                 Waitlist
               </Link>
+              <Link href="/changelog" className="w-fit font-semibold hover:text-sun">
+                Changelog
+              </Link>
             </nav>
             <dl className="flex flex-col gap-3 font-readout text-[12px]">
               <div>
