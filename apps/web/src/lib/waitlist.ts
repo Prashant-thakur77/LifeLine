@@ -1,4 +1,4 @@
-import { POW_BITS, ROLES, SIZES, VENUES, CHAINS, WANTS, cleanEmail, cleanText, MAX_NAME, type Chain, type Entry, type Role, type Size, type Venue, type Want } from "@lifeline/waitlist";
+import { POW_BITS, ROLES, SIZES, VENUES, CHAINS, WANTS, cleanEmail, cleanText, sourceOf, MAX_NAME, type Chain, type Entry, type Role, type Size, type Venue, type Want } from "@lifeline/waitlist";
 import { leadingZeroBits, powDigest } from "@lifeline/waitlist/pow";
 
 // The waitlist conversation: what it asks, what it understands from plain typing, and how it's sent.
@@ -144,6 +144,8 @@ export async function solvePow(challenge: string, bits: number, pause = () => ne
   }
 }
 
+export const signUp = (draft: Draft, utmSource: string | null) => ({ email: draft.email, role: draft.role, source: sourceOf(utmSource) });
+
 export type Ticket = { berth: string; leaveCode: string };
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
@@ -164,10 +166,11 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   return answer;
 }
 
-export async function joinWaitlist(draft: Draft, website: string): Promise<Ticket> {
+/** Sends the email, the role and which link they came by. The other answers never leave the browser. */
+export async function joinWaitlist(draft: Draft, website: string, utmSource: string | null): Promise<Ticket> {
   const { challenge, bits } = await call<{ challenge: string; bits: number }>("/api/challenge");
   const nonce = await solvePow(challenge, bits);
-  return call<Ticket>("/api/join", { ...draft, website, consent: true, challenge, nonce });
+  return call<Ticket>("/api/join", { ...signUp(draft, utmSource), website, consent: true, challenge, nonce });
 }
 
 export const leaveWaitlist = (email: string, leaveCode: string) => call<{ ok: true }>("/api/leave", { email, leaveCode });

@@ -102,6 +102,7 @@ Each feature is its own release, dated in UTC:
 | v1.5.0 | 23 Nov 2026 | Say your rules: write the policy in plain words. Fixed rules read it, show what they understood and never guess | https://lifeline.prashantthakur.dev/start |
 | v1.6.0 | 23 Nov 2026 | Liquidation autopsy: an address's past liquidations, the margin that would have carried each one through, and whether holding on would have paid | https://lifeline.prashantthakur.dev/autopsy |
 | v1.7.0 | 23 Nov 2026 | Decision receipts: every keeper decision, refusals included, chained by hash. The verify page relinks them in your browser and remembers the last link, so the records after it can't be rewritten unseen | https://lifeline.prashantthakur.dev/verify |
+| v1.10.0 | 24 Nov 2026 | Waitlist numbers: the form keeps only an email, a role and the link someone came by, and the team can count sign-ups by channel. `pnpm waitlist:stats` | https://lifeline.prashantthakur.dev/waitlist |
 
 ## Demo films
 

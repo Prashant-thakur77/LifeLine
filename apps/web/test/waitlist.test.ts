@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { CHAINS, ROLES, SIZES, VENUES, WANTS } from "@lifeline/waitlist";
 import { leadingZeroBits, powDigest } from "@lifeline/waitlist/pow";
-import { CHAIN_LABEL, EMPTY_DRAFT, ROLE_LABEL, SIZE_LABEL, VENUE_LABEL, WANT_LABEL, largestAmount, nextStep, problemWith, shareHref, sizeOf, solvePow, toggle, understand, wasLiquidated, withStory } from "../src/lib/waitlist";
+import { CHAIN_LABEL, EMPTY_DRAFT, ROLE_LABEL, SIZE_LABEL, VENUE_LABEL, WANT_LABEL, largestAmount, nextStep, problemWith, shareHref, signUp, sizeOf, solvePow, toggle, understand, wasLiquidated, withStory } from "../src/lib/waitlist";
 
 describe("understanding plain typing", () => {
   test("a whole sentence", () => {
@@ -57,6 +57,11 @@ test("the spam check is solved, and never an unreasonable one", async () => {
   const nonce = await solvePow("c", 8, async () => {});
   expect(leadingZeroBits(powDigest("c", nonce))).toBeGreaterThanOrEqual(8);
   await expect(solvePow("c", 60)).rejects.toThrow(/too much/);
+});
+
+test("only the email, role and source are sent", () => {
+  expect(signUp({ ...EMPTY_DRAFT, name: "Asha", note: "3 am", email: "a@b.co", role: "trader", size: "1k-10k" }, "Discord")).toEqual({ email: "a@b.co", role: "trader", source: "discord" });
+  expect(signUp(EMPTY_DRAFT, null).source).toBe("direct");
 });
 
 test("the shared post names the berth and never an email", () => {

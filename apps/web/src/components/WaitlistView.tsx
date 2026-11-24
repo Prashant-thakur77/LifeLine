@@ -235,7 +235,7 @@ export function WaitlistView() {
     setBusy(true);
     setProblem(null);
     try {
-      setTicket(await joinWaitlist(draft, website));
+      setTicket(await joinWaitlist(draft, website, new URLSearchParams(window.location.search).get("utm_source")));
     } catch (error) {
       setProblem(error instanceof Error ? error.message : "Something went wrong. Send it again.");
     } finally {
@@ -318,15 +318,8 @@ export function WaitlistView() {
                 <input ref={input} type="email" inputMode="email" autoComplete="email" aria-label={line} aria-invalid={problem ? true : undefined} className={big} value={draft.email} maxLength={120} placeholder="you@example.com" onChange={(e) => set({ email: e.target.value })} />
                 <label className="mt-6 flex max-w-xl cursor-pointer items-start gap-3 text-[14.5px] leading-relaxed text-body">
                   <input type="checkbox" className="mt-1 size-5 shrink-0 accent-[#ff5a1f]" checked={consent} onChange={(e) => (setConsent(e.target.checked), setProblem(null))} />
-                  <span>I&apos;m 18 or over, and Lifeline may keep these answers and email me about mainnet sign-up and what we build next.</span>
+                  <span>I&apos;m 18 or over, and Lifeline may keep my email and write to me about mainnet sign-up and what we build next.</span>
                 </label>
-                <details className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-body">
-                  <summary className="cursor-pointer font-semibold text-ink">What happens to it</summary>
-                  <p className="mt-2">
-                    We keep your name, email, choices and what you typed, on Cloudflare, for the Lifeline team to read. We don&apos;t sell or share it, and there is no tracking on this page. You
-                    get a leave code: with it you can delete everything at the bottom of this page, any time. For anything else, message @LifelineNear on X.
-                  </p>
-                </details>
               </>
             )}
             {/* People never see this one; bots fill it. */}
@@ -351,6 +344,9 @@ export function WaitlistView() {
           </div>
           <p role="alert" className="mt-4 min-h-6 text-[15px] font-semibold text-danger-ink">
             {problem}
+          </p>
+          <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-body">
+            Privacy: we keep your email, what brings you here and which link you came by. The other answers only fill in your pass, in this browser.
           </p>
         </form>
         <div className="lg:pt-10">
