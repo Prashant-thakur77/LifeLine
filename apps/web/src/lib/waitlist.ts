@@ -177,4 +177,4 @@ export const leaveWaitlist = (email: string, leaveCode: string) => call<{ ok: tr
 
 export const shareText = (berth: string) => `I have berth ${berth} on the Lifeline waitlist: automatic margin top-up before liquidation, from a vault that only pays my own address.`;
 export const shareHref = (berth: string) =>
-  `https://x.com/intent/post?${new URLSearchParams({ text: shareText(berth), url: "https://lifeline.prashantthakur.dev/waitlist" })}`;
+  `https://x.com/intent/post?${new URLSearchParams({ text: shareText(berth), url: "https://lifeline.prashantthakur.dev/waitlist?utm_source=x" })}`;
